@@ -12,7 +12,7 @@
   version: "1"
   services:
   mongo:
-    image: mongo
+    image: mongo:latest
     container_name: mongo
     ports:
       - "27017:27017"
@@ -36,3 +36,4 @@
 # Resources and Further Reading
 
 1. [github.com/nyangweso-rodgers - Docker-Commands](https://github.com/nyangweso-rodgers/My-Journey-Into-Computer-Science/blob/master/04-VMs-vs-Containers/02-Containers/01-Docker/01-Docker-Commands/Readme.md)
+2. [github.com/nyangweso-rodgers -Run MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/01-Run-MongoDB-Docker-Container/01-Docker-Compose/Readme.md)

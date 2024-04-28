@@ -7,6 +7,15 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-
+  sale-order-api:
+    build:
+      context: ./sale-order-api
+      dockerfile: Dockerfile
+    image: sale-order-api
+    container_name: sale-order-api
+    ports:
+      - "3200:3200"
+    depends_on:
+      - mongo
 volumes:
   mongodb_data:
