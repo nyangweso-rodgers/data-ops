@@ -34,8 +34,14 @@
   ```
 
 - For **MongoDB server** running on **Docker**:
+  - Ensure the connection string for MongoDB in your Node.js app or the associated environment variables is updated to:
+- Syntax:
   ```env
-    MONGO_URI=mongodb://root:root@0.0.0.0:27017/sale_order_service?authSource=admin
+    const MONGODB_URI = 'mongodb://mongo:27017/mydatabase';
+  ```
+- Example:
+  ```env
+    MONGO_URI=mongodb://mongo:27017/sale_order_service
   ```
 
 # Create a `Dockerfile`
@@ -65,3 +71,4 @@
 # Edit `docker-compose` File
 
 # Further Reading
+1.

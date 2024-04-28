@@ -8,6 +8,7 @@ dotenv.config(); // Load environment variables from .env file
 
 //connect to MongoDB Atlas
 const MONGO_URI = process.env.MONGO_URI;
+//const MONGO_URI = 'mongodb://mongo:27017/sale_order_service';
 
 // create an express application object
 const app = express();
