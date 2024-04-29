@@ -6,24 +6,11 @@
 
 # Running MongoDB Docker Containe
 
-- Check my []() on how to run a MongoDB Docker container.
-
-  ```yml
-  version: "1"
-  services:
-  mongo:
-    image: mongo:latest
-    container_name: mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-
-  volumes:
-  mongodb_data:
-  ```
+- Check my []() on how to run a MongoDB Docker container using docker-compose.
 
 # Running Postgres Docker Container
+
+- Check my [](), GitHub repo on how to configure and run postgresql docker container using docker-compose.
 
 # Running Apache Kafka Docker Container
 
