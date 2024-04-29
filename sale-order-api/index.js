@@ -4,7 +4,8 @@ import dotenv from "dotenv";
 
 import {router } from "./src/app/main/routes/saleOrderRoute.js";
 
-dotenv.config(); // Load environment variables from .env file
+// Load environment variables from .env file
+dotenv.config();
 
 //connect to MongoDB Atlas
 const MONGO_URI = process.env.MONGO_URI;

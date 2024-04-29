@@ -6,18 +6,31 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/data/db
+      - mongodb_volume:/data/db
   postgres:
     image: postgres:latest
     container_name: postgres
     ports:
       - "5432:5432"
+      # "172.17.0.1:5432:5432"
     environment:
-      POSTGRES_USER: rodgers
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: test_db
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_volume:/var/lib/postgresql/data
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: postgres-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - ./pgadmin_volume:/var/lib/pgadmin
+    depends_on:
+      - postgres
   sale-order-api:
     build:
       context: ./sale-order-api
@@ -28,7 +41,20 @@ services:
       - "3200:3200"
     depends_on:
       - mongo
+  customer-api:
+    build:
+      context: ./customer-api
+      dockerfile: Dockerfile
+    image: customer-api
+    container_name: customer-api
+    ports:
+      - "3300:3300"
+    depends_on:
+      - postgres
 volumes:
-  mongodb_data:
+  mongodb_volume:
+    name: mongodb_volume
+    driver: local
   postgres_volume:
+    name: postgres_volume
     driver: local
