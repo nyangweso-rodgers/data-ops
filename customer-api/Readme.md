@@ -6,6 +6,10 @@
 
 - Create a REST API, with ith Postgres, Express, and Docker Compose.
 
+# Setup
+
+- For project setup, check my [github.com/nyangweso-rodgers - Setting Express Development Environment With PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/03-JavaScript-Frameworks/02-Express.js/01-Setting-Express-Development-Environment/03-With-PostgreSQL-Docker-Container/Readme.md) github repo on how to setup the application with Postgres docker container.
+
 # API Functionality
 
 ## Functionality #1: `customer-api/src/utils/database.js`
@@ -243,3 +247,4 @@
 1. [github.com/nyangweso-rodgers - Setting Express.js Development Environment](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/03-JavaScript-Frameworks/02-Express.js/01-Setting-Express-Development-Environment/Readme.md)
 2. [github.com/nyangweso-rodgers - Docker-Commands](https://github.com/nyangweso-rodgers/My-Journey-Into-Computer-Science/blob/master/04-VMs-vs-Containers/02-Containers/01-Docker/01-Docker-Commands/Readme.md)
 3. [github.com/nyangweso-rodgers - Docker Compose File](https://github.com/nyangweso-rodgers/My-Journey-Into-Computer-Science/blob/master/04-VMs-vs-Containers/02-Containers/01-Docker/02-Docker-Compose-File/Readme.md)
+4. [sequelize.org/docs/v6/](https://sequelize.org/docs/v6/)

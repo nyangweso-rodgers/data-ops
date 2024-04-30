@@ -6,23 +6,9 @@
 
 - Create a RESTful API with Node.js, Express.js and Docker. The application will connect to MongoDB, create a database and collection, insert a document, and expose an API endpoint to show the document with an HTTP request.
 
-# Setup
+# Project Setup
 
-- Check my [github.com/nyangweso-rodgers - Setting-Express-Development-Environment](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/03-JavaScript-Frameworks/02-Express.js/01-Setting-Express-Development-Environment/Readme.md) on how to setup an Express.js application with Docker and MongoDB.
-- For the project we install the following dependencies:
-  ```sh
-    npm i express dotenv mongoose
-  ```
-  - `express` is for building the web server
-  - `dotenv` is for loading environment variables from a `.env` file.
-  - `mongoose`: An ODM (Object Data Modeling) library for MongoDB.
-- Optional `dev-dependencies` (used for development purposes) include:
-  ```sh
-    #install dev-dependencies
-    npm i nodemon morgan --save-dev
-  ```
-  - `nodemon`
-  - `morgan`: provides requests details made. , it logs each request in the CLI. You will be able to see some information about the request.
+- For project setup, check my [github.com/nyangweso-rodgers - Setting Express Development Environment With MongoDB Docker Container](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/03-JavaScript-Frameworks/02-Express.js/01-Setting-Express-Development-Environment/02-With-MongoDB-Docker-Container/Readme.md) or [github.com/nyangweso-rodgers - Setting Express Development Environment With MongoDB Atlas](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/03-JavaScript-Frameworks/02-Express.js/01-Setting-Express-Development-Environment/01-With-MongoDB-Atlas/Readme.md) on how to setup an Express.js application with Docker and MongoDB.
 
 # Connect to MongoDB Atlas or MongoDB Server Running on Docker
 
@@ -44,7 +30,9 @@
     MONGO_URI=mongodb://mongo:27017/sale_order_service
   ```
 
-# Create a `Dockerfile`
+# Dockerize the API
+
+## Step #1: Create a `Dockerfile`
 
 ```Dockerfile
     FROM node:alpine
@@ -68,7 +56,9 @@
     CMD ["npm", "start"]
 ```
 
-# Edit `docker-compose` File
+## Step #: Edit `docker-compose` File
+
+# Test the API
 
 ## Step #: Test API with Postman
 

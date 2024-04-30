@@ -1,12 +1,24 @@
 version: "1"
 services:
+  ######################################
+  # mongo DB
+  #
   mongo:
     image: mongo:latest
     container_name: mongo
     ports:
       - "27017:27017"
+    #env_file:
+      #- .env # Using the shared root .env file
+    #environment:
+      #MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      #MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      #MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
     volumes:
       - mongodb_volume:/data/db
+  ######################################
+  # sale-order-api
+  #
   sale-order-api:
     build:
       context: ./sale-order-api
@@ -17,6 +29,9 @@ services:
       - "3200:3200"
     depends_on:
       - mongo
+  ######################################
+  # postgres DB
+  #
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -30,6 +45,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_volume:/var/lib/postgresql/data
+  ######################################
+  # pgadmin
+  #
   pgadmin:
     image: dpage/pgadmin4
     container_name: postgres-pgadmin
@@ -44,6 +62,9 @@ services:
       - pgadmin_volume:/var/lib/pgadmin
     depends_on:
       - postgres
+  ######################################
+  # customer-api
+  #
   customer-api:
     build:
       context: ./customer-api
@@ -56,6 +77,9 @@ services:
       - ./customer-api/.env # Specific .env for this service
     depends_on:
       - postgres
+######################################
+# volumes
+#
 volumes:
   mongodb_volume:
     name: mongodb_volume
