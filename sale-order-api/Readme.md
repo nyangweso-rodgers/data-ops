@@ -1,4 +1,4 @@
-# Sale Order REST API
+# Sale Order REST API Project using Express, Docker, and MongoDB
 
 ## Table Of Contents
 
