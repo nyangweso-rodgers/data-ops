@@ -1,6 +1,7 @@
-import * as Sequelize from "sequelize";
+import { Sequelize } from "sequelize";
 import sequelizeInstance from "../utils/database.js";
 
+// Define your model directly in customerSchema.js
 const CustomerSchema = sequelizeInstance.define("customers", {
   id: {
     type: Sequelize.INTEGER,

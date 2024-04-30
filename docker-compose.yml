@@ -7,12 +7,23 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_volume:/data/db
+  sale-order-api:
+    build:
+      context: ./sale-order-api
+      dockerfile: Dockerfile
+    image: sale-order-api
+    container_name: sale-order-api
+    ports:
+      - "3200:3200"
+    depends_on:
+      - mongo
   postgres:
     image: postgres:latest
     container_name: postgres
     ports:
       - "5432:5432"
-      # "172.17.0.1:5432:5432"
+    env_file:
+      - .env # Using the shared root .env file
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -24,23 +35,15 @@ services:
     container_name: postgres-pgadmin
     ports:
       - "5050:80"
+    env_file:
+      - .env # Using the shared root .env file
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
-      - ./pgadmin_volume:/var/lib/pgadmin
+      - pgadmin_volume:/var/lib/pgadmin
     depends_on:
       - postgres
-  sale-order-api:
-    build:
-      context: ./sale-order-api
-      dockerfile: Dockerfile
-    image: sale-order-api
-    container_name: sale-order-api
-    ports:
-      - "3200:3200"
-    depends_on:
-      - mongo
   customer-api:
     build:
       context: ./customer-api
@@ -49,6 +52,8 @@ services:
     container_name: customer-api
     ports:
       - "3300:3300"
+    env_file:
+      - ./customer-api/.env # Specific .env for this service
     depends_on:
       - postgres
 volumes:
@@ -57,4 +62,7 @@ volumes:
     driver: local
   postgres_volume:
     name: postgres_volume
+    driver: local
+  pgadmin_volume:
+    name: pgadmin_volume
     driver: local

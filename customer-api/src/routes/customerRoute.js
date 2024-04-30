@@ -12,4 +12,4 @@ router.use(bodyParser.json());
 router.post("/", createOneCustomer);
 
 //export default router;
-export { router }; // Exporting the router object correctly
+export { router };
