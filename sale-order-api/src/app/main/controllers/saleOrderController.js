@@ -39,6 +39,9 @@ export const createSaleOrder = async (req, res) => {
     // Create a new order document
     const newSaleOrder = await saleOrder.create(orderData);
 
+    // Log a success message
+    console.log("Sale order created successfully:", newSaleOrder);
+
     // Send a success response with the newly created order
     res.status(201).json({ status: "success", data: { order: newSaleOrder } });
   } catch (error) {
