@@ -9,11 +9,11 @@ services:
     ports:
       - "27017:27017"
     #env_file:
-      #- .env # Using the shared root .env file
+    #- .env # Using the shared root .env file
     #environment:
-      #MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      #MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-      #MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+    #MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+    #MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    #MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
     volumes:
       - mongo_volume:/data/db
   ######################################
@@ -77,6 +77,19 @@ services:
       - ./customer-api/.env # Specific .env for this service
     depends_on:
       - postgres
+  ######################################
+  # next.js app
+  #
+  next.js-app:
+    build:
+      context: ./next.js-app
+      dockerfile: Dockerfile
+    image: next.js-app
+    container_name: next.js-app
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongo
 ######################################
 # volumes
 #
