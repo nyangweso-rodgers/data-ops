@@ -15,7 +15,7 @@ services:
       #MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       #MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
     volumes:
-      - mongodb_volume:/data/db
+      - mongo_volume:/data/db
   ######################################
   # sale-order-api
   #
@@ -81,9 +81,9 @@ services:
 # volumes
 #
 volumes:
-  mongodb_volume:
-    name: mongodb_volume
-    driver: local
+  mongo_volume:
+    name: mongo_volume
+    #driver: local
   postgres_volume:
     name: postgres_volume
     driver: local
