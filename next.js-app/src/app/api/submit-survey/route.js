@@ -1,6 +1,6 @@
-import dbConnect from "../utils/db-connect";
+import dbConnect from "../../utils/db-connect";
 
-import FormData from "../model/surveyDataSchema.js";
+import FormData from "@/app/model/surveyDataSchema";
 
 const Handler = async (req, res) => {
   try {
@@ -10,7 +10,7 @@ const Handler = async (req, res) => {
     if (req.method === "POST") {
       try {
         // Extract data from the request body
-        const { firstName } = req.body; 
+        const { firstName } = req.body;
 
         // Create a new form data document
         const newFormData = await FormData.create({ firstName });
