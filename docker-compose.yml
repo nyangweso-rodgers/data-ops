@@ -19,64 +19,64 @@ services:
   ######################################
   # sale-order-api
   #
-  sale-order-api:
-    build:
-      context: ./sale-order-api
-      dockerfile: Dockerfile
-    image: sale-order-api
-    container_name: sale-order-api
-    ports:
-      - "3200:3200"
-    depends_on:
-      - mongo
+  #sale-order-api:
+    #build:
+      #context: ./sale-order-api
+      #dockerfile: Dockerfile
+    #image: sale-order-api
+    #container_name: sale-order-api
+    #ports:
+      #- "3200:3200"
+    #depends_on:
+      #- mongo
   ######################################
   # postgres DB
   #
-  postgres:
-    image: postgres:latest
-    container_name: postgres
-    ports:
-      - "5432:5432"
-    env_file:
-      - .env # Using the shared root .env file
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_volume:/var/lib/postgresql/data
+  #postgres:
+    #image: postgres:latest
+    #container_name: postgres
+    #ports:
+      #- "5432:5432"
+    #env_file:
+      #- .env # Using the shared root .env file
+    #environment:
+      #POSTGRES_USER: ${POSTGRES_USER}
+      #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      #POSTGRES_DB: ${POSTGRES_DB}
+    #volumes:
+      #- postgres_volume:/var/lib/postgresql/data
   ######################################
   # pgadmin
   #
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: postgres-pgadmin
-    ports:
-      - "5050:80"
-    env_file:
-      - .env # Using the shared root .env file
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    volumes:
-      - pgadmin_volume:/var/lib/pgadmin
-    depends_on:
-      - postgres
+  #pgadmin:
+    #image: dpage/pgadmin4
+    #container_name: postgres-pgadmin
+    #ports:
+      #- "5050:80"
+    #env_file:
+      #- .env # Using the shared root .env file
+    #environment:
+      #PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      #PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    #volumes:
+      #- pgadmin_volume:/var/lib/pgadmin
+    #depends_on:
+      #- postgres
   ######################################
   # customer-api
   #
-  customer-api:
-    build:
-      context: ./customer-api
-      dockerfile: Dockerfile
-    image: customer-api
-    container_name: customer-api
-    ports:
-      - "3300:3300"
-    env_file:
-      - ./customer-api/.env # Specific .env for this service
-    depends_on:
-      - postgres
+  #customer-api:
+    #build:
+      #context: ./customer-api
+      #dockerfile: Dockerfile
+    #image: customer-api
+    #container_name: customer-api
+    #ports:
+      #- "3300:3300"
+    #env_file:
+      #- ./customer-api/.env # Specific .env for this service
+    #depends_on:
+      #- postgres
   ######################################
   # next.js app
   #
@@ -96,10 +96,10 @@ services:
 volumes:
   mongo_volume:
     name: mongo_volume
+    driver: local
+  #postgres_volume:
+    #name: postgres_volume
     #driver: local
-  postgres_volume:
-    name: postgres_volume
-    driver: local
-  pgadmin_volume:
-    name: pgadmin_volume
-    driver: local
+  #pgadmin_volume:
+    #name: pgadmin_volume
+    #driver: local

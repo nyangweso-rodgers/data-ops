@@ -1,13 +1,17 @@
 import mongoose from "mongoose";
+const { Schema, model } = mongoose;
 
-const surveyDataSchema = new mongoose.Schema({
-  firstName: {
-    type: String,
-    required: true,
+const surveySchema = new Schema(
+  {
+    firstName: {
+      type: String,
+      //required: true,
+    },
+    // Add other fields as needed
   },
-  // Add other fields as needed
-});
+  { timestamps: true }
+);
 
-const FormData = mongoose.model("FormData", surveyDataSchema);
+const SurveyModel = model("survey_data", surveySchema);
 
-export default FormData;
+export default SurveyModel;

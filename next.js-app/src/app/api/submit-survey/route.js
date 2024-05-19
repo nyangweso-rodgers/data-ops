@@ -1,35 +1,37 @@
 import dbConnect from "../../utils/db-connect";
 
-import FormData from "@/app/model/surveyDataSchema";
+import SurveyModel from "../../model/surveyDataSchema.js";
 
-const Handler = async (req, res) => {
+import mongoose from "mongoose";
+
+import { NextResponse } from "next/server";
+
+export async function POST(req) {
+  // Ensure database connection before proceeding
+  await dbConnect();
+
   try {
-    // Ensure database connection before proceeding
-    await dbConnect();
+    // Read and parse the request body
+    const bodyObject = await req.json();
 
-    if (req.method === "POST") {
-      try {
-        // Extract data from the request body
-        const { firstName } = req.body;
+    console.log("Parsed bodyObject: ", bodyObject);
 
-        // Create a new form data document
-        const newFormData = await FormData.create({ firstName });
+    // Access the firstName property directly from bodyObject
+    const { firstName } = bodyObject;
 
-        res.status(201).json({ success: true, data: newFormData });
-      } catch (error) {
-        console.error("Error creating document:", error);
-        res
-          .status(500)
-          .json({ success: false, error: "Internal Server Error" });
-      }
-    } else {
-      res.status(405).json({ success: false, error: "Method Not Allowed" });
-    }
+    await SurveyModel.create({ firstName });
+    await mongoose.connection.close();
+
+    return NextResponse.json(
+      { message: "Message sent successfully" },
+      { status: 201 }
+    );
   } catch (error) {
-    // Handle connection error or other errors
-    console.error("Error:", error);
-    res.status(500).json({ success: false, error: "Internal Server Error" });
+    console.log(error);
+    await mongoose.connection.close();
+    return NextResponse.json(
+      { message: "Failed to send message " },
+      { status: 400 }
+    );
   }
-};
-
-export default Handler;
+}
