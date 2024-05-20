@@ -1,5 +1,7 @@
 "use client";
 import pageStyles from "../../styles/page.module.css";
+import utilsStyles from "../../styles/utils.module.css";
+
 //import { useState } from "react";
 
 const SurveyAppPage = () => {
@@ -11,14 +13,15 @@ const SurveyAppPage = () => {
 
     //Get data from the form
     const formData = new FormData(event.target);
-
+    /*
     const dataToSend = {
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
       emailAddress: formData.get("emailAddress"),
       phoneNumber: formData.get("phoneNumber"),
       message: formData.get("message"),
-    };
+    };*/
+    const dataToSend = Object.fromEntries(formData);
 
     console.log("Data to Send:", dataToSend); //TODO : Verify the structure here
 
@@ -65,7 +68,10 @@ const SurveyAppPage = () => {
         >
           <div className={`row ${pageStyles.row}`}>
             <div className={`col-md-5`}>
-              <label htmlFor="firstName" className={`form-label`}>
+              <label
+                htmlFor="firstName"
+                className={`form-label ${pageStyles.label}`}
+              >
                 First Name
               </label>
             </div>
@@ -81,7 +87,10 @@ const SurveyAppPage = () => {
             </div>
           </div>
           <div className={`row ${pageStyles.row}`}>
-            <label htmlFor="lastName" className={`form-label`}>
+            <label
+              htmlFor="lastName"
+              className={`form-label ${pageStyles.label}`}
+            >
               Last Name
             </label>
             <input
@@ -94,7 +103,10 @@ const SurveyAppPage = () => {
             ></input>
           </div>
           <div className={`row ${pageStyles.row}`}>
-            <label htmlFor="emailAddress" className={`form-label`}>
+            <label
+              htmlFor="emailAddress"
+              className={`form-label ${pageStyles.label}`}
+            >
               Email Address
             </label>
             <input
@@ -107,7 +119,10 @@ const SurveyAppPage = () => {
             ></input>
           </div>
           <div className={`row ${pageStyles.row}`}>
-            <label htmlFor="phoneNumber" className={`form-label`}>
+            <label
+              htmlFor="phoneNumber"
+              className={`form-label ${pageStyles.label}`}
+            >
               Phone
             </label>
             <input
@@ -120,7 +135,10 @@ const SurveyAppPage = () => {
             ></input>
           </div>
           <div className={`row ${pageStyles.row}`}>
-            <label htmlFor="message" className={`form-label`}>
+            <label
+              htmlFor="message"
+              className={`form-label ${pageStyles.label}`}
+            >
               Message
             </label>
             <textarea
@@ -140,7 +158,7 @@ const SurveyAppPage = () => {
 
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <button className={`btn btn-primary mt-3`} type="submit">
+              <button className={`btn ${utilsStyles.button}`} type="submit">
                 Submit
               </button>
             </div>

@@ -24,8 +24,15 @@
   width: 50vw;
 }
 .input {
+  width: 100%;
   min-height: 6vh;
+  margin-top: 5px;
+  padding: 8px;
   border-radius: 10px;
+  border: 1px solid #ccc;
+}
+.label {
+  font-weight: bold;
 }
 .textarea {
   min-height: 15vh;
