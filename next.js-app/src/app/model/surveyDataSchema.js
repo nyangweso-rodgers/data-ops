@@ -19,6 +19,10 @@ const surveySchema = new Schema(
       type: String,
       required: false,
     },
+    message: {
+      type: String,
+      required: false,
+    },
     // Add other fields as needed
   },
   { timestamps: true }

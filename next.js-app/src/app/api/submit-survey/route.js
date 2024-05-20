@@ -17,25 +17,27 @@ export async function POST(req) {
     console.log("Parsed bodyObject: ", bodyObject);
 
     // Access the firstName property directly from bodyObject
-    const { firstName, lastName, emailAddress, phoneNumber } = bodyObject;
+    const { firstName, lastName, emailAddress, phoneNumber, message } =
+      bodyObject;
 
     await SurveyModel.create({
       firstName,
       lastName,
       emailAddress,
       phoneNumber,
+      message,
     });
     await mongoose.connection.close();
 
     return NextResponse.json(
-      { message: "Message sent successfully" },
+      { message: "Form submitted successfully" },
       { status: 201 }
     );
   } catch (error) {
     console.log(error);
     await mongoose.connection.close();
     return NextResponse.json(
-      { message: "Failed to send message " },
+      { message: "Failed to submit form" },
       { status: 400 }
     );
   }

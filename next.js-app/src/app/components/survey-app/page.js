@@ -17,6 +17,7 @@ const SurveyAppPage = () => {
       lastName: formData.get("lastName"),
       emailAddress: formData.get("emailAddress"),
       phoneNumber: formData.get("phoneNumber"),
+      message: formData.get("message"),
     };
 
     console.log("Data to Send:", dataToSend); //TODO : Verify the structure here
@@ -58,7 +59,10 @@ const SurveyAppPage = () => {
             <div className={`mb-3`}>Form Heading</div>
           </div>
         </div>
-        <form onSubmit={handleSubmitSurveyForm} className={`container`}>
+        <form
+          onSubmit={handleSubmitSurveyForm}
+          className={`container ${pageStyles.form}`}
+        >
           <div className={`row ${pageStyles.row}`}>
             <div className={`col-md-5`}>
               <label htmlFor="firstName" className={`form-label`}>
@@ -70,7 +74,7 @@ const SurveyAppPage = () => {
                 type="text"
                 name="firstName"
                 id="firstName"
-                className={`form-control`}
+                className={`form-control ${pageStyles.input}`}
                 placeholder="Enter your first name"
                 required
               ></input>
@@ -84,7 +88,7 @@ const SurveyAppPage = () => {
               type="text"
               name="lastName"
               id="lastName"
-              className={`form-control`}
+              className={`form-control ${pageStyles.input}`}
               placeholder="Enter your last name"
               required
             ></input>
@@ -97,7 +101,7 @@ const SurveyAppPage = () => {
               type="email"
               name="emailAddress"
               id="emailAddress"
-              className={`form-control`}
+              className={`form-control ${pageStyles.input}`}
               placeholder="Enter your email address"
               required
             ></input>
@@ -110,11 +114,30 @@ const SurveyAppPage = () => {
               type="text"
               name="phoneNumber"
               id="phoneNumber"
-              className={`form-control`}
+              className={`form-control ${pageStyles.input}`}
               placeholder="Enter your phone number"
               required
             ></input>
           </div>
+          <div className={`row ${pageStyles.row}`}>
+            <label htmlFor="message" className={`form-label`}>
+              Message
+            </label>
+            <textarea
+              name="message"
+              id="message"
+              className={`${pageStyles.textarea}`}
+              placeholder="Enter message"
+              required
+            ></textarea>
+          </div>
+          <div className={`row ${pageStyles.row}`}>
+            <label htmlFor="terms" className={`form-label`}>
+              <input id="terms" type="checkbox" />I agree to the terms and
+              privacy policy.
+            </label>
+          </div>
+
           <div className={`row ${pageStyles.row}`}>
             <div>
               <button className={`btn btn-primary mt-3`} type="submit">
