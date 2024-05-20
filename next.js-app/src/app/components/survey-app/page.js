@@ -15,6 +15,8 @@ const SurveyAppPage = () => {
     const dataToSend = {
       firstName: formData.get("firstName"),
       lastName: formData.get("lastName"),
+      emailAddress: formData.get("emailAddress"),
+      phoneNumber: formData.get("phoneNumber"),
     };
 
     console.log("Data to Send:", dataToSend); //TODO : Verify the structure here
@@ -84,6 +86,32 @@ const SurveyAppPage = () => {
               id="lastName"
               className={`form-control`}
               placeholder="Enter your last name"
+              required
+            ></input>
+          </div>
+          <div className={`row ${pageStyles.row}`}>
+            <label htmlFor="emailAddress" className={`form-label`}>
+              Email Address
+            </label>
+            <input
+              type="email"
+              name="emailAddress"
+              id="emailAddress"
+              className={`form-control`}
+              placeholder="Enter your email address"
+              required
+            ></input>
+          </div>
+          <div className={`row ${pageStyles.row}`}>
+            <label htmlFor="phoneNumber" className={`form-label`}>
+              Phone
+            </label>
+            <input
+              type="text"
+              name="phoneNumber"
+              id="phoneNumber"
+              className={`form-control`}
+              placeholder="Enter your phone number"
               required
             ></input>
           </div>
