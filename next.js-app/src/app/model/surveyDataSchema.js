@@ -5,8 +5,9 @@ const surveySchema = new Schema(
   {
     firstName: {
       type: String,
-      //required: true,
+      required: true,
     },
+    lastName: { type: String, required: true },
     // Add other fields as needed
   },
   { timestamps: true }

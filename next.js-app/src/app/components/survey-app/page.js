@@ -1,5 +1,5 @@
 "use client";
-
+import pageStyles from "../../styles/page.module.css";
 //import { useState } from "react";
 
 const SurveyAppPage = () => {
@@ -12,8 +12,10 @@ const SurveyAppPage = () => {
     //Get data from the form
     const formData = new FormData(event.target);
 
-    const dataToSend = { firstName: formData.get("firstName") };
-    //const dataToSend = { firstName }; // Prepare the data to send
+    const dataToSend = {
+      firstName: formData.get("firstName"),
+      lastName: formData.get("lastName"),
+    };
 
     console.log("Data to Send:", dataToSend); //TODO : Verify the structure here
 
@@ -39,7 +41,6 @@ const SurveyAppPage = () => {
     const response = await fetch(endpoint, options);
 
     // Get the response data from server as JSON.
-    // If server returns the firstName submitted, that means the form works
     const result = await response.json();
     console.log("Response From Server: ", result);
 
@@ -49,32 +50,51 @@ const SurveyAppPage = () => {
 
   return (
     <>
-      <section>
-        <div className={`container border border-primary p-5`}>
-          <div className={`row border border-secondary p-4`}>
-            <div>
-              <div className={`mb-3`}>Contact Us</div>
-              <form onSubmit={handleSubmitSurveyForm}>
-                <label htmlFor="firstName" className={`form-label`}>
-                  First Name
-                </label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  //value={firstName}
-                  type="text"
-                  placeholder="Enter your first name"
-                  //onChange={(e) => setFirstName(e.target.value)}
-                  required
-                  className={`form-control`}
-                ></input>
-                <button className={`btn btn-primary mt-3`} type="submit">
-                  Submit
-                </button>
-              </form>
-            </div>
+      <section className={`${pageStyles.section}`}>
+        <div className={`container`}>
+          <div className={`row ${pageStyles.row}`}>
+            <div className={`mb-3`}>Form Heading</div>
           </div>
         </div>
+        <form onSubmit={handleSubmitSurveyForm} className={`container`}>
+          <div className={`row ${pageStyles.row}`}>
+            <div className={`col-md-5`}>
+              <label htmlFor="firstName" className={`form-label`}>
+                First Name
+              </label>
+            </div>
+            <div className={`col-md-7`}>
+              <input
+                type="text"
+                name="firstName"
+                id="firstName"
+                className={`form-control`}
+                placeholder="Enter your first name"
+                required
+              ></input>
+            </div>
+          </div>
+          <div className={`row ${pageStyles.row}`}>
+            <label htmlFor="lastName" className={`form-label`}>
+              Last Name
+            </label>
+            <input
+              type="text"
+              name="lastName"
+              id="lastName"
+              className={`form-control`}
+              placeholder="Enter your last name"
+              required
+            ></input>
+          </div>
+          <div className={`row ${pageStyles.row}`}>
+            <div>
+              <button className={`btn btn-primary mt-3`} type="submit">
+                Submit
+              </button>
+            </div>
+          </div>
+        </form>
       </section>
     </>
   );
