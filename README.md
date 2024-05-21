@@ -2,27 +2,32 @@
 
 # Project Description
 
-- For Data Pipeline Service with Apache Kafka, Postgres, and MongoDB.
+- This prject is for:
+  - **Data Pipeline** Service with **Apache Kafka**, **Postgres**, and **MongoDB**.
+  - API service, and a
+  - Next.js Application.
 
 # Services
 
-## Service #1: Running MongoDB Docker Container
+- The following **services**, or **Docker Containers** are running in this project:
 
-- Check my [github.com/nyangweso-rodgers - Running MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/03-Working-with-MongoDB/01-Run-MongoDB-Docker-Container/01-Using-Docker-Compose/Readme.md) on how to run a MongoDB Docker container using docker-compose.
+  1. mongo
+  2. postgres
+  3. pgadmin
+     - [dpage/pgadmin4](https://hub.docker.com/r/dpage/pgadmin4) is a web based administration tool for the PostgreSQL database.
+  4. kafka
+  5. kafka-ui
+  6. zookeeper
+  7. schema-registry
+  8. sale-order-api
+  9. customer-api
+  10. nextjs.app
 
-## Service #2: Running PostgreSQL Docker Container
+- **Remarks**:
 
-- Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/02-Working-with-PostgreSQL/01-Setting-up-Postgres-on-Docker/01-With-Docker-Compose/Readme.md), GitHub repo on how to configure and run postgresql docker container using docker-compose.
+  - Check my [github.com/nyangweso-rodgers - Running MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/03-Working-with-MongoDB/01-Run-MongoDB-Docker-Container/01-Using-Docker-Compose/Readme.md) on how to run a MongoDB Docker container using docker-compose.
 
-## Service #3: dpage/pgadmin4
-
-- [dpage/pgadmin4](https://hub.docker.com/r/dpage/pgadmin4) is a web based administration tool for the PostgreSQL database.
-
-# Running Apache Kafka Docker Container
-
-# Running Schema Registry Docker Container
-
-# Running kafka-ui Docker Container
+  - Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/02-Working-with-PostgreSQL/01-Setting-up-Postgres-on-Docker/01-With-Docker-Compose/Readme.md), GitHub repo on how to configure and run postgresql docker container using docker-compose.
 
 # Resources and Further Reading
 
