@@ -23,17 +23,25 @@
   color: #000;
   width: 50vw;
 }
+.label {
+  /*font-weight: bold;*/
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 150%;
+  color: #2B3A4A;
+}
 .input {
-  width: 100%;
+  width: 90%;
   min-height: 6vh;
   margin-top: 5px;
   padding: 8px;
   border-radius: 10px;
   border: 1px solid #ccc;
+  font-size: 16px;
+  color: #CCD0D4;
+  background: #FDFDFE;
 }
-.label {
-  font-weight: bold;
-}
+
 .textarea {
   min-height: 15vh;
   border-radius: 10px;

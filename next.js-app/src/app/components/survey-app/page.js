@@ -102,6 +102,40 @@ const SurveyAppPage = () => {
               required
             ></input>
           </div>
+          {/*<div className={`row ${pageStyles.row}`}>
+            <select name="gender" label="Gender" className="selectpicker">
+              <option name="male">Male</option>
+              <option name="female">Female</option>
+            </select>
+          </div>*/}
+
+          <div className={`row ${pageStyles.row}`}>
+            <label className={`form-label ${pageStyles.label}`}>Gender</label>
+            <div className={`form-check`}>
+              <input
+                type="radio"
+                name="gender"
+                id="male"
+                value="Male"
+                className={`form-check-input`}
+              ></input>
+              <label className="form-check-label" htmlFor="male">
+                Male
+              </label>
+            </div>
+            <div className={`form-check`}>
+              <input
+                type="radio"
+                name="gender"
+                id="female"
+                value="Female"
+                className={`form-check-input`}
+              ></input>
+              <label className="form-check-label" htmlFor="female">
+                Female
+              </label>
+            </div>
+          </div>
           <div className={`row ${pageStyles.row}`}>
             <label
               htmlFor="emailAddress"

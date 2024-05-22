@@ -9,3 +9,4 @@
 # Resources and Further Reading
 
 1. [github.com/nyangweso-rodgers - Setting up Next.js App](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/02-JavaScript-Libraries/01-React/03-React-Frameworks/01-Next.js/01-Setting-Next.js-App/Readme.md)
+2. [github.com/iambstha - API request in nextjs app router](https://github.com/iambstha/blog-post-request-nextjs-app-router/tree/master)
