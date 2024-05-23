@@ -1,8 +1,22 @@
 import mongoose from "mongoose";
 const { Schema, model } = mongoose;
 
+const generateCode = () => {
+  const prefix = "CS-";
+  const dateTime = new Date()
+    .toISOString()
+    .replace(/[-:.TZ]/g, "")
+    .slice(0, 12);
+  return `${prefix}${dateTime}`;
+};
+
 const surveySchema = new Schema(
   {
+    code: {
+      type: String,
+      unique: true,
+      //required: true,
+    },
     firstName: {
       type: String,
       required: true,
@@ -22,6 +36,7 @@ const surveySchema = new Schema(
     },
     emailAddress: {
       type: String,
+      lowercase: true,
       required: true,
       immutable: true,
     },
@@ -41,19 +56,28 @@ const surveySchema = new Schema(
     },
     createdBy: {
       type: "string",
-      default: "Rodgers",
+      default: "Rodgers Nyangweso",
       required: true,
       immutable: true,
     },
     updatedBy: {
       type: "string",
       required: true,
-      default: "Rodgers",
+      default: "Rodgers Nyangweso",
       immutable: false,
     },
   },
   { timestamps: true }
 );
+
+// Pre-save middleware to generate the code
+surveySchema.pre("save", function (next) {
+  if (!this.code) {
+    // Only set the code if it doesn't already exist
+    this.code = generateCode();
+  }
+  next();
+});
 
 const SurveyModel = model("survey_data", surveySchema);
 

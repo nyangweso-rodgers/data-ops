@@ -13,7 +13,7 @@ const PortalPage = () => {
             <div className={`col-md-3`}>
               <div className="">
                 <Link
-                  href="../components/survey-app"
+                  href="../components/surveys/participants-survey"
                   className={`card ${pageStyles.card}`}
                 >
                   <div className={`card-body`}>
