@@ -19,64 +19,64 @@ services:
   ######################################
   # sale-order-api
   #
-  #sale-order-api:
-    #build:
-      #context: ./sale-order-api
-      #dockerfile: Dockerfile
-    #image: sale-order-api
-    #container_name: sale-order-api
-    #ports:
-      #- "3200:3200"
-    #depends_on:
-      #- mongo
+  sale-order-api:
+    build:
+      context: ./sale-order-api
+      dockerfile: Dockerfile
+    image: sale-order-api
+    container_name: sale-order-api
+    ports:
+      - "3200:3200"
+    depends_on:
+      - mongo
   ######################################
   # postgres DB
   #
-  #postgres:
-    #image: postgres:latest
-    #container_name: postgres
-    #ports:
-      #- "5432:5432"
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
     #env_file:
-      #- .env # Using the shared root .env file
+    #- .env # Using the shared root .env file
     #environment:
-      #POSTGRES_USER: ${POSTGRES_USER}
-      #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      #POSTGRES_DB: ${POSTGRES_DB}
-    #volumes:
-      #- postgres_volume:/var/lib/postgresql/data
+    #POSTGRES_USER: ${POSTGRES_USER}
+    #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    #POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
   ######################################
   # pgadmin
   #
-  #pgadmin:
-    #image: dpage/pgadmin4
-    #container_name: postgres-pgadmin
-    #ports:
-      #- "5050:80"
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: postgres-pgadmin
+    ports:
+      - "5050:80"
     #env_file:
-      #- .env # Using the shared root .env file
+    #- .env # Using the shared root .env file
     #environment:
-      #PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      #PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    #volumes:
-      #- pgadmin_volume:/var/lib/pgadmin
-    #depends_on:
-      #- postgres
+    #PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+    #PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - pgadmin_volume:/var/lib/pgadmin
+    depends_on:
+      - postgres
   ######################################
   # customer-api
   #
-  #customer-api:
-    #build:
-      #context: ./customer-api
-      #dockerfile: Dockerfile
-    #image: customer-api
-    #container_name: customer-api
-    #ports:
-      #- "3300:3300"
+  customer-api:
+    build:
+      context: ./customer-api
+      dockerfile: Dockerfile
+    image: customer-api
+    container_name: customer-api
+    ports:
+      - "3300:3300"
     #env_file:
-      #- ./customer-api/.env # Specific .env for this service
-    #depends_on:
-      #- postgres
+    #- ./customer-api/.env # Specific .env for this service
+    depends_on:
+      - postgres
   ######################################
   # next.js app
   #
@@ -90,6 +90,82 @@ services:
       - "3003:3003"
     depends_on:
       - mongo
+  ######################################
+  # zookeeper
+  #
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    #restart: on-failure
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    #volumes:
+    #- zookeeper_volume: /var/lib/zookeeper/data
+  ######################################
+  # kafka
+  #
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: kafka
+    ports:
+      - "8098:8098"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:8098
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "2"
+    depends_on:
+      - zookeeper
+    #restart: on-failure
+    volumes:
+      - kafka_volume:/var/lib/kafka/data
+  ######################################
+  # kafka-ui
+  #
+  kafka-ui:
+    container_name: kafka-ui
+    #image: provectuslabs/kafka-ui:0.7.2 #not found
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8080:8080
+    depends_on:
+      - kafka
+    environment:
+      DYNAMIC_CONFIG_ENABLED: true
+      #KAFKA_CLUSTERS_0_NAME: local
+      #KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      #KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
+    volumes:
+      - ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
+  ######################################
+  # schema-registry
+  #
+  schema-registry:
+    container_name: schema-registry
+    hostname: schema-registry
+    image: confluentinc/cp-schema-registry:7.6.1
+    #image: confluentinc/cp-schema-registry:latest
+    depends_on:
+      - kafka
+      - zookeeper
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
+      #SCHEMA_REGISTRY_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
+      #SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8081
+      #SCHEMA_REGISTRY_HOST_NAME: localhost
+      #SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "kafka:8098"
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
+      SCHEMA_REGISTRY_DEBUG: "true"
 ######################################
 # volumes
 #
@@ -97,9 +173,12 @@ volumes:
   mongo_volume:
     name: mongo_volume
     driver: local
-  #postgres_volume:
-    #name: postgres_volume
-    #driver: local
-  #pgadmin_volume:
-    #name: pgadmin_volume
-    #driver: local
+  postgres_volume:
+    name: postgres_volume
+    driver: local
+  pgadmin_volume:
+    name: pgadmin_volume
+    driver: local
+  kafka_volume:
+    name: kafka_volume
+    driver: local
