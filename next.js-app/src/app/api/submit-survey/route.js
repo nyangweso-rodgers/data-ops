@@ -17,8 +17,15 @@ export async function POST(req) {
     console.log("Parsed bodyObject: ", bodyObject);
 
     // Access the firstName property directly from bodyObject
-    const { firstName, lastName, gender, emailAddress, phoneNumber, message } =
-      bodyObject;
+    const {
+      firstName,
+      lastName,
+      gender,
+      emailAddress,
+      phoneNumber,
+      message,
+      agreedToTerms
+    } = bodyObject;
 
     await SurveyModel.create({
       firstName,
@@ -27,6 +34,7 @@ export async function POST(req) {
       emailAddress,
       phoneNumber,
       message,
+      agreedToTerms,
     });
     console.log("Successfully Created Document ");
     await mongoose.connection.close();

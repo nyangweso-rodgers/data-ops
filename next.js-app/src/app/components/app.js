@@ -1,9 +1,13 @@
+"use client";
+
+import PortalPage from "./portal/page.js";
 import SurveyAppPage from "./survey-app/page.js";
 
 const AppPage = () => {
   return (
     <>
-      <SurveyAppPage />
+      <PortalPage />
+      {/*<SurveyAppPage />*/}
     </>
   );
 };

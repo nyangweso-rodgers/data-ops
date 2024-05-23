@@ -3,24 +3,17 @@ const { Schema, model } = mongoose;
 
 const surveySchema = new Schema(
   {
-    createdBy: {
-      type: "string",
-      default: "Rodgers",
-      required: true,
-      immutable: true,
-    },
-    updatedBy: {
-      type: "string",
-      required: true,
-      default: "Rodgers",
-      immutable: false,
-    },
     firstName: {
       type: String,
       required: true,
     },
     lastName: {
       type: String,
+      required: true,
+    },
+    country: {
+      type: String,
+      default: "Kenya",
       required: true,
     },
     gender: {
@@ -41,6 +34,23 @@ const surveySchema = new Schema(
       required: false,
     },
     // Add other fields as needed
+    agreedToTerms: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    createdBy: {
+      type: "string",
+      default: "Rodgers",
+      required: true,
+      immutable: true,
+    },
+    updatedBy: {
+      type: "string",
+      required: true,
+      default: "Rodgers",
+      immutable: false,
+    },
   },
   { timestamps: true }
 );
