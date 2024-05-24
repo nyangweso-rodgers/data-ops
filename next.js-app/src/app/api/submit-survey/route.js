@@ -1,6 +1,6 @@
 import dbConnect from "../../utils/db-connect";
 
-import SurveyModel from "../../model/surveyDataSchema.js";
+import ParticipatsSurveyModel from "../../model/participants-survey-schema.js";
 
 import mongoose from "mongoose";
 
@@ -24,10 +24,10 @@ export async function POST(req) {
       emailAddress,
       phoneNumber,
       message,
-      agreedToTerms
+      agreedToTerms,
     } = bodyObject;
 
-    await SurveyModel.create({
+    await ParticipatsSurveyModel.create({
       firstName,
       lastName,
       gender,

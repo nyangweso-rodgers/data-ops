@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const { Schema, model } = mongoose;
 
 const generateCode = () => {
@@ -10,7 +11,7 @@ const generateCode = () => {
   return `${prefix}${dateTime}`;
 };
 
-const surveySchema = new Schema(
+const participantsSurveySchema = new Schema(
   {
     code: {
       type: String,
@@ -75,7 +76,7 @@ const surveySchema = new Schema(
 );
 
 // Pre-save middleware to generate the code
-surveySchema.pre("save", function (next) {
+participantsSurveySchema.pre("save", function (next) {
   if (!this.code) {
     // Only set the code if it doesn't already exist
     this.code = generateCode();
@@ -83,6 +84,6 @@ surveySchema.pre("save", function (next) {
   next();
 });
 
-const SurveyModel = model("survey_data", surveySchema);
+const ParticipatsSurveyModel = model("survey_data", participantsSurveySchema);
 
-export default SurveyModel;
+export default ParticipatsSurveyModel;
