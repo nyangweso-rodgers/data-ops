@@ -26,12 +26,12 @@ const participantsSurveySchema = new Schema(
       type: String,
       required: true,
     },
-    country: {
+    nationality: {
       type: String,
       default: "Kenya",
       //required: true,
     },
-    county: {
+    currentResidence: {
       type: String,
       default: "Nairobi",
     },

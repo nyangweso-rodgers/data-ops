@@ -6,6 +6,8 @@ import Link from "next/link";
 
 import pageStyles from "../../../styles/page.module.css";
 import utilsStyles from "../../../styles/utils.module.css";
+import buttonStyles from "../../../styles/buttons.module.css";
+import formStyles from "../../../styles/form.module.css";
 
 //import SuccessPage from "../messages/success-message/page.js";
 
@@ -84,13 +86,13 @@ const ParticipantsSurveyPage = () => {
       <section className={`${pageStyles.section}`}>
         <form
           onSubmit={handleSubmitSurveyForm}
-          className={`container ${pageStyles.form}`}
+          className={`container ${formStyles.form}`}
         >
           <div className={`row ${pageStyles.row}`}>
             <div>
               <label
                 htmlFor="firstName"
-                className={`form-label ${pageStyles.label}`}
+                className={`form-label ${formStyles.label}`}
               >
                 First Name
               </label>
@@ -100,7 +102,7 @@ const ParticipantsSurveyPage = () => {
                 type="text"
                 name="firstName"
                 id="firstName"
-                className={`form-control ${pageStyles.input}`}
+                className={`form-control ${formStyles.input}`}
                 placeholder="Enter your first name"
                 required
               ></input>
@@ -110,7 +112,7 @@ const ParticipantsSurveyPage = () => {
             <div>
               <label
                 htmlFor="lastName"
-                className={`form-label ${pageStyles.label}`}
+                className={`form-label ${formStyles.label}`}
               >
                 Last Name
               </label>
@@ -120,7 +122,7 @@ const ParticipantsSurveyPage = () => {
                 type="text"
                 name="lastName"
                 id="lastName"
-                className={`form-control ${pageStyles.input}`}
+                className={`form-control ${formStyles.input}`}
                 placeholder="Enter your last name"
                 required
               ></input>
@@ -129,7 +131,7 @@ const ParticipantsSurveyPage = () => {
 
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <label className={`form-label ${pageStyles.label}`}>Gender</label>
+              <label className={`form-label ${formStyles.label}`}>Gender</label>
             </div>
             <div>
               <div className={`form-check`}>
@@ -138,7 +140,7 @@ const ParticipantsSurveyPage = () => {
                   name="gender"
                   id="male"
                   value="Male"
-                  className={`form-check-input`}
+                  className={`form-check-input `}
                 ></input>
                 <label className="form-check-label" htmlFor="male">
                   Male
@@ -162,7 +164,7 @@ const ParticipantsSurveyPage = () => {
             <div>
               <label
                 htmlFor="emailAddress"
-                className={`form-label ${pageStyles.label}`}
+                className={`form-label ${formStyles.label}`}
               >
                 Email Address
               </label>
@@ -172,7 +174,7 @@ const ParticipantsSurveyPage = () => {
                 type="email"
                 name="emailAddress"
                 id="emailAddress"
-                className={`form-control ${pageStyles.input}`}
+                className={`form-control ${formStyles.input}`}
                 placeholder="Enter your email address"
                 required
               ></input>
@@ -182,7 +184,7 @@ const ParticipantsSurveyPage = () => {
             <div>
               <label
                 htmlFor="phoneNumber"
-                className={`form-label ${pageStyles.label}`}
+                className={`form-label ${formStyles.label}`}
               >
                 Phone
               </label>
@@ -192,7 +194,7 @@ const ParticipantsSurveyPage = () => {
                 type="text"
                 name="phoneNumber"
                 id="phoneNumber"
-                className={`form-control ${pageStyles.input}`}
+                className={`form-control ${formStyles.input}`}
                 placeholder="Enter your phone number"
                 required
               ></input>
@@ -200,9 +202,48 @@ const ParticipantsSurveyPage = () => {
           </div>
           <div className={`row ${pageStyles.row}`}>
             <div>
+              <label className={`form-label ${formStyles.label}`}>
+                Nationality
+              </label>
+            </div>
+            <div>
+              <select
+                name="nationality"
+                id="nationality"
+                className={`form-select ${formStyles.select}`}
+              >
+                <option selected>Nationality</option>
+                <option value="Kenya">Kenya</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div className={`row ${pageStyles.row}`}>
+            <div>
+              <label
+                htmlFor="currentResidence"
+                className={`form-label ${formStyles.label}`}
+              >
+                Where are you currently residing?
+              </label>
+            </div>
+            <div>
+              <input
+                type="text"
+                name="currentResidence"
+                id="currentResidence"
+                className={`form-control ${formStyles.input}`}
+                placeholder="Please indicate city and state"
+                required
+              ></input>
+            </div>
+          </div>
+
+          <div className={`row ${pageStyles.row}`}>
+            <div>
               <label
                 htmlFor="message"
-                className={`form-label ${pageStyles.label}`}
+                className={`form-label ${formStyles.label}`}
               >
                 Message
               </label>
@@ -211,7 +252,7 @@ const ParticipantsSurveyPage = () => {
               <textarea
                 name="message"
                 id="message"
-                className={`${pageStyles.textarea}`}
+                className={`${formStyles.textarea}`}
                 placeholder="Enter message"
                 required
               ></textarea>
@@ -228,7 +269,7 @@ const ParticipantsSurveyPage = () => {
 
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <button className={`btn ${utilsStyles.button}`} type="submit">
+              <button className={`btn ${buttonStyles.button}`} type="submit">
                 Submit
               </button>
               {/*<Link

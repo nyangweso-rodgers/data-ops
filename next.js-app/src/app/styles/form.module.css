@@ -1,0 +1,52 @@
+.form {
+  padding: 2rem 0;
+  color: #000;
+  width: 50vw;
+}
+.label {
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 150%;
+  color: #2b3a4a;
+}
+
+.input {
+  width: 100%;
+  min-height: 6vh;
+  margin: 20px 0;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  color: #ccd0d4;
+  background: #fdfdfe;
+}
+.input:hover {
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.94);
+}
+.input:focus {
+  background-color: yellow;
+}
+.select {
+  width: 100%;
+  min-height: 6vh;
+  padding: 10px;
+  margin: 20px 0;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  color: #ccd0d4;
+  background: #fdfdfe;
+}
+.textarea {
+  /*min-height: 15vh;*/
+  width: 100%;
+  height: 150px;
+  /*padding: 12px 20px;*/
+  margin: 20px 0;
+  padding: 1.5rem 2rem;
+  border-radius: 10px;
+  border: 2px solid #ccc;
+  background-color: #f8f8f8;
+  font-size: 1.5rem;
+  transition: all 0.3s;
+}

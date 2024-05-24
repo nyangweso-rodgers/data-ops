@@ -42,33 +42,7 @@
   color: #198754;
   border-color: #3b6f78;
 }
-.form {
-  color: #000;
-  width: 50vw;
-}
-.label {
-  /*font-weight: bold;*/
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 150%;
-  color: #2b3a4a;
-}
-.input {
-  width: 100%;
-  min-height: 6vh;
-  margin-top: 5px;
-  padding: 8px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-  color: #ccd0d4;
-  background: #fdfdfe;
-}
 
-.textarea {
-  /*min-height: 15vh;*/
-  border-radius: 10px;
-}
 /*
 .main {
   display: flex;

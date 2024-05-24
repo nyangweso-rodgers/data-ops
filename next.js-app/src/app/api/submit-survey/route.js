@@ -23,6 +23,8 @@ export async function POST(req) {
       gender,
       emailAddress,
       phoneNumber,
+      nationality,
+      currentResidence,
       message,
       agreedToTerms,
     } = bodyObject;
@@ -33,6 +35,8 @@ export async function POST(req) {
       gender,
       emailAddress,
       phoneNumber,
+      nationality,
+      currentResidence,
       message,
       agreedToTerms,
     });
