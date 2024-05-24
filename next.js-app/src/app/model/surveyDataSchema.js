@@ -28,7 +28,11 @@ const surveySchema = new Schema(
     country: {
       type: String,
       default: "Kenya",
-      required: true,
+      //required: true,
+    },
+    county: {
+      type: String,
+      default: "Nairobi",
     },
     gender: {
       type: String,

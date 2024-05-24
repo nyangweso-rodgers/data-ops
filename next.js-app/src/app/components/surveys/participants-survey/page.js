@@ -82,11 +82,6 @@ const ParticipantsSurveyPage = () => {
   return (
     <>
       <section className={`${pageStyles.section}`}>
-        <div className={`container`}>
-          <div className={`row ${pageStyles.row}`}>
-            <div className={`mb-3`}>Form Heading</div>
-          </div>
-        </div>
         <form
           onSubmit={handleSubmitSurveyForm}
           className={`container ${pageStyles.form}`}

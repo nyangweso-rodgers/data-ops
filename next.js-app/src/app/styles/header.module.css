@@ -1,0 +1,38 @@
+.header {
+  background-color: #192655;
+  padding: 1%;
+  color: #fff;
+}
+.header a {
+  color: #fff;
+}
+.headerBrand {
+  font-size: 2rem;
+  font-weight: 800;
+}
+.navbar li a,
+  .navbar /*.navbar-brand*/ {
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+.navbarToggler {
+  background-color: #7eb444;
+  width: 47px;
+  height: 34px;
+  border: none;
+}
+
+.navbarToggler .line {
+  width: 100%;
+  float: left;
+  height: 2px;
+  background-color: #fff;
+  margin-bottom: 5px;
+}
+
+.navbarNav li a:hover,
+.navbarNav li.active a {
+  color: #fff;
+  background-color: #c1d3fe;
+}
