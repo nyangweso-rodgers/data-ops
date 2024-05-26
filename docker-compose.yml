@@ -178,7 +178,7 @@ services:
       KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
       KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
     #volumes:
-      #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
+    #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
   ######################################
   # schema-registry
   #
@@ -207,6 +207,21 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
       SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
       SCHEMA_REGISTRY_DEBUG: "true"
+  ######################################
+  # kafka-producer-with-node.js
+  #
+  kafka-producer-with-node.js:
+    build:
+      context: ./kafka-producer-with-node.js
+      dockerfile: Dockerfile
+    image: kafka-producer-with-node.js
+    container_name: kafka-producer-with-node.js
+    depends_on:
+      - kafka
+    ports:
+      - 3004:3004
+    environment:
+      KAFKA_BROKER: kafka:9092
 ######################################
 # volumes
 #
