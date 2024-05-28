@@ -84,6 +84,6 @@ participantsSurveySchema.pre("save", function (next) {
   next();
 });
 
-const ParticipatsSurveyModel = model("survey_data", participantsSurveySchema);
+const ParticipatsSurveyModel = model("participants_survey", participantsSurveySchema);
 
 export default ParticipatsSurveyModel;

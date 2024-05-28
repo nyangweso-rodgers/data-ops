@@ -1,4 +1,4 @@
-import dbConnect from "../../utils/db-connect";
+import mongoDBConnect from "../../utils/mongo-db-connect";
 
 import ParticipatsSurveyModel from "../../model/participants-survey-schema.js";
 
@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
   // Ensure database connection before proceeding
-  await dbConnect();
+  await mongoDBConnect();
 
   try {
     // Read and parse the request body
