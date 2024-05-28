@@ -20,13 +20,13 @@ user.on("ready", () => {
 const producer = new Kafka.Producer(user);
 
 producer.on("ready", () => {
-  const payload = [{ topic: topic, messages: "Test message for `${topic}`" }];
+  const payload = [{ topic: topic, messages: "Test message" }];
 
   producer.send(payload, (error, data) => {
     if (error) {
-      console.error("Error in publishing message:", error);
+      console.error("Error in publishing message to kafka topic: ", error);
     } else {
-      console.log("Message successfully published:", data);
+      console.log("Message successfully published to kafka topic: ", data);
     }
   });
 });
