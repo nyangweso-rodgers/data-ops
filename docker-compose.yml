@@ -90,6 +90,8 @@ services:
       - "3003:3003"
     depends_on:
       - mongo
+    environment:
+      - MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
   ######################################
   # zookeeper
   #
@@ -222,6 +224,18 @@ services:
       - 3004:3004
     environment:
       KAFKA_BROKER: kafka:9092
+  ######################################
+  #Superset
+  #
+  superset:
+    image: alexmerced/dremio-superset
+    container_name: superset
+    ports:
+      - 8088:8088
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@superset.com
+      - ADMIN_PASSWORD=admin
 ######################################
 # volumes
 #
