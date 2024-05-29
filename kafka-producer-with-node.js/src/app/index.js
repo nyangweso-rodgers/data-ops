@@ -1,1 +1,1 @@
-import "./producers/producer-with-kafka-node/index.js";
+import "./kafka-producers/producer-with-kafka-node/index.js";
