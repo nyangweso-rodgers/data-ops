@@ -1,7 +1,7 @@
 version: "3"
 services:
   ######################################
-  # mongo DB
+  # mongo
   #
   mongo:
     image: mongo:latest
@@ -14,21 +14,46 @@ services:
     #MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
     #MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     #MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+
+    #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27017"]
     volumes:
       - mongo_volume:/data/db
+      #- ./init-replica-set.js:/docker-entrypoint-initdb.d/init-replica-set.js
+    #healthcheck:
+    #test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo:27017\"},{_id:1,host:\"mongo-secondary1:27018\"},{_id:2,host:\"mongo-secondary2:27019\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1
+    #interval: 10s
+    #start_period: 30s
+    #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+    entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
   ######################################
-  # sale-order-api
+  # mongo-secondary1
   #
-  sale-order-api:
-    build:
-      context: ./sale-order-api
-      dockerfile: Dockerfile
-    image: sale-order-api
-    container_name: sale-order-api
+  mongo-secondary1:
+    image: mongo:latest
+    container_name: mongo-secondary1
     ports:
-      - "3200:3200"
-    depends_on:
-      - mongo
+      - "27018:27018" # Map different port for each member
+    #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27018"]
+    volumes:
+      - mongo_secondary1_volume:/data/db
+    #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+    entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+  ######################################
+  # mongo-secondary2
+  #
+  mongo-secondary2:
+    image: mongo:latest
+    container_name: mongo-secondary2
+    ports:
+      - "27019:27019" # Map different port for each member
+    #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27019"]
+    volumes:
+      - mongo_secondary2_volume:/data/db
+    #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+    entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
   ######################################
   # postgres DB
   #
@@ -62,36 +87,6 @@ services:
       - pgadmin_volume:/var/lib/pgadmin
     depends_on:
       - postgres
-  ######################################
-  # customer-api
-  #
-  customer-api:
-    build:
-      context: ./customer-api
-      dockerfile: Dockerfile
-    image: customer-api
-    container_name: customer-api
-    ports:
-      - "3300:3300"
-    #env_file:
-    #- ./customer-api/.env # Specific .env for this service
-    depends_on:
-      - postgres
-  ######################################
-  # next.js app
-  #
-  next.js-app:
-    build:
-      context: ./next.js-app
-      dockerfile: Dockerfile
-    image: next.js-app
-    container_name: next.js-app
-    ports:
-      - "3003:3003"
-    depends_on:
-      - mongo
-    environment:
-      - MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
   ######################################
   # zookeeper
   #
@@ -210,6 +205,40 @@ services:
       SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
       SCHEMA_REGISTRY_DEBUG: "true"
   ######################################
+  # connect
+  #
+  #connect:
+  #image: debezium/connect:latest
+  #container_name: container_kafka_connect
+  #ports:
+  #- "8083:8083"
+  #environment:
+  #- GROUP_ID: 1
+  #- CONFIG_STORAGE_TOPIC: kafka_connect_configs
+  #- OFFSET_STORAGE_TOPIC: kafka_connect_offsets
+  #- STATUS_STORAGE_TOPIC: kafka_connect_statuses
+  #- BOOTSTRAP_SERVERS: kafka:9092
+  #- CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+  #- CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+  #- CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+  #- CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+  #depends_on:
+  #- zookeeper
+  #- kafka
+  #- mongo
+  ######################################
+  #Superset
+  #
+  superset:
+    image: alexmerced/dremio-superset
+    container_name: superset
+    ports:
+      - "8088:8088"
+    environment:
+      - ADMIN_USERNAME=admin
+      - ADMIN_EMAIL=admin@superset.com
+      - ADMIN_PASSWORD=admin
+  ######################################
   # kafka-producer-with-node.js
   #
   kafka-producer-with-node.js:
@@ -223,25 +252,99 @@ services:
     ports:
       - 3004:3004
     environment:
-      KAFKA_BROKER: kafka:9092
+      - KAFKA_HOST=${KAFKA_HOST}
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+      #KAFKA_BROKER: kafka:9092
   ######################################
-  #Superset
+  # mongo-to-kafka
   #
-  superset:
-    image: alexmerced/dremio-superset
-    container_name: superset
-    ports:
-      - 8088:8088
+  mongo-notification-system:
+    build:
+      context: ./mongo-notification-system
+      dockerfile: Dockerfile
+    image: mongo-notification-system
+    container_name: mongo-notification-system
+    depends_on:
+      - mongo
     environment:
-      - ADMIN_USERNAME=admin
-      - ADMIN_EMAIL=admin@superset.com
-      - ADMIN_PASSWORD=admin
+      - MONGO_URI_FOR_SURVEY_SERVICE=${MONGO_URI_FOR_SURVEY_SERVICE}
+    ports:
+      - "4001:4001"
+  ######################################
+  # mongo-to-kafka
+  #
+  mongo-to-kafka:
+    build:
+      context: ./mongo-to-kafka
+      dockerfile: Dockerfile
+    image: mongo-to-kafka
+    container_name: mongo-to-kafka
+    depends_on:
+      - mongo
+      - kafka
+    environment:
+      - MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
+      - KAFKA_HOST=${KAFKA_HOST}
+      - KAFKA_TOPIC=${KAFKA_TOPIC}
+    env_file:
+      - .env
+    ports:
+      - "4000:4000"
+  ######################################
+  # next.js app
+  #
+  next.js-app:
+    build:
+      context: ./next.js-app
+      dockerfile: Dockerfile
+    image: next.js-app
+    container_name: next.js-app
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
+  ######################################
+  # sale-order-api
+  #
+  sale-order-api:
+    build:
+      context: ./sale-order-api
+      dockerfile: Dockerfile
+    image: sale-order-api
+    container_name: sale-order-api
+    ports:
+      - "3200:3200"
+    depends_on:
+      - mongo
+  ######################################
+  # customer-api
+  #
+  customer-api:
+    build:
+      context: ./customer-api
+      dockerfile: Dockerfile
+    image: customer-api
+    container_name: customer-api
+    ports:
+      - "3300:3300"
+    #env_file:
+    #- ./customer-api/.env # Specific .env for this service
+    depends_on:
+      - postgres
 ######################################
 # volumes
 #
 volumes:
   mongo_volume:
     name: mongo_volume
+    driver: local
+  mongo_secondary1_volume:
+    name: mongo_secondary1_volume
+    driver: local
+  mongo_secondary2_volume:
+    name: mongo_secondary2_volume
     driver: local
   postgres_volume:
     name: postgres_volume
