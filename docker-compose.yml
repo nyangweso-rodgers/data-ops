@@ -256,14 +256,14 @@ services:
       - KAFKA_TOPIC=${KAFKA_TOPIC}
       #KAFKA_BROKER: kafka:9092
   ######################################
-  # mongo-to-kafka
+  # mongodb-change-stream-app
   #
-  mongo-notification-system:
+  mongodb-change-stream-app:
     build:
-      context: ./mongo-notification-system
+      context: ./mongodb-change-stream-app
       dockerfile: Dockerfile
-    image: mongo-notification-system
-    container_name: mongo-notification-system
+    image: mongodb-change-stream-app
+    container_name: mongodb-change-stream-app
     depends_on:
       - mongo
     environment:
