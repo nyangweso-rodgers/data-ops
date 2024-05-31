@@ -1,4 +1,4 @@
-# Customer CRUD API project using Express, Docker, and PostgreSQL
+# Customer RESTful API project using Node.js, Express, Docker, and PostgreSQL
 
 ## Table Of Contents
 

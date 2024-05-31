@@ -318,31 +318,31 @@ services:
     env_file:
       - .env
   ######################################
-  # sale-order-api
+  # api-with-mongo
   #
-  sale-order-api:
+  api-with-mongo:
     build:
-      context: ./sale-order-api
+      context: ./api-with-mongo
       dockerfile: Dockerfile
-    image: sale-order-api
-    container_name: sale-order-api
+    image: api-with-mongo
+    container_name: api-with-mongo
     ports:
       - "3200:3200"
     depends_on:
       - mongo
   ######################################
-  # customer-api
+  # api-with-postgresql
   #
-  customer-api:
+  api-with-postgresql:
     build:
-      context: ./customer-api
+      context: ./api-with-postgresql
       dockerfile: Dockerfile
-    image: customer-api
-    container_name: customer-api
+    image: api-with-postgresql
+    container_name: api-with-postgresql
     ports:
       - "3300:3300"
     env_file:
-      - .env # Specific .env for this service
+      - .env
     depends_on:
       - postgres
 ######################################
