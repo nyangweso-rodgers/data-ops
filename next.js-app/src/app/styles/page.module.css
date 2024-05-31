@@ -1,11 +1,13 @@
-.row {
-  padding: 1.2rem;
-  border: 1px solid #002379;
-}
 .section {
   padding: 6rem 0;
   border: 1px solid #240750;
 }
+
+.row {
+  padding: 1.2rem;
+  border: 1px solid #002379;
+}
+
 .displayFlexRowStart {
   display: flex;
   flex-direction: row;
@@ -19,28 +21,10 @@
   margin: 0 1.2rem;
   text-align: center;
 }
-.card {
-  padding: 6rem 0;
-  text-decoration: none;
-  border: 1px solid #eaeaea;
-  border-radius: 10px;
-  transition: color 0.15s ease, border-color 0.15s ease;
-  height: 100%;
+.displayFlexRowCenter {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.card > div {
-  padding: 3rem 0;
-  font-size: 0.9rem;
-  color: #3b6f78;
-  font-weight: 600;
-}
-.card:hover,
-.card:focus,
-.card:active {
-  color: #198754;
-  border-color: #3b6f78;
+  flex-direction: row;
+  justify-content: center;
 }
 
 /*
@@ -163,7 +147,6 @@
   }
 
   .grid {
-    grid-template-columns: 1fr;
     margin-bottom: 120px;
     max-width: 320px;
     text-align: center;
@@ -208,14 +191,8 @@
     padding: 2rem 1rem 1.4rem;
     border-radius: 0;
     border: none;
-    border-bottom: 1px solid rgba(var(--callout-border-rgb), 0.25);
-    background: linear-gradient(
-      to bottom,
-      rgba(var(--background-start-rgb), 1),
-      rgba(var(--callout-rgb), 0.5)
-    );
-    background-clip: padding-box;
-    backdrop-filter: blur(24px);
+
+
   }
 
   .description div {
