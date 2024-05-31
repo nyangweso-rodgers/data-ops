@@ -3,10 +3,14 @@ import { Sequelize } from "sequelize";
 
 dotenv.config();
 
+const POSTGRES_DB = process.env.POSTGRES_TEST_DB;
+const POSTGRES_USER = process.env.POSTGRES_USER;
+const POSTGRES_PASSWORD = process.env.POSTGRES_PASSWORD;
+
 const sequelizeInstance = new Sequelize(
-  process.env.POSTGRES_DB,
-  process.env.POSTGRES_USER,
-  process.env.POSTGRES_PASSWORD,
+  POSTGRES_DB,
+  POSTGRES_USER,
+  POSTGRES_PASSWORD,
   {
     host: process.env.PGHOST,
     dialect: "postgres",
