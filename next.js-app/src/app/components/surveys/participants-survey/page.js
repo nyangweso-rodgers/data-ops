@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 
-import Link from "next/link";
+//import Link from "next/link";
 
 import pageStyles from "../../../styles/page.module.css";
-import utilsStyles from "../../../styles/utils.module.css";
+//import utilsStyles from "../../../styles/utils.module.css";
 import buttonStyles from "../../../styles/buttons.module.css";
 import formStyles from "../../../styles/form.module.css";
 
@@ -35,13 +35,13 @@ const ParticipantsSurveyPage = () => {
     // Convert checkbox value to boolean
     dataToSend.agreedToTerms = formData.get("agreedToTerms") === "on";
 
-    console.log("Data to Send:", dataToSend); //TODO : Verify the structure here
+    console.log("Participants Survey Form Data to Send:", dataToSend); //TODO : Verify the structure here
 
     // Send the data to the server in JSON format.
     const JSONdata = JSON.stringify(dataToSend);
 
     // API endpoint where we send form data.
-    const endpoint = "/api/submit-survey";
+    const participantsSurveyEndpoint = "/api/submit-participants-survey";
 
     // Form the request for sending data to the server.
     const options = {
@@ -58,12 +58,12 @@ const ParticipantsSurveyPage = () => {
 
     try {
       // Send the form data to our forms API and get a response.
-      const response = await fetch(endpoint, options);
+      const response = await fetch(participantsSurveyEndpoint, options);
 
       // Get the response data from server as JSON.
       const result = await response.json();
       if (response.ok) {
-        console.log("Submission successful: ", result);
+        console.log("Participans Form Submission Successful: ", result);
 
         // Redirect to success page
         {
@@ -71,10 +71,10 @@ const ParticipantsSurveyPage = () => {
         }
       } else {
         // Handle errors here if necessary
-        console.log("Submission failed");
+        console.log("Participans Form Submission Failed");
       }
     } catch (error) {
-      console.log("Error submitting form: ", error);
+      console.log("Error submitting participants form: ", error);
     }
 
     // Optionally reset the form
@@ -212,7 +212,7 @@ const ParticipantsSurveyPage = () => {
                 id="nationality"
                 className={`form-select ${formStyles.select}`}
               >
-                <option selected>Nationality</option>
+                <option defaultValue>Nationality</option>
                 <option value="Kenya">Kenya</option>
                 <option value="Other">Other</option>
               </select>
@@ -268,7 +268,7 @@ const ParticipantsSurveyPage = () => {
           </div>
 
           <div className={`row ${pageStyles.row}`}>
-            <div>
+            <div className={`${pageStyles.displayFlexRowCenter}`}>
               <button className={`btn ${buttonStyles.button}`} type="submit">
                 Submit
               </button>

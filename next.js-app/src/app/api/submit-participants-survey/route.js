@@ -1,4 +1,4 @@
-import mongoDBConnect from "../../utils/mongo-db-connect";
+import mongoDBConnect from "../../utils/participants-survey-mongo-db-connect.js";
 
 import ParticipatsSurveyModel from "../../model/participants-survey-schema.js";
 

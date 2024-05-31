@@ -25,35 +25,45 @@ services:
     #interval: 10s
     #start_period: 30s
     #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-    entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+    #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+    #networks:
+    #- mongo-network
   ######################################
   # mongo-secondary1
   #
-  mongo-secondary1:
-    image: mongo:latest
-    container_name: mongo-secondary1
-    ports:
-      - "27018:27018" # Map different port for each member
-    #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
-    #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27018"]
-    volumes:
-      - mongo_secondary1_volume:/data/db
-    #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-    entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+  #mongo-secondary1:
+  #image: mongo:latest
+  #container_name: mongo-secondary1
+  #ports:
+  #- "27018:27018" # Map different port for each member
+  #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+  #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27018"]
+  #volumes:
+  #- mongo_secondary1_volume:/data/db
+  #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+  #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+  #entrypoint:
+  #["mongod", "--replSet", "rsmongo", "--bind_ip_all", "--port", "27018"]
+  #networks:
+  #- mongo-network
   ######################################
   # mongo-secondary2
   #
-  mongo-secondary2:
-    image: mongo:latest
-    container_name: mongo-secondary2
-    ports:
-      - "27019:27019" # Map different port for each member
-    #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
-    #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27019"]
-    volumes:
-      - mongo_secondary2_volume:/data/db
-    #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-    entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+  #mongo-secondary2:
+  #image: mongo:latest
+  #container_name: mongo-secondary2
+  #ports:
+  #- "27019:27019" # Map different port for each member
+  #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+  #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27019"]
+  #volumes:
+  #- mongo_secondary2_volume:/data/db
+  #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+  #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
+  #entrypoint:
+  #["mongod", "--replSet", "rsmongo", "--bind_ip_all", "--port", "27019"]
+  #networks:
+  #- mongo-network
   ######################################
   # postgres DB
   #
@@ -304,7 +314,9 @@ services:
     depends_on:
       - mongo
     environment:
-      - MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
+      - MONGO_URI_FOR_SURVEY_SERVICE=${MONGO_URI_FOR_SURVEY_SERVICE}
+    env_file:
+      - .env
   ######################################
   # sale-order-api
   #
@@ -329,10 +341,16 @@ services:
     container_name: customer-api
     ports:
       - "3300:3300"
-    #env_file:
-    #- ./customer-api/.env # Specific .env for this service
+    env_file:
+      - .env # Specific .env for this service
     depends_on:
       - postgres
+######################################
+# networks
+#
+networks:
+  mongo-network:
+    driver: bridge
 ######################################
 # volumes
 #
@@ -340,12 +358,12 @@ volumes:
   mongo_volume:
     name: mongo_volume
     driver: local
-  mongo_secondary1_volume:
-    name: mongo_secondary1_volume
-    driver: local
-  mongo_secondary2_volume:
-    name: mongo_secondary2_volume
-    driver: local
+  #mongo_secondary1_volume:
+  #name: mongo_secondary1_volume
+  #driver: local
+  #mongo_secondary2_volume:
+  #name: mongo_secondary2_volume
+  #driver: local
   postgres_volume:
     name: postgres_volume
     driver: local

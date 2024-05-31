@@ -36,16 +36,6 @@ const HeaderPage = () => {
                     Home
                   </Link>
                 </li>
-                <li className="nav-item">
-                  <Link href="#" className="nav-link">
-                    Content
-                  </Link>
-                </li>
-                <li className="nav-item">
-                  <Link href="#" className="nav-link">
-                    Another Content
-                  </Link>
-                </li>
               </ul>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import pageStyles from "../../styles/page.module.css";
+import cardStyles from "../../styles/card.module.css";
 
 const PortalPage = () => {
   return (
@@ -10,56 +11,41 @@ const PortalPage = () => {
       <section className={`${pageStyles.section}`}>
         <div className={`container`}>
           <div className={`row`}>
-            <div className={`col-md-3`}>
+            <div className={`col-md-4`}>
               <div className="">
                 <Link
                   href="../components/surveys/participants-survey"
-                  className={`card ${pageStyles.card}`}
+                  className={`card ${cardStyles.card}`}
                 >
                   <div className={`card-body`}>
-                    <div>CUSTOMER EXPERIENCE</div>
+                    <div>PARTICIPANT'S SURVEY APP</div>
                   </div>
                 </Link>
               </div>
             </div>
-            <div className={`col-md-3`}>
+            <div className={`col-md-4`}>
               <div className="">
-                <Link href="#" className={`card ${pageStyles.card}`}>
+                <Link
+                  href="../components/surveys/delegates-survey"
+                  className={`card ${cardStyles.card}`}
+                >
                   <div className={`card-body`}>
-                    <div>MARKET MANAGEMENT</div>
+                    <div>DELEGATES SURVEY APP</div>
                   </div>
                 </Link>
               </div>
             </div>
-            <div className={`col-md-3`}>
-              <div className="">
-                <Link href="#" className={`card ${pageStyles.card}`}>
+            <div className={`col-md-4`}>
+              <div>
+                <Link
+                  href="../components/dashboard"
+                  className={`card ${cardStyles.card}`}
+                >
                   <div className={`card-body`}>
-                    <div>ORDER MANAGEMENT</div>
+                    <div>DASHBOARD</div>
                   </div>
                 </Link>
               </div>
-            </div>
-            <div className={`col-md-3`}>
-              <div className="">
-                <Link href="#" className={`card ${pageStyles.card}`}>
-                  <div className={`card-body`}>
-                    <div>ANOTHER MODULE</div>
-                  </div>
-                </Link>
-              </div>
-            </div>
-          </div>
-          <div className={`row`}>
-            <div>
-              <Link
-                href="../components/dashboard"
-                className={`card ${pageStyles.card}`}
-              >
-                <div className={`card-body`}>
-                  <div>DASHBOARD</div>
-                </div>
-              </Link>
             </div>
           </div>
         </div>
