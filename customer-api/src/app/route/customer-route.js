@@ -1,7 +1,7 @@
 import express from "express";
 import bodyParser from "body-parser";
 
-import { createOneCustomer } from "../controllers/customerController.js";
+import { createOneCustomer } from "../controller/customer-controller.js"
 
 const router = express.Router();
 

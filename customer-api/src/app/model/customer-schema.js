@@ -1,5 +1,5 @@
 import { Sequelize } from "sequelize";
-import sequelizeInstance from "../utils/database.js";
+import sequelizeInstance from "../utils/customer-postgres-db-connect.js";
 
 // Define your model directly in customerSchema.js
 const CustomerSchema = sequelizeInstance.define("customers", {

@@ -1,8 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
 
-import sequelizeInstance  from "./src/utils/database.js"; // Import instance
-import { router } from "./src/routes/customerRoute.js";
+import sequelizeInstance from "./src/app/utils/customer-postgres-db-connect.js";
+import { router } from "./src/app/route/customer-route.js"
 
 // Load environment variables from .env file
 dotenv.config();

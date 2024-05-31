@@ -1,5 +1,4 @@
-import sequelizeInstance from "../utils/database.js";
-import CustomerSchema from "../models/customerSchema.js";
+import CustomerSchema from "../model/customer-schema.js";
 
 /**
  * CRUD controllers
