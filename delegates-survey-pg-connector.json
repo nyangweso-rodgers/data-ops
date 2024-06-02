@@ -6,7 +6,7 @@
     "database.hostname": "postgres",
     "database.port": "5432",
     "database.user": "rodgers",
-    "database.password": "Rodgy@01",
+    "database.password": "<>",
     "database.dbname": "test_db",
     "database.server.name": "postgres",
     "table.include.list": "public.delegates_survey",
