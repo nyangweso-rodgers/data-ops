@@ -104,7 +104,11 @@ services:
       #- ./scripts:/docker-entrypoint-initdb.d
     healthcheck:
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
-      test: ["CMD-SHELL", "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d ${POSTGRES_TEST_DB} -c 'SELECT 1'"]
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d ${POSTGRES_TEST_DB} -c 'SELECT 1'",
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -130,9 +134,10 @@ services:
   # zookeeper
   #
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
     #image: confluentinc/cp-zookeeper:latest
     #image: confluentinc/cp-zookeeper:7.3.0
+    #image: quay.io/debezium/zookeeper
+    image: confluentinc/cp-zookeeper:7.6.1
     container_name: zookeeper
     ports:
       - "2181:2181"
@@ -146,6 +151,7 @@ services:
       #- zookeeper-data:/var/lib/zookeeper/data
     healthcheck:
       test: echo srvr | nc zookeeper 2181 || exit 1
+      #test: curl -s localhost:2181 || exit 1 # using curl to query the Zookeeper server status:
       start_period: 10s
       retries: 20
       interval: 10s
