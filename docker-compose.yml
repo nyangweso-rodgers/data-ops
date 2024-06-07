@@ -98,7 +98,17 @@ services:
       POSTGRES_DB: ${POSTGRES_TEST_DB} # Specify the default database name here
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    command: ["postgres", "-c", "wal_level=logical"]
+    #command: ["postgres", "-c", "wal_level=logical"]
+    command:
+      [
+        "postgres",
+        "-c",
+        "wal_level=logical",
+        "-c",
+        "max_replication_slots=10",
+        "-c",
+        "max_wal_senders=10",
+      ]
     volumes:
       - postgres_volume:/var/lib/postgresql/data
       #- ./scripts:/docker-entrypoint-initdb.d
@@ -134,6 +144,7 @@ services:
   # zookeeper
   #
   zookeeper:
+    #image: confluentinc/cp-zookeeper:5.3.0
     #image: confluentinc/cp-zookeeper:latest
     #image: confluentinc/cp-zookeeper:7.3.0
     #image: quay.io/debezium/zookeeper
@@ -141,7 +152,6 @@ services:
     container_name: zookeeper
     ports:
       - "2181:2181"
-    #restart: on-failure
     environment:
       ZOOKEEPER_SERVER_ID: 1
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -149,6 +159,7 @@ services:
     volumes:
       - zookeeper_volume:/var/lib/zookeeper/data
       #- zookeeper-data:/var/lib/zookeeper/data
+    #restart: on-failure
     healthcheck:
       test: echo srvr | nc zookeeper 2181 || exit 1
       #test: curl -s localhost:2181 || exit 1 # using curl to query the Zookeeper server status:
@@ -159,6 +170,20 @@ services:
   # kafka
   #
   kafka:
+    # An important note about accessing Kafka from clients on other machines:
+    # -----------------------------------------------------------------------
+    #
+    # The config used here exposes port 9092 for _external_ connections to the broker
+    #i.e. those from _outside_ the docker network. This could be from the host machine
+    # running docker, or maybe further afield if you've got a more complicated setup.
+    # If the latter is true, you will need to change the value 'localhost' in
+    # KAFKA_ADVERTISED_LISTENERS to one that is resolvable to the docker host from those
+    # remote clients
+    #
+    # For connections _internal_ to the docker network, such as from other services and components, use kafka:29092.
+    #
+    # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
+    #
     #image: confluentinc/cp-kafka:7.3.1
     image: confluentinc/cp-kafka:7.6.1
     #image: confluentinc/cp-kafka:latest
@@ -174,13 +199,18 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://kafka:29092, PLAINTEXT_HOST://localhost:9101
       #KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9101,PLAINTEXT_INTERNAL://0.0.0.0:29091
+      #KAFKA_LISTENERS: PLAINTEXT://kafka:29092, PLAINTEXT_HOST://localhost:9101
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
 
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
+      #KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
       #KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101,PLAINTEXT_INTERNAL://kafka:29091
       #KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:8098
       #KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      #KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT, PLAINTEXT_HOST:PLAINTEXT
       #KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
@@ -189,11 +219,12 @@ services:
       #KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      #KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
       KAFKA_DEFAULT_REPLICATION_FACTOR: "2"
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
       KAFKA_JMX_PORT: 9092
       KAFKA_JMX_HOSTNAME: localhost
@@ -202,10 +233,13 @@ services:
       #KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: 1
 
       #KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:29092
+      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:2181
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
       CONFLUENT_METRICS_ENABLE: "true"
-      #CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
+      #CONFLUENT_METRICS_ENABLE: 'false'
+      CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
     #restart: on-failure
     volumes:
       #- kafka-data:/var/lib/kafka/data
@@ -220,7 +254,7 @@ services:
   # debezium
   #
   debezium:
-    image: debezium/connect:latest
+    image: debezium/connect:latest #https://hub.docker.com/r/debezium/connect
     #restart: always
     container_name: debezium
     hostname: debezium
@@ -232,15 +266,18 @@ services:
     ports:
       - "8083:8083"
     environment:
-      BOOTSTRAP_SERVERS: kafka:29092
       #BOOTSTRAP_SERVERS: kafka:9092
+      BOOTSTRAP_SERVERS: kafka:29092
       GROUP_ID: 1
-      CONFIG_STORAGE_TOPIC: connect_configs
       #CONFIG_STORAGE_TOPIC: kafka_connect_configs
-      STATUS_STORAGE_TOPIC: connect_statuses
+      CONFIG_STORAGE_TOPIC: connect_configs
+
       #STATUS_STORAGE_TOPIC: kafka_connect_statuses
-      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+
       #OFFSET_STORAGE_TOPIC: kafka_connect_offsets
+      OFFSET_STORAGE_TOPIC: connect_offsets
+
       KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       ENABLE_DEBEZIUM_SCRIPTING: "true"
@@ -276,6 +313,7 @@ services:
         condition: service_healthy
     ports:
       - "8082:8080"
+      #- "8082:8082"
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8083
   ############################################################################
@@ -309,6 +347,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+      zookeeper:
+        condition: service_started
     ports:
       - "8081:8081"
     environment:
