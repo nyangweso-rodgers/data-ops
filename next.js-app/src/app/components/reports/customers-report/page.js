@@ -1,12 +1,12 @@
-import pageStyles from "../../styles/page.module.css";
+import pageStyles from "../../../styles/page.module.css";
 
-const DashboardPage = () => {
+const CustomersSurveyReportPage = () => {
   return (
     <>
       <section className={`${pageStyles.section}`}>
         <div className={`container`}>
           <div className={`row`}>
-            <div>Dashboard coming soon!</div>
+            <div>Customers Report</div>
           </div>
         </div>
       </section>
@@ -14,4 +14,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage;
+export default CustomersSurveyReportPage;
