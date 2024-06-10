@@ -38,11 +38,11 @@ const PortalPage = () => {
             <div className={`col-md-4`}>
               <div>
                 <Link
-                  href="../components/dashboard"
+                  href="../components/reports"
                   className={`card ${cardStyles.card}`}
                 >
                   <div className={`card-body`}>
-                    <div>DASHBOARD</div>
+                    <div>REPORTS</div>
                   </div>
                 </Link>
               </div>

@@ -36,6 +36,9 @@ const HeaderPage = () => {
                     Home
                   </Link>
                 </li>
+                <li className={`nav-item`}>
+                  <Link href="../components/reports" className={`nav-link`}>Reports</Link>
+                </li>
               </ul>
             </div>
           </div>
