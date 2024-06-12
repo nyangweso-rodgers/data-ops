@@ -12,7 +12,7 @@ const ReportsPage = () => {
             <div className={`col-md-6`}>
               <div>
                 <Link
-                  href="./participants/"
+                  href={{ pathname: "/components/reports/participants-survey-report" }}
                   className={`card ${cardStyles.card}`}
                 >
                   Participant's Survey Report
@@ -21,7 +21,10 @@ const ReportsPage = () => {
             </div>
             <div className={`col-md-6`}>
               <div>
-                <Link href="#" className={`card ${cardStyles.card}`}>
+                <Link
+                  href={{ pathname: "/components/reports/delegates-survey-report" }}
+                  className={`card ${cardStyles.card}`}
+                >
                   Delegates Survey Report
                 </Link>
               </div>
