@@ -11,6 +11,11 @@ const PortalPage = () => {
       <section className={`${pageStyles.section}`}>
         <div className={`container`}>
           <div className={`row`}>
+            <div>
+              <div>Welcome to Portal</div>
+            </div>
+          </div>
+          <div className={`row`}>
             <div className={`col-md-4`}>
               <div className="">
                 <Link

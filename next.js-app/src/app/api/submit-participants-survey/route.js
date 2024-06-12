@@ -40,18 +40,18 @@ export async function POST(req) {
       message,
       agreedToTerms,
     });
-    console.log("Successfully Created Document ");
+    //console.log("Successfully Created Document ");
     await mongoose.connection.close();
 
     return NextResponse.json(
-      { message: "Form submitted successfully" },
+      { message: "Participant's survey form submitted successfully" },
       { status: 201 }
     );
   } catch (error) {
     console.log(error);
     await mongoose.connection.close();
     return NextResponse.json(
-      { message: "Failed to submit form" },
+      { message: "Failed to submit Participant's survey form" },
       { status: 400 }
     );
   }

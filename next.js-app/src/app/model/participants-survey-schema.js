@@ -20,7 +20,7 @@ const participantsSurveySchema = new Schema(
     },
     firstName: {
       type: String,
-      required: true,
+      required: [true, "Please provide a First Name"],
     },
     lastName: {
       type: String,
@@ -42,8 +42,9 @@ const participantsSurveySchema = new Schema(
     emailAddress: {
       type: String,
       lowercase: true,
-      required: true,
+      required: [true, 'Please provide a email address'],
       immutable: true,
+  
     },
     phoneNumber: {
       type: String,
@@ -84,6 +85,9 @@ participantsSurveySchema.pre("save", function (next) {
   next();
 });
 
-const ParticipatsSurveyModel = model("participants_survey", participantsSurveySchema);
+const ParticipatsSurveyModel = model(
+  "participants_survey",
+  participantsSurveySchema
+);
 
 export default ParticipatsSurveyModel;

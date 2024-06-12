@@ -8,6 +8,9 @@ const DelegatesSurveyReportPage = () => {
           <div className={`row`}>
             <div>Delegates Report</div>
           </div>
+          <div className={`row`}>
+            <div>Display Delegates Survey Report Here</div>
+          </div>
         </div>
       </section>
     </>

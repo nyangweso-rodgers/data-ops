@@ -11,7 +11,7 @@ const HeaderPage = () => {
         <nav className={`navbar navbar-expand-md ${headerStyles.navbar}`}>
           <div className={`container`}>
             <a className={`navbar-brand ${headerStyles.headerBrand}`} href="/">
-              Rodgers Nyangweso
+              Portal Header
             </a>
             <button
               className={`navbar-toggler ${headerStyles.navbarToggler}`}
@@ -37,7 +37,12 @@ const HeaderPage = () => {
                   </Link>
                 </li>
                 <li className={`nav-item`}>
-                  <Link href="../components/reports" className={`nav-link`}>Reports</Link>
+                  <Link
+                    href={{ pathname: "components/reports" }}
+                    className={`nav-link`}
+                  >
+                    Reports
+                  </Link>
                 </li>
               </ul>
             </div>

@@ -21,13 +21,13 @@ export async function POST(req) {
     console.log("Successfully Created Record");
 
     return NextResponse.json(
-      { message: "Form submitted successfully" },
+      { message: "Delegates survey form submitted successfully" },
       { status: 201 }
     );
   } catch (error) {
     console.log(error);
     return NextResponse.json(
-      { message: "Failed to submit form" },
+      { message: "Failed to submit Delegates Survey Form" },
       { status: 400 }
     );
   }

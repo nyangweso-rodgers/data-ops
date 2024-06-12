@@ -1,20 +1,31 @@
 import mongoose from "mongoose";
+//import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 
 // Load environment variables from .env file
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI_FOR_SURVEY_SERVICE;
+const MONGODB_URI = process.env.MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE;
 
 // Log the environment variable to ensure it's loaded correctly
-console.log("MONGO_URI:", MONGO_URI);
+console.log("MONGODB_URI:", MONGODB_URI);
+
+// check the MongoDB URI
+if (!MONGODB_URI) {
+  throw new Error("Define the MONGODB_URI environmental variable");
+}
 
 const mongoDBConnect = async () => {
+  //const mongoClient = new MongoClient(MONGODB_COMMUNITY_SERVER_URI, { family: 4 });
   try {
-    await mongoose.connect(MONGO_URI);
-    console.log("App Successfully Connected to MongoDB");
+    // Attempt to connect to the MongoDB server
+    await mongoose.connect(MONGODB_URI);
+    //await mongoClient.connect(); //TODO: alternative connection using MongoClient
+
+    // Log a success message if connected
+    console.log("Participants Survey App Successfully Connected to MongoDB");
   } catch (error) {
-    console.log("Error connecting to MongoDB:", error);
+    console.log("Error Participants Survey App Connecting to MongoDB:", error);
   }
 };
 

@@ -8,6 +8,9 @@ const CustomersSurveyReportPage = () => {
           <div className={`row`}>
             <div>Customers Report</div>
           </div>
+          <div className={`row`}>
+            <div>Display customer report here</div>
+          </div>
         </div>
       </section>
     </>

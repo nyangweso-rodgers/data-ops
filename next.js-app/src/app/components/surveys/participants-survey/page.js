@@ -35,7 +35,7 @@ const ParticipantsSurveyPage = () => {
     // Convert checkbox value to boolean
     dataToSend.agreedToTerms = formData.get("agreedToTerms") === "on";
 
-    console.log("Participants Survey Form Data to Send:", dataToSend); //TODO : Verify the structure here
+    console.log("Participants Survey Form Input:", dataToSend); //TODO : To Verify the structure
 
     // Send the data to the server in JSON format.
     const JSONdata = JSON.stringify(dataToSend);
