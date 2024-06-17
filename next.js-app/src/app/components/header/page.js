@@ -11,7 +11,7 @@ const HeaderPage = () => {
         <nav className={`navbar navbar-expand-md ${headerStyles.navbar}`}>
           <div className={`container`}>
             <a className={`navbar-brand ${headerStyles.headerBrand}`} href="/">
-              Portal Header
+              App Portal Header
             </a>
             <button
               className={`navbar-toggler ${headerStyles.navbarToggler}`}
