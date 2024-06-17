@@ -15,8 +15,12 @@ if (!MONGODB_URI) {
   throw new Error("Define the MONGODB_URI environmental variable");
 }
 
-const mongoDBConnect = async () => {
+const connectToMongoDB = async () => {
   //const mongoClient = new MongoClient(MONGODB_COMMUNITY_SERVER_URI, { family: 4 });
+  if (isConnected) {
+    console.log("DB connected already");
+    return;
+  }
   try {
     // Attempt to connect to the MongoDB server
     await mongoose.connect(MONGODB_URI);
@@ -24,9 +28,10 @@ const mongoDBConnect = async () => {
 
     // Log a success message if connected
     console.log("Participants Survey App Successfully Connected to MongoDB");
+    isConnected = true;
   } catch (error) {
     console.log("Error Participants Survey App Connecting to MongoDB:", error);
   }
 };
 
-export default mongoDBConnect;
+export default connectToMongoDB;
