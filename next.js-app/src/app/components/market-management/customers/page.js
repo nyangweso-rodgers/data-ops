@@ -24,7 +24,7 @@ const CustomersPage = () => {
     );
 
     // API endpoint where we send form data.
-    const customerRegistrationEndpoint = "/api/register-customer";
+    const customerRegistrationEndpoint = "/api/create-customer";
 
     // Form the request for sending data to the server.
     const options = {
@@ -70,7 +70,7 @@ const CustomersPage = () => {
         <div className={`container`}>
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <div>Welcome to Customers Application</div>
+              <h1>Welcome to Customers Application</h1>
             </div>
           </div>
         </div>
