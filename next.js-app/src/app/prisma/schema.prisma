@@ -24,3 +24,14 @@ model Customer {
 
   @@map("customer") // This will ensure the table name is lowercase "customer"
 }
+
+model DelegatesSurvey {
+  id String @id @default(uuid())
+  first_name String
+  last_name String
+  company_name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("delegates_survey") // This will ensure the table name is lowercase "delegates_survey"
+}
