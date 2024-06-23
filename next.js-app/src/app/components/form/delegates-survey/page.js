@@ -28,7 +28,7 @@ const DelegatesSurveyPage = () => {
     );
 
     // API endpoint where we send form data.
-    const delegatesSurveyEndpoint = "/api/submit-delegates-survey";
+    const delegatesSurveyEndpoint = "/api/create-delegates-survey";
 
     // Form the request for sending data to the server.
     const options = {
@@ -75,6 +75,7 @@ const DelegatesSurveyPage = () => {
           onSubmit={handleSubmitDelegatesSurveyForm}
           className={`container ${formStyles.form}`}
         >
+          
           <div className={`row ${pageStyles.row}`}>
             <div>
               <label
