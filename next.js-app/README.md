@@ -23,6 +23,8 @@
 
 # Prisma
 
+- **Prisma** supports databases such as PostgreSQL, MySQL, SQLite, SQL server, MongoDB, and cockroach DB
+
 ## Why Use Prisma?
 
 - In the simplest case, **Prisma** can access your database as an **ORM**. As part of its suite of products, **Prisma** offers a "**Client API**" that can make writing even the most complex database operations simple. But where **Prisma** shines is in its ability to handle complex querying operations.
@@ -71,15 +73,6 @@
       provider = "prisma-client-js"
     }
 
-    model Post {
-      id        Int     @id @default(autoincrement())
-      title     String
-      content   String?
-      published Boolean @default(false)
-      author    User?   @relation(fields: [authorId], references: [id])
-      authorId  Int?
-    }
-
     model User {
       id    Int     @id @default(autoincrement())
       email String  @unique
@@ -100,20 +93,10 @@
       provider = "prisma-client-js"
     }
 
-    model Post {
-      id        String  @id @default(auto()) @map("_id") @db.ObjectId
-      title     String
-      content   String?
-      published Boolean @default(false)
-      author    User?   @relation(fields: [authorId], references: [id])
-      authorId  String  @db.ObjectId
-    }
-
     model User {
       id    String  @id @default(auto()) @map("_id") @db.ObjectId
       email String  @unique
       name  String?
-      posts Post[]
     }
   ```
 
@@ -228,39 +211,6 @@
       },
     });
     ```
-
-### Step 6: Adjust Docker Configuration
-
-- If you're running your application in **Docker**, ensure the `.env` file is copied into the Docker container. Your `Dockerfile` might look something like this:
-
-  ```Dockerfile
-    # Use the official Node.js image
-    FROM node:14
-
-    # Set the working directory
-    WORKDIR /app
-
-    # Copy the dependency files
-    COPY package*.json ./
-
-    # Install dependencies
-    RUN npm install
-
-    # Copy the rest of the application code
-    COPY . .
-
-    # Copy the .env file
-    COPY .env .env
-
-    # Ensure Prisma Client is generated
-    RUN npx prisma generate
-
-    # Expose the port the app runs on
-    EXPOSE 3000
-
-    # Run the app
-    CMD ["npm", "run", "dev"]
-  ```
 
 # Resources and Further Reading
 
