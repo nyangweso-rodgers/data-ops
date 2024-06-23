@@ -12,14 +12,14 @@ const PortalPage = () => {
         <div className={`container`}>
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <div>Welcome to Portal</div>
+              <h1>Welcome to Portal</h1>
             </div>
           </div>
           <div className={`row ${pageStyles.row}`}>
             <div className={`col-md-4`}>
               <div>
                 <Link
-                  href="../components/surveys/participants-survey"
+                  href="../components/form/participants-survey"
                   className={`card ${cardStyles.card}`}
                 >
                   <div className={`card-body`}>
@@ -31,7 +31,7 @@ const PortalPage = () => {
             <div className={`col-md-4`}>
               <div>
                 <Link
-                  href="../components/surveys/delegates-survey"
+                  href="../components/form/delegates-survey"
                   className={`card ${cardStyles.card}`}
                 >
                   <div className={`card-body`}>
@@ -54,7 +54,17 @@ const PortalPage = () => {
             </div>
           </div>
           <div className={`row ${pageStyles.row}`}>
-            <div className={`col`}>
+            <div className={`col-md-6`}>
+              <div>
+                <Link
+                  href="../components/form/delegates-registration"
+                  className={`card ${cardStyles.card}`}
+                >
+                  <div className={`card-body`}>Delegates Registration</div>
+                </Link>
+              </div>
+            </div>
+            <div className={`col-md-6`}>
               <div>
                 <Link
                   href="../components/reports"
