@@ -1,5 +1,5 @@
 {
-  "name": "delegates_surveys-pg-connector",
+  "name": "delegates-surveys-postgresdb-connector",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "tasks.max": "1",
@@ -7,7 +7,7 @@
     "database.hostname": "postgres",
     "database.port": "5432",
     "database.user": "admin",
-    "database.password": "<specify password>",
+    "database.password": "<password>",
     "database.dbname": "test_db",
     "database.server.name": "postgres",
     "table.include.list": "public.delegates_surveys",
