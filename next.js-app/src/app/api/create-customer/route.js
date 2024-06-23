@@ -2,8 +2,10 @@ import { PrismaClient } from "@prisma/client";
 //import { PrismaClient } from './node_modules/.prisma/client'
 import { NextResponse } from "next/server";
 
-console.log("REGISTER CUSTOMER DATABASE URL:", process.env.POSTGRES_TEST_DATABASE_URL); // TODO: Add this line for debugging
-
+console.log(
+  "REGISTER CUSTOMER DATABASE URL:",
+  process.env.POSTGRES_TEST_DATABASE_URL
+); // TODO: Add this line for debugging
 
 const prisma = new PrismaClient();
 
@@ -21,8 +23,7 @@ export async function POST(req) {
     await prisma.customer.create({
       data: {
         first_name,
-        last_name,
-        status, // This will default to TRUE if not provided
+        last_name
       },
     });
 
