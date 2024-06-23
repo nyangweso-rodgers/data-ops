@@ -9,7 +9,7 @@
 
 # Services
 
-- The following **services**, or **Docker Containers** are running in this project:
+- The project has the following services running as Docker containers
 
   1. mongo
   2. postgres
@@ -31,6 +31,30 @@
 # Service 2: Running `postgres` Docker Container
 
 - Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/02-Working-with-PostgreSQL/01-Setting-up-Postgres-on-Docker/01-With-Docker-Compose/Readme.md), GitHub repo on how to configure and run postgresql docker container using docker-compose.
+
+# Connect to MongoDB
+
+- Set up a **MongoDB** connection file to connect your app:
+
+## Step 1: Install Dependencies
+
+- Use `npm` or `yarn` to install the **MongoDB** driver and any other helper libraries:
+  ```sh
+    npm i mongodb
+    npm i mongoose
+  ```
+
+## Step 2: Connect to MongoDB
+
+- Set up a **MongoDB** connection file to connect your app
+
+  ```js
+  // .utils/mongodb-connect.js
+
+  import mongoose from "mongoose";
+  ```
+
+# Fetching and Rendering Data with Next.js and MongoDB
 
 # Resources and Further Reading
 

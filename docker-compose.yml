@@ -1,49 +1,52 @@
 version: "3"
 services:
-  ######################################
-  # mongo
+  ############################################################################
+  # mongodb-community-server
   #
-  mongo:
-    image: mongo:latest
-    container_name: mongo
+  mongodb-community-server:
+    #image: mongodb/mongodb-community-server:latest
+    image: mongodb/mongodb-community-server:7.0.7-ubi8 #https://hub.docker.com/r/mongodb/mongodb-community-server
+    container_name: mongodb-community-server
     ports:
       - "27017:27017"
     env_file:
       - .env
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
+    #entrypoint: ["mongod", "--auth", "--config", "/etc/mongod.conf"]
+    volumes:
+      - mongodb-community-server-volume:/data/db
+  ############################################################################
+  # mongo
+  #
+  mongodb:
+    #image: mongo:latest
+    image: mongo:5.0.27 # https://hub.docker.com/_/mongo
+    container_name: mongodb
+    ports:
+      - "27018:27018"
+    env_file:
+      - .env
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
+    #command: [--auth]
     #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27017"]
     volumes:
-      - mongo_volume:/data/db
-      #- ./init-replica-set.js:/docker-entrypoint-initdb.d/init-replica-set.js
+      - mongodb-volume:/data/db
+    #- ./init-replica-set.js:/docker-entrypoint-initdb.d/init-replica-set.js
     #healthcheck:
+    #test: echo 'db.runCommand("ping").ok' | mongo --username ${MONGO_INITDB_ROOT_USERNAME} --password ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --quiet
     #test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo:27017\"},{_id:1,host:\"mongo-secondary1:27018\"},{_id:2,host:\"mongo-secondary2:27019\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1
+    #test: test $$(echo "db.adminCommand('ping').ok" | mongo --username ${MONGO_INITDB_ROOT_USERNAME} --password ${MONGO_INITDB_ROOT_PASSWORD} --quiet) -eq 1
     #interval: 10s
+    #timeout: 5s
+    #retries: 5
     #start_period: 30s
     #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
     #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-    #networks:
-    #- mongo-network
-  ############################################################################
-  # mongo-gui
-  #
-  mongo-gui:
-    container_name: mongo-gui
-    image: mongo-express:0.54.0 # https://hub.docker.com/_/mongo-express
-    #image: mongo-express:latest # https://hub.docker.com/_/mongo-express
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-      ME_CONFIG_MONGODB_SERVER: mongo
-      ME_CONFIG_MONGODB_ENABLE_ADMIN: true
-    ports:
-      - "8081:8081"
-    depends_on:
-      mongo:
-        condition: service_healthy
-    restart: unless-stopped
   ############################################################################
   # mongo-secondary1
   #
@@ -95,9 +98,11 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_TEST_DB} # Specify the default database name here
+      #POSTGRES_DB: postgres  # Use the default postgres database for initialization
+      #POSTGRES_DB: ${POSTGRES_TEST_DB} # Specify the default database name here
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      #DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${PGHOST}:${PORT}/${POSTGRES_SURVEY_DB}"
     #command: ["postgres", "-c", "wal_level=logical"]
     command:
       [
@@ -110,7 +115,7 @@ services:
         "max_wal_senders=10",
       ]
     volumes:
-      - postgres_volume:/var/lib/postgresql/data
+      - postgres-volume:/var/lib/postgresql/data
       #- ./scripts:/docker-entrypoint-initdb.d
     healthcheck:
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
@@ -137,7 +142,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
-      - pgadmin_volume:/var/lib/pgadmin
+      - pgadmin-volume:/var/lib/pgadmin
     depends_on:
       - postgres
   ############################################################################
@@ -237,8 +242,10 @@ services:
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:29092
       CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:2181
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
+
       CONFLUENT_METRICS_ENABLE: "true"
       #CONFLUENT_METRICS_ENABLE: 'false'
+
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
     #restart: on-failure
     volumes:
@@ -250,6 +257,25 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+  ############################################################################
+  # kafka-ui
+  #
+  kafka-ui:
+    #image: provectuslabs/kafka-ui:0.7.2 #not found
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - 8080:8080
+    depends_on:
+      - kafka
+    environment:
+      DYNAMIC_CONFIG_ENABLED: "true"
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
+      KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
+    #volumes:
+    #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
   ############################################################################
   # debezium
   #
@@ -317,25 +343,6 @@ services:
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8083
   ############################################################################
-  # kafka-ui
-  #
-  kafka-ui:
-    #image: provectuslabs/kafka-ui:0.7.2 #not found
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    ports:
-      - 8080:8080
-    depends_on:
-      - kafka
-    environment:
-      DYNAMIC_CONFIG_ENABLED: "true"
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
-      KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
-    #volumes:
-    #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
-  ############################################################################
   # schema-registry
   #
   schema-registry:
@@ -371,6 +378,64 @@ services:
       interval: 10s
       retries: 20
       test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
+  ############################################################################
+  # ksqldb
+  #
+  ksqldb:
+    #image: -confluentinc/ksqldb-server:latest
+    image: confluentinc/cp-ksqldb-server:7.5.3
+    hostname: ksqldb
+    container_name: ksqldb
+    depends_on:
+      - kafka
+      - schema-registry
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      #KSQL_BOOTSTRAP_SERVERS: kafka:9092
+      KSQL_BOOTSTRAP_SERVERS: kafka:29092
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+  ############################################################################
+  # metabase
+  #
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    depends_on:
+      - postgres
+    ports:
+      - 3000:3000
+  ############################################################################
+  # next.js app
+  #
+  next.js-app:
+    build:
+      context: ./next.js-app
+      dockerfile: Dockerfile
+    image: next.js-app
+    container_name: next.js-app
+    ports:
+      - "3003:3003"
+    depends_on:
+      #- mongodb-community-server
+      - postgres
+    restart: always
+    environment:
+      #- MONGODB_URI_FOR_SURVEY_SERVICE=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/survey-service?authSource=admin
+      #MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
+      MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE: ${MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE}
+      PGHOST: ${PGHOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST}
+      #POSTGRES_TEST_DATABASE_URL: ${POSTGRES_TEST_DATABASE_URL}
+    env_file:
+      - ./next.js-app/.env
+    volumes:
+      - /next.js-app/src/app/prisma
   ############################################################################
   #Superset
   #
@@ -410,75 +475,54 @@ services:
     image: mongodb-change-stream-app
     container_name: mongodb-change-stream-app
     depends_on:
-      - mongo
+      - mongodb-community-server
     environment:
-      - MONGO_URI_FOR_SURVEY_SERVICE=${MONGO_URI_FOR_SURVEY_SERVICE}
+      MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
     ports:
       - "4001:4001"
   ############################################################################
   # mongo-to-kafka
   #
-  mongo-to-kafka:
-    build:
-      context: ./mongo-to-kafka
-      dockerfile: Dockerfile
-    image: mongo-to-kafka
-    container_name: mongo-to-kafka
-    depends_on:
-      - mongo
-      - kafka
-    environment:
-      - MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
-      - KAFKA_HOST=${KAFKA_HOST}
-      - KAFKA_TOPIC=${KAFKA_TOPIC}
-    env_file:
-      - .env
-    ports:
-      - "4000:4000"
+  #mongo-to-kafka:
+  #build:
+  #context: ./mongo-to-kafka
+  #dockerfile: Dockerfile
+  #image: mongo-to-kafka
+  #container_name: mongo-to-kafka
+  #depends_on:
+  #- mongo
+  #- kafka
+  #environment:
+  #- MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
+  #- KAFKA_HOST=${KAFKA_HOST}
+  #- KAFKA_TOPIC=${KAFKA_TOPIC}
+  #env_file:
+  #- .env
+  #ports:
+  #- "4000:4000"
+
   ############################################################################
-  # next.js app
+  # api-with-express-and-mongo
   #
-  next.js-app:
-    build:
-      context: ./next.js-app
-      dockerfile: Dockerfile
-    image: next.js-app
-    container_name: next.js-app
-    ports:
-      - "3003:3003"
-    depends_on:
-      - mongo
-      - postgres
-    environment:
-      MONGO_URI_FOR_SURVEY_SERVICE: ${MONGO_URI_FOR_SURVEY_SERVICE}
-      PGHOST: ${PGHOST}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_TEST_DB}
-    env_file:
-      - .env
+  #api-with-mongo:
+  #build:
+  #context: ./api-with-mongo
+  #dockerfile: Dockerfile
+  #image: api-with-mongo
+  #container_name: api-with-mongo
+  #ports:
+  #- "3200:3200"
+  #depends_on:
+  #- mongo
   ############################################################################
-  # api-with-mongo
+  # api-with-express-and-postgresql
   #
-  api-with-mongo:
-    build:
-      context: ./api-with-mongo
-      dockerfile: Dockerfile
-    image: api-with-mongo
-    container_name: api-with-mongo
-    ports:
-      - "3200:3200"
-    depends_on:
-      - mongo
-  ############################################################################
-  # api-with-postgresql
-  #
-  api-with-postgresql:
+  api-with-express-and-postgresql:
     build:
       context: ./api-with-postgresql
       dockerfile: Dockerfile
     image: api-with-postgresql
-    container_name: api-with-postgresql
+    container_name: api-with-express-and-postgresql
     ports:
       - "3300:3300"
     env_file:
@@ -490,18 +534,27 @@ services:
       POSTGRES_DB: ${POSTGRES_TEST_DB}
     depends_on:
       - postgres
+  ############################################################################
+  # api-with-python-and-postgresql
+  #
+  ############################################################################
+  # api-with-java-and-postgresql
+  #
+  ############################################################################
+  # api-with-python-and-postgresql
+  #
 ############################################################################
 # networks
 #
-networks:
-  mongo-network:
-    driver: bridge
 ############################################################################
 # volumes
 #
 volumes:
-  mongo_volume:
-    name: mongo_volume
+  mongodb-community-server-volume:
+    name: mongodb-community-server-volume
+    driver: local
+  mongodb-volume:
+    name: mongodb-volume
     driver: local
   #mongo_secondary1_volume:
   #name: mongo_secondary1_volume
@@ -509,11 +562,15 @@ volumes:
   #mongo_secondary2_volume:
   #name: mongo_secondary2_volume
   #driver: local
-  postgres_volume:
-    name: postgres_volume
+  postgres-volume:
+    name: postgres-volume
     driver: local
-  pgadmin_volume:
-    name: pgadmin_volume
+    #driver_opts:
+    #type: none
+    #o: bind
+    #device: ./data
+  pgadmin-volume:
+    name: pgadmin-volume
     driver: local
   zookeeper_volume:
     name: zookeeper_volume
