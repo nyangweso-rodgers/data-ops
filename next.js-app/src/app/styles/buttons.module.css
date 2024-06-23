@@ -15,3 +15,9 @@
 .button:hover {
   background-color: #124127;
 }
+.submitButton {
+  background: dodgerblue;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+}

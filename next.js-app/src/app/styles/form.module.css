@@ -9,7 +9,15 @@
   line-height: 150%;
   color: #2b3a4a;
 }
-
+.formInput {
+  padding: 10px;
+  font-size: 16px;
+}
+.formLabel {
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #333;
+}
 .input {
   width: 100%;
   min-height: 6vh;
@@ -50,3 +58,5 @@
   font-size: 1.5rem;
   transition: all 0.3s;
 }
+
+
