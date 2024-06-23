@@ -1,0 +1,19 @@
+{
+  "name": "participants-mongodb-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
+    "tasks.max": "1",
+    "mongodb.hosts": "debezium/localhost:27017",
+    "mongodb.name": "mongo",
+    "mongodb.user": "admin",
+    "mongodb.password": "<password>",
+    "database.include.list": "survey-service",
+    "collection.include.list": "participants_survey",
+    "topic.prefix": "survey-service",
+    "topic.creation.enable": "true",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+    "topic.creation.default.cleanup.policy": "delete",
+    "topic.creation.default.retention.ms": "604800000"
+  }
+}

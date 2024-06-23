@@ -25,7 +25,9 @@
 
 # Service 1: `postgres` Docker Container
 
-- Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/02-Working-with-PostgreSQL/01-Setting-up-Postgres-on-Docker/01-With-Docker-Compose/Readme.md), GitHub repo on how to configure and run postgresql docker container using **docker-compose**.
+- Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/tree/main/02-Transactional-Databases/01-postgresql/01-setup-postgresql/01-postgres-docker-container), GitHub repo on how to configure and run postgresql docker container using **docker-compose**.
+
+# Service 2: pgadmin
 
 # Service 2: `mongo` Docker Container
 
@@ -48,6 +50,20 @@
   5. Username: <username>
   6. Password: <password>
 - Now, you should be able to explore your **PostgreSQL** data using **Metabase**!
+
+# Service 4: Zookeeper
+
+# Service 5: Apache Kafka
+
+# Service 6: Kafka UI
+
+# Service 7: Schema Registry
+
+# Service 8: Debezium
+
+- Check, my []() on how to setup Debezium Docker Container.
+
+# Service 9: Debezium UI
 
 # Resources and Further Reading
 
