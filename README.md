@@ -23,14 +23,14 @@
   9. customer-api
   10. nextjs.app
 
-# Service 1: Running `mongo` Docker Container
+# Service 1: `postgres` Docker Container
+
+- Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/02-Working-with-PostgreSQL/01-Setting-up-Postgres-on-Docker/01-With-Docker-Compose/Readme.md), GitHub repo on how to configure and run postgresql docker container using **docker-compose**.
+
+# Service 2: `mongo` Docker Container
 
 - Check [github.com/nyangweso-rodgers - Run MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/02-Setup-MongoDB/01-Run-MongoDB-Docker-Container/Readme.md) repo on how to run a mongo docker container using docker-compose.
 - Check [github.com/nyangweso-rodgers - mongoDB replica set](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/01-Fundamentals-of-MongoDB/mongoDB-replica-set/Readme.md) repo, to successfully set up a **MongoDB** **replica set** with **Docker Compose**. This ensures that you have a highly available and resilient MongoDB deployment.
-
-# Service 2: `postgres` Docker Container
-
-- Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/02-Working-with-PostgreSQL/01-Setting-up-Postgres-on-Docker/01-With-Docker-Compose/Readme.md), GitHub repo on how to configure and run postgresql docker container using docker-compose.
 
 # Service 3: Metabase Docker Container
 
