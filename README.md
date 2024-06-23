@@ -28,33 +28,26 @@
 - Check [github.com/nyangweso-rodgers - Run MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/02-Setup-MongoDB/01-Run-MongoDB-Docker-Container/Readme.md) repo on how to run a mongo docker container using docker-compose.
 - Check [github.com/nyangweso-rodgers - mongoDB replica set](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/01-Fundamentals-of-MongoDB/mongoDB-replica-set/Readme.md) repo, to successfully set up a **MongoDB** **replica set** with **Docker Compose**. This ensures that you have a highly available and resilient MongoDB deployment.
 
-# Service 2: Running `postgres` Docker Container
+# Service 2: `postgres` Docker Container
 
 - Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/my-dev-branch/02-Working-with-PostgreSQL/01-Setting-up-Postgres-on-Docker/01-With-Docker-Compose/Readme.md), GitHub repo on how to configure and run postgresql docker container using docker-compose.
 
-# Connect to MongoDB
+# Service 3: Metabase Docker Container
 
-- Set up a **MongoDB** connection file to connect your app:
+## Access Metabase
 
-## Step 1: Install Dependencies
+- Once the **Docker Compose** is up and running, you can access Metabase at http://localhost:3000 in your web browser.
 
-- Use `npm` or `yarn` to install the **MongoDB** driver and any other helper libraries:
-  ```sh
-    npm i mongodb
-    npm i mongoose
-  ```
+## Connect Metabase to PostgreSQL
 
-## Step 2: Connect to MongoDB
-
-- Set up a **MongoDB** connection file to connect your app
-
-  ```js
-  // .utils/mongodb-connect.js
-
-  import mongoose from "mongoose";
-  ```
-
-# Fetching and Rendering Data with Next.js and MongoDB
+- When you first open **Metabase**, it will ask you to setup a connection to your database. Here are the settings you need to use:
+  1. Database type: PostgreSQL
+  2. Host: postgres
+  3. Port: 5432
+  4. Database name: <provide database name>
+  5. Username: <username>
+  6. Password: <password>
+- Now, you should be able to explore your **PostgreSQL** data using **Metabase**!
 
 # Resources and Further Reading
 
