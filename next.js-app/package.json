@@ -3,21 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prestart": "npx prisma generate",
     "dev": "next dev -p 3003",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "type": "module",
+  "prisma": {
+    "schema": "src/app/prisma/schema.prisma"
+  },
   "dependencies": {
-    "@prisma/client": "^5.15.0",
+    "@prisma/client": "^5.15.1",
     "bootstrap": "^5.3.3",
     "dotenv": "^16.4.5",
     "mongodb": "^6.7.0",
     "mongoose": "^8.3.4",
     "next": "14.2.3",
     "pg": "^8.11.5",
-    "prisma": "^5.15.0",
+    "prisma": "^5.15.1",
     "react": "^18",
     "react-dom": "^18",
     "sequelize": "^6.37.3"

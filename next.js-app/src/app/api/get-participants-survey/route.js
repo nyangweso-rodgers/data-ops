@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import mongoDBConnect from "../../utils/participants-survey-mongo-db-connect.js";
+import connectToMongoDB from "../../utils/participants-survey-mongodb-connection.js";
 
 import ParticipatsSurveyModel from "../../model/participants-survey-schema.js";
 
 export async function GET(res) {
   // Ensure database connection before proceeding
-  await mongoDBConnect();
+  await connectToMongoDB();
 
   try {
     const participantsSurveyData = await ParticipatsSurveyModel.find();

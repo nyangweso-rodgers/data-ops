@@ -17,9 +17,11 @@
 
 - Each Next.js page component allows us to fetch data server-side thanks to a function called `getStaticProps`. When this function is called, the initial page load is rendered server-side, which is great for SEO. The page doesn't render until this function completes.
 
-# Prisma
+# ORM Libraries for Node.js
 
 - There are many popular **ORM libraries** for **Node.js**: **Prisma**, **Sequelize**, **TypeORM**, and others.
+
+# Prisma
 
 ## Why Use Prisma?
 
@@ -126,23 +128,20 @@
 
 - To start using **Prisma**, you will need the `prisma` and `@prisma/client` packages. `prisma` is the **Prisma CLI** tool while `@prisma/client` is an auto-generated query builder that will help you query your database.
 - Install these two packages via `npm`
+
   ```sh
     npm i prisma @prisma/client
   ```
-- or:
-  ```sh
-   npm install prisma --save-dev
-   npm install @prisma/client
-  ```
-- Installing the `@prisma/client` package invokes the `prisma generate` command, which reads your **Prisma schema** and generates Prisma Client code. The code is generated into the `node_modules/.prisma/client` folder by default.
+
+- Installing the `@prisma/client` package invokes the `prisma generate` command, which reads your **Prisma schema** and generates **Prisma Client** code. The code is generated into the `node_modules/.prisma/client` folder by default.
 
 ### Step 2: Initialize `prisma`
 
-- Next, initialize `prisma` by running the below command on the terminal.
+- Next, **initialize** `prisma` by running the below command on the terminal.
   ```sh
     npx prisma init
   ```
-- This will generate a new file called `schema.prisma` which contains the database schema and a `.env` file to which you’ll add the database connection URL.
+- This will generate a new file called `schema.prisma` which contains the database schema and a `.env` file to which you’ll add the **database connection URL**.
 - After you change your **data model**, you'll need to manually re-generate **Prisma Client** to ensure the code inside `node_modules/.prisma/client` gets updated:
   ```sh
     prisma generate
@@ -154,8 +153,12 @@
   ```sh
     postgres://{username}:{password}@{hostname}:{port}/{database-name}
   ```
-- Replace the elements in curly brackets with your own database details then save it in the `.env` file:
-- Then in `schema.prisma`, specify the database connection URL:
+- Example:
+  ```sh
+    #.env
+    DATABASE_URL="postgresql://admin:pwd@$postgres:$5432:test_db"
+  ```
+- Then in `schema.prisma`, specify the **database connection URL**:
 
   ```prisma
     datasource db {
@@ -170,17 +173,25 @@
 - To create a **schema** for a database with a **users table**, open the `schema.prisma` file, and add a **User** model.
   ```prisma
     model User {
-  id            String  @default(cuid()) @id
-  name          String?
-  email         String  @unique
-  }
+      id            String  @default(cuid()) @id
+      name          String?
+      email         String  @unique
+      }
   ```
-- The **User model** has an id column which is the primary key, a name column of type string, and an email column that should be unique.
-- After defining the data model, you need to deploy your schema to the database using the npx prisma db push command.
+- The **User model** has an `id` column which is the primary key, a `name` column of type `string`, and an `email` column that should be unique.
+- After defining the data model, you need to deploy your schema to the database using the `npx prisma db push` command.
   ```sh
     npx prisma db push
   ```
 - This command creates the actual tables in the database.
+
+## Step 5: Run Prisma Migrate Command from the Host
+
+- Run the **Prisma migrate** command from within the your application docker container:
+  ```bash
+    docker exec -it next.js-app npx prisma migrate dev --name init
+  ```
+- This ensures the command uses the environment variables and network configuration within the container.
 
 ### Step 5: Using Prisma Client to send queries to your database
 

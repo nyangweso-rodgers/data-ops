@@ -5,7 +5,7 @@ const CustomersSurveyReportPage = () => {
     <>
       <section className={`${pageStyles.section}`}>
         <div className={`container`}>
-          <div className={`row`}>
+          <div className={`row ${pageStyles.row}`}>
             <div>Customers Report</div>
           </div>
           <div className={`row`}>

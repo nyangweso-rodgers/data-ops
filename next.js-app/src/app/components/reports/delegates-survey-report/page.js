@@ -5,8 +5,8 @@ const DelegatesSurveyReportPage = () => {
     <>
       <section className={`${pageStyles.section}`}>
         <div className={`container`}>
-          <div className={`row`}>
-            <div>Delegates Report</div>
+          <div className={`row ${pageStyles.row}`}>
+            <div>Delegates Survey Report</div>
           </div>
           <div className={`row`}>
             <div>Display Delegates Survey Report Here</div>

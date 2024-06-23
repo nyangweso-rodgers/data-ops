@@ -1,6 +1,6 @@
 import DelegatesSurveySchema from "../../model/delegates-survey-schema.js";
 
-import sequelizeInstance from "../../utils/delegates-survey-postgres-db-connect.js";
+import sequelizeInstance from "../../utils/delegates-survey-postgresdb-connection.js";
 
 import { NextResponse } from "next/server";
 

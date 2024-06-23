@@ -1,7 +1,7 @@
 import * as pg from 'pg';
 import { Sequelize } from "sequelize";
 
-import sequelizeInstance from "../utils/delegates-survey-postgres-db-connect.js";
+import sequelizeInstance from "../utils/delegates-survey-postgresdb-connection.js";
 
 // Define your model directly in customerSchema.js
 const DelegatesSurveySchema = sequelizeInstance.define("delegates_survey", {

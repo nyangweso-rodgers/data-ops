@@ -17,10 +17,7 @@ if (!MONGODB_URI) {
 
 const connectToMongoDB = async () => {
   //const mongoClient = new MongoClient(MONGODB_COMMUNITY_SERVER_URI, { family: 4 });
-  if (isConnected) {
-    console.log("DB connected already");
-    return;
-  }
+
   try {
     // Attempt to connect to the MongoDB server
     await mongoose.connect(MONGODB_URI);
