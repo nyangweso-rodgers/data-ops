@@ -24,8 +24,7 @@
     "pg": "^8.11.5",
     "prisma": "^5.15.1",
     "react": "^18",
-    "react-dom": "^18",
-    "sequelize": "^6.37.3"
+    "react-dom": "^18"
   },
   "devDependencies": {
     "eslint": "^8",
