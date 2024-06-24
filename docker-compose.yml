@@ -147,10 +147,7 @@ services:
   # zookeeper
   #
   zookeeper:
-    #image: confluentinc/cp-zookeeper:5.3.0
     #image: confluentinc/cp-zookeeper:latest
-    #image: confluentinc/cp-zookeeper:7.3.0
-    #image: quay.io/debezium/zookeeper
     image: confluentinc/cp-zookeeper:7.6.1
     container_name: zookeeper
     ports:
@@ -161,7 +158,6 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     volumes:
       - zookeeper_volume:/var/lib/zookeeper/data
-      #- zookeeper-data:/var/lib/zookeeper/data
     #restart: on-failure
     healthcheck:
       test: echo srvr | nc zookeeper 2181 || exit 1
@@ -187,9 +183,8 @@ services:
     #
     # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
     #
-    #image: confluentinc/cp-kafka:7.3.1
-    image: confluentinc/cp-kafka:7.6.1
     #image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.6.1
     hostname: kafka
     container_name: kafka
     depends_on:
@@ -256,10 +251,44 @@ services:
       timeout: 10s
       retries: 10
   ############################################################################
+  # schema-registry
+  #
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    #image: confluentinc/cp-schema-registry:latest
+    container_name: schema-registry
+    hostname: schema-registry
+    depends_on:
+      kafka:
+        condition: service_healthy
+      zookeeper:
+        condition: service_started
+    ports:
+      - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      #SCHEMA_REGISTRY_HOST_NAME: localhost
+
+      #SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
+
+      #SCHEMA_REGISTRY_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
+
+      #SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8081
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+      #SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+      #SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
+      SCHEMA_REGISTRY_DEBUG: "true"
+    healthcheck:
+      start_period: 10s
+      interval: 10s
+      retries: 20
+      test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
+  ############################################################################
   # kafka-ui
   #
   kafka-ui:
-    #image: provectuslabs/kafka-ui:0.7.2 #not found
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
     ports:
@@ -340,42 +369,6 @@ services:
       #- "8082:8082"
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8083
-  ############################################################################
-  # schema-registry
-  #
-  schema-registry:
-    #image: confluentinc/cp-schema-registry:7.3.1
-    image: confluentinc/cp-schema-registry:7.6.1
-    #image: confluentinc/cp-schema-registry:latest
-    container_name: schema-registry
-    hostname: schema-registry
-    depends_on:
-      kafka:
-        condition: service_healthy
-      zookeeper:
-        condition: service_started
-    ports:
-      - "8081:8081"
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      #SCHEMA_REGISTRY_HOST_NAME: localhost
-
-      #SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
-
-      #SCHEMA_REGISTRY_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
-
-      #SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8081
-      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-
-      #SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
-      #SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
-      SCHEMA_REGISTRY_DEBUG: "true"
-    healthcheck:
-      start_period: 10s
-      interval: 10s
-      retries: 20
-      test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
   ############################################################################
   # ksqldb
   #
