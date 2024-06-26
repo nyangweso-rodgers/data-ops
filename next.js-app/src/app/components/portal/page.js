@@ -77,6 +77,20 @@ const PortalPage = () => {
               </div>
             </div>
           </div>
+          <div className={`row ${pageStyles.row}`}>
+            <div className="col">
+              <div>
+                <Link
+                  href="../components/dashboard/customers"
+                  className={`card ${cardStyles.card}`}
+                >
+                  <div className={`card-body`}>
+                    <div>Customer Report</div>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </>

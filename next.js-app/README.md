@@ -23,6 +23,12 @@
 
 # Prisma
 
+- **Prisma** is an ORM for Node.js and Typescript that serves as an alternative to writing plain SQL or using other database access tools, such as Knex or Sequelize. It provides a type-safe and intuitive way to interact with databases, offering features like schema management, query building, and data modeling.
+- The **Prisma Labs** team founded Prisma in 2016, aiming to make working with databases more fun, productive and delightful. As the project evolved and became more popular, **Prisma** became a standalone project that was released as Prisma 2.0 in 2020. Its main features included:
+  - **Prisma Client**, an auto-generated and type-safe query builder to access a database in Node.js and Typescript.
+  - Prisma Studio: A visual editor for your database workflow management
+  - Automated migration
+  - Improved performance for database interactions
 - **Prisma** supports databases such as PostgreSQL, MySQL, SQLite, SQL server, MongoDB, and cockroach DB
 
 ## Why Use Prisma?
@@ -104,6 +110,61 @@
   - **Data source**: Specifies your database connection (via an environment variable)
   - **Generator**: Indicates that you want to generate Prisma Client
   - **Data model**: Defines your application models
+
+## Prisma Migrate
+
+- **Prisma Migrate** helps automate the process of managing changes in your codebase’s database schema. It generates a history of the migration file and allows you to keep your database schema in sync with your **Prisma schema** as it changes during development and production.
+- Without **Prisma**, developers would have to manually write their SQL scripts to perform migrations. **Prisma Migrate** makes the process of managing database schema changes more streamlined and developer-friendly.
+- To get started with **Prisma Migrate**, you once again need to create your **Prisma schema** first:
+
+  ```prisma
+    schema.prisma
+    datasource db {
+    url      = env("DATABASE_URL")
+    provider = "sqlite"
+    }
+
+    generator client {
+    provider = "prisma-client-js"
+    }
+
+    model User {
+    id        Int      @id @default(autoincrement())
+    name      String?
+    }
+  ```
+
+- Next, we will, run the migration command to create our first migration:
+  ```sh
+    npx prisma migrate dev -name init
+  ```
+- Once done, we should see a success message. Now, your **Prisma schema** is in sync with your database schema. You should also now see a migration history
+- Let’s say we have this schema defined for our application and we decide to make a change to the predefined model to add a new field called `address`. Remember that the model currently creates a table called `User` in our SQLite database. Now, let’s add the `address` field to the schema:
+
+  ```prisma
+    datasource db {
+    url      = env("DATABASE_URL")
+    provider = "sqlite"
+    }
+
+    generator client {
+    provider = "prisma-client-js"
+    }
+
+    model User {
+    id        Int      @id @default(autoincrement())
+    name      String?
+    address   String?
+    }
+  ```
+
+- Next, since we added a new `address` field, let’s create our second migration:
+  ```sh
+    npx prisma migrate dev --name add_address_field
+  ```
+- You will be prompted to add a name for your migration:
+- Enter the migration name and press Enter. You should see a success message once the migration is successful:
+- Now, you should have a new migration history. You can have control over and deploy the changes. This is how **Prisma** streamlines database migrations and makes the process less complex.
 
 ## Configure Prisma
 

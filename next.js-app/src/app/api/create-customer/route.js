@@ -27,6 +27,8 @@ export async function POST(req) {
       },
     });
 
+    //console.log()
+
     return NextResponse.json(
       { message: "Customer Registration form submitted successfully" },
       { status: 201 }
