@@ -18,8 +18,12 @@ model Customer {
   first_name String
   last_name String
   status     Status  @default(TRUE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  created_by String @default("rodgerso65@gmail.com")
+  updated_by String @default("rodgerso65@gmail.com")
+  created_by_name String @default("Rodgers Nyangweso")
+  updated_by_name String @default("Rodgers Nyangweso")
   
 
   @@map("customer") // This will ensure the table name is lowercase "customer"

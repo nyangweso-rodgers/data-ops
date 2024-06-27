@@ -1,10 +1,45 @@
-# next.js Application
+# Next.js Application
 
 ## Table Of Contents
 
 # Setup
 
-- Check my, [github.com/nyangweso-rodgers - Setting up Next.js App](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/02-JavaScript-Libraries/01-React/03-React-Frameworks/01-Next.js/01-Setting-Next.js-App/Readme.md) github repository on how to setup a Next.js Application with Docker.
+## Step 1: Setup Next.js Application with Docker
+
+- Check my, [github.com/nyangweso-rodgers - Setting up Next.js App](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/02-JavaScript-Libraries/01-React/03-React-Frameworks/01-Next.js/01-Setting-Next.js-App/Readme.md) github repository on how to setup a **Next.js Application with Docker**.
+
+## Step : Dockerize the application
+
+```yml
+verison: "1"
+services:
+  next.js-app:
+    build:
+      context: ./next.js-app
+      dockerfile: Dockerfile
+    image: next.js-app
+    container_name: next.js-app
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mongodb-community-server
+      - postgres
+    restart: always
+```
+
+## Step : Start the Next.js Docker Application
+
+- Run the following command:
+  ```bash
+    docker-compose up -d --build next.js-app
+  ```
+
+## Step : Access Next.js Docker Application
+
+- Access the application by:
+  ```bash
+    docker exec -it next.js-app bash
+  ```
 
 # Next.js Back-End API
 
@@ -114,7 +149,7 @@
 ## Prisma Migrate
 
 - **Prisma Migrate** helps automate the process of managing changes in your codebase’s database schema. It generates a history of the migration file and allows you to keep your database schema in sync with your **Prisma schema** as it changes during development and production.
-- Without **Prisma**, developers would have to manually write their SQL scripts to perform migrations. **Prisma Migrate** makes the process of managing database schema changes more streamlined and developer-friendly.
+- Without **Prisma**, developers would have to manually write their SQL scripts to perform **migrations**. **Prisma Migrate** makes the process of managing database schema changes more streamlined and developer-friendly.
 - To get started with **Prisma Migrate**, you once again need to create your **Prisma schema** first:
 
   ```prisma
@@ -134,7 +169,7 @@
     }
   ```
 
-- Next, we will, run the migration command to create our first migration:
+- Next, we will, run the **migration command** to create our first migration:
   ```sh
     npx prisma migrate dev -name init
   ```
@@ -163,10 +198,10 @@
     npx prisma migrate dev --name add_address_field
   ```
 - You will be prompted to add a name for your migration:
-- Enter the migration name and press Enter. You should see a success message once the migration is successful:
+- Enter the **migration name** and press Enter. You should see a success message once the migration is successful:
 - Now, you should have a new migration history. You can have control over and deploy the changes. This is how **Prisma** streamlines database migrations and makes the process less complex.
 
-## Configure Prisma
+## How to Configure Prisma
 
 ### Step 1: Installing the Prisma Client
 
@@ -188,7 +223,7 @@
 - This will generate a new file called `schema.prisma` which contains the database schema and a `.env` file to which you’ll add the **database connection URL**.
 - After you change your **data model**, you'll need to manually re-generate **Prisma Client** to ensure the code inside `node_modules/.prisma/client` gets updated:
   ```sh
-    prisma generate
+    npx prisma generate
   ```
 
 ### Step 3: Adding the Connection URL
@@ -223,10 +258,6 @@
       }
   ```
 - The **User model** has an `id` column which is the primary key, a `name` column of type `string`, and an `email` column that should be unique.
-- After defining the data model, you need to deploy your schema to the database using the `npx prisma db push` command.
-  ```sh
-    npx prisma db push
-  ```
 - This command creates the actual tables in the database.
 
 ## Step 5: Run Prisma Migrate Command from the Host
@@ -237,41 +268,57 @@
   ```
 - This ensures the command uses the environment variables and network configuration within the container.
 
-### Step 5: Using Prisma Client to send queries to your database
+## Step 6: Update and Sync Prisma Schema Changes
 
-- Once **Prisma Client** has been generated, you can import it in your code and send queries to your database. This is what the setup code looks like
-- Import and instantiate **Prisma Client**:
-  ```javascript
-  import { PrismaClient } from "@prisma/client";
-  const prisma = new PrismaClient();
+- Suppose we make changes to the `schema.prisma` File by adding some fields. e.g.,
+
+  - From:
+
+    ```prisma
+      datasource db {
+      url      = env("DATABASE_URL")
+      provider = "sqlite"
+      }
+
+      generator client {
+      provider = "prisma-client-js"
+      }
+
+      model User {
+      id        Int      @id @default(autoincrement())
+      name      String?
+      }
+    ```
+
+  - To:
+
+    ```prisma
+      datasource db {
+      url      = env("DATABASE_URL")
+      provider = "sqlite"
+      }
+
+      generator client {
+      provider = "prisma-client-js"
+      }
+
+      model User {
+      id        Int      @id @default(autoincrement())
+      name      String?
+      address   String?
+      }
+    ```
+
+- To ensure your **PostgreSQL database schema** is up-to-date with your **Prisma schema** changes, you need to run the **Prisma migration** command inside the **Docker container** where your **Next.js app** is running. Here’s how you can do it:
+- First, **Start your Docker containers**:
+  ```sh
+    docker-compose up -d -build next.js-app postgres
   ```
-- Now you can start sending queries via the generated **Prisma Client API**, here are a few sample queries.
-- Note that all Prisma Client queries return plain old JavaScript objects.
-- Examples:
-  - Retrieve all User records from the database
-    ```js
-    // Run inside `async` function
-    const allUsers = await prisma.user.findMany();
-    ```
-  - Include the posts relation on each returned User object
-    ```js
-    // Run inside `async` function
-    const allUsers = await prisma.user.findMany({
-      include: { posts: true },
-    });
-    ```
-  - Filter all Post records that contain "prisma"
-    ```js
-    // Run inside `async` function
-    const filteredPosts = await prisma.post.findMany({
-      where: {
-        OR: [
-          { title: { contains: "prisma" } },
-          { content: { contains: "prisma" } },
-        ],
-      },
-    });
-    ```
+- **Run Prisma migration**: You need to execute the **Prisma migration command** inside the container where your Next.js app is running. You can do this by using the `docker-compose exec` command.
+  ```sh
+    docker-compose exec next.js-app npx prisma migrate dev --name add_created_by_field
+  ```
+  - This command will apply your migrations to the PostgreSQL database running in the Docker container.
 
 # Resources and Further Reading
 

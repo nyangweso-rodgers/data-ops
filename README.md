@@ -34,6 +34,18 @@
 - Check [github.com/nyangweso-rodgers - Run MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/02-Setup-MongoDB/01-Run-MongoDB-Docker-Container/Readme.md) repo on how to run a mongo docker container using docker-compose.
 - Check [github.com/nyangweso-rodgers - mongoDB replica set](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/01-Fundamentals-of-MongoDB/mongoDB-replica-set/Readme.md) repo, to successfully set up a **MongoDB** **replica set** with **Docker Compose**. This ensures that you have a highly available and resilient MongoDB deployment.
 
+# Zookeeper
+
+# Kafka
+
+# Schema Registry
+
+# Kafka UI
+
+# Debezium
+
+# Debezium UI
+
 # Service 3: Metabase Docker Container
 
 ## Access Metabase
@@ -51,19 +63,7 @@
   6. Password: <password>
 - Now, you should be able to explore your **PostgreSQL** data using **Metabase**!
 
-# Service 4: Zookeeper
 
-# Service 5: Apache Kafka
-
-# Service 6: Kafka UI
-
-# Service 7: Schema Registry
-
-# Service 8: Debezium
-
-- Check, my []() on how to setup Debezium Docker Container.
-
-# Service 9: Debezium UI
 
 # Resources and Further Reading
 

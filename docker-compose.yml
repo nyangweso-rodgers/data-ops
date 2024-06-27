@@ -439,6 +439,11 @@ services:
       - ./next.js-app/.env
     volumes:
       - /next.js-app/src/app/prisma
+    #command: sh -c "npx prisma migrate deploy && npm run dev"
+    #entrypoint: ["sh", "/migrate.sh"]  # Execute migrate.sh script first
+  ############################################################################
+  # api - with Express.js and postgresql
+  #
   ############################################################################
   #Superset
   #
