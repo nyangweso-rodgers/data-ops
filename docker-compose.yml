@@ -444,6 +444,23 @@ services:
   ############################################################################
   # api - with Express.js and postgresql
   #
+  api-with-postgresql-and-express.js:
+    build:
+      context: ./api-with-postgresql-and-express.js
+      dockerfile: Dockerfile
+    image: api-with-postgresql-and-express.js
+    container_name: api-with-postgresql-and-express.js
+    ports:
+      - "3004:3004"
+    depends_on:
+      - postgres
+    environment:
+      PGHOST: ${PGHOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST}
+    env_file:
+      - ./api-with-postgresql-and-express.js/.env
   ############################################################################
   #Superset
   #
@@ -522,26 +539,6 @@ services:
   #- "3200:3200"
   #depends_on:
   #- mongo
-  ############################################################################
-  # api-with-express-and-postgresql
-  #
-  api-with-express-and-postgresql:
-    build:
-      context: ./api-with-postgresql
-      dockerfile: Dockerfile
-    image: api-with-postgresql
-    container_name: api-with-express-and-postgresql
-    ports:
-      - "3300:3300"
-    env_file:
-      - .env
-    environment:
-      PGHOST: ${PGHOST}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_TEST_DB}
-    depends_on:
-      - postgres
   ############################################################################
   # api-with-python-and-postgresql
   #
