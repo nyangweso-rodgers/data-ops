@@ -4,12 +4,11 @@
   "description": "Data Ops Project",
   "main": "index.js",
   "scripts": {
-    
     "start": "next start"
   },
   "type": "module",
   "keywords": [],
-  "author": "",
+  "author": "Rodgers Nyangweso",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
