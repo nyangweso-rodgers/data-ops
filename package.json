@@ -9,10 +9,5 @@
   "type": "module",
   "keywords": [],
   "author": "Rodgers Nyangweso",
-  "license": "ISC",
-  "dependencies": {
-    "dotenv": "^16.4.5",
-    "mongodb": "^6.7.0",
-    "mongoose": "^8.4.3"
-  }
+  "license": "ISC"
 }
