@@ -35,6 +35,15 @@
 .input:focus {
   background-color: yellow;
 }
+.radioInput {
+  width: 24px;
+  height: 24px;
+  border-radius: 24px;
+  cursor: pointer;
+  background-color: #535353;
+  visibility: visible;
+  border: 2px solid white;
+}
 .select {
   width: 100%;
   min-height: 6vh;
