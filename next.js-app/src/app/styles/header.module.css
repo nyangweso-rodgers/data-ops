@@ -1,22 +1,23 @@
-.header {
-  background-color: #192655;
-  padding: 1%;
-  color: #fff;
+.headerContainer {
+  /*background: #00022e;*/
+  /*background: #bc1a6b;*/
+  background: #50586c;
+  /*color: #fff;*/
+  /* padding: 1% 0;*/
+  padding: 1.5rem 0;
+  /*font-size: 30px;*/
+  width: 100%;
 }
-.header a {
-  color: #fff;
+.navbarContainer {
+  padding: 1rem 0;
+  border: 2px solid red;
 }
-.headerBrand {
+.navbarBrand {
   font-size: 2rem;
   font-weight: 800;
+  color: #fff;
 }
 
-.navbar li a,
-  .navbar /*.navbar-brand*/ {
-  color: #fff;
-  font-size: 1.25rem;
-  font-weight: 400;
-}
 .navbarToggler {
   background-color: #7eb444;
   width: 47px;

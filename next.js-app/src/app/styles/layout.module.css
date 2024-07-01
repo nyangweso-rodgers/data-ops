@@ -1,0 +1,35 @@
+.layoutContainer {
+  display: flex;
+  height: 100vh;
+}
+.leftSidebarContainer {
+  width: 25%;
+  border-right: 1px solid #197ac4;
+  float: left;
+}
+.mainContainer {
+  width: 75%;
+}
+.appLayoutContainer {
+  display: flex; /* Enable flexbox */
+  /*height: 100vh;*/
+}
+
+.mainContent {
+  margin-left: 20vw; /* Main content starts after the sidebar */
+  padding: 1rem;
+  flex: 1;
+  overflow-y: auto; /* Allow scrolling if content is too long */
+  height: calc(100vh - 50px); /* Adjust height to fill the viewport */
+}
+.sidebarContainer {
+  background: #d8dcd6;
+  /*border: 1px dotted purple;*/
+  
+  width: 20vw; /* Sidebar takes 20% of the viewport width */
+  padding: 1rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+}
