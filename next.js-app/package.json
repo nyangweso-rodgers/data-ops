@@ -1,5 +1,5 @@
 {
-  "name": "next.js-app",
+  "name": "next.js-app-portal",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,9 +11,6 @@
     "lint": "next lint"
   },
   "type": "module",
-  "prisma": {
-    "schema": "src/app/prisma/schema.prisma"
-  },
   "dependencies": {
     "@prisma/client": "^5.15.1",
     "bootstrap": "^5.3.3",

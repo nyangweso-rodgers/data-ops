@@ -295,7 +295,7 @@ services:
     ```prisma
       datasource db {
       url      = env("DATABASE_URL")
-      provider = "sqlite"
+      provider = "postgresql"
       }
 
       generator client {
