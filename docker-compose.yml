@@ -102,28 +102,18 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_TEST_DB: ${POSTGRES_TEST_DB} # The PostgreSQL default database (automatically created at first launch)
-    command:
-      [
-        "postgres",
-        "-c",
-        "wal_level=logical",
-        "-c",
-        "max_replication_slots=10",
-        "-c",
-        "max_wal_senders=10",
-      ]
-    #command: ["postgres", "-c", "wal_level=logical"]
+    #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
+    command: ["postgres", "-c", "wal_level=logical"]
     volumes:
       - postgres-volume:/var/lib/postgresql/data
-      #- ./scripts:/docker-entrypoint-initdb.d
     healthcheck:
+      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
       test:
         [
           "CMD-SHELL",
           "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d ${POSTGRES_TEST_DB} -c 'SELECT 1'",
         ]
-      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -164,7 +154,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     volumes:
-      - zookeeper_volume:/var/lib/zookeeper/data
+      - zookeeper-volume:/var/lib/zookeeper/data
     #restart: on-failure
     healthcheck:
       test: echo srvr | nc zookeeper 2181 || exit 1
@@ -253,8 +243,7 @@ services:
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
     #restart: on-failure
     volumes:
-      #- kafka-data:/var/lib/kafka/data
-      - kafka_volume:/var/lib/kafka/data
+      - kafka-volume:/var/lib/kafka/data
     healthcheck:
       test: nc -z localhost 9092 || exit -1
       start_period: 15s
@@ -585,9 +574,9 @@ volumes:
   pgadmin-volume:
     name: pgadmin-volume
     driver: local
-  zookeeper_volume:
-    name: zookeeper_volume
+  zookeeper-volume:
+    name: zookeeper-volume
     driver: local
-  kafka_volume:
-    name: kafka_volume
+  kafka-volume:
+    name: kafka-volume
     driver: local

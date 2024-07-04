@@ -23,30 +23,81 @@
   9. customer-api
   10. nextjs.app
 
-# Service 1: `postgres` Docker Container
+# 1. PostgreSQL Docker Container
 
 - Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/tree/main/02-Transactional-Databases/01-postgresql/01-setup-postgresql/01-postgres-docker-container), GitHub repo on how to configure and run postgresql docker container using **docker-compose**.
+  ```yml
+  services:
+  ```
 
-# Service 2: pgadmin
+## Connect to a Postgres Docker Container
 
-# Service 2: `mongo` Docker Container
+- To connect to a **PostgreSQL** instance running within a **Docker container**, you can use the `docker exec` command combined with the `psql` command:
+- Example:
+  ```bash
+    #accessing postgres docker container
+    docker exec -it postgres psql -U admin -d test_db
+  ```
+- Remarks:
+  - Check my [GitHub Repo](https://github.com/nyangweso-rodgers/My-Databases/blob/main/02-Transactional-Databases/01-postgresql/02-connect-to-postgresql/01-psql-commands/Readme.md) for a list of `psql` commands
+
+# 2. MongoDB Docker Container
 
 - Check [github.com/nyangweso-rodgers - Run MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/02-Setup-MongoDB/01-Run-MongoDB-Docker-Container/Readme.md) repo on how to run a mongo docker container using docker-compose.
 - Check [github.com/nyangweso-rodgers - mongoDB replica set](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/01-Fundamentals-of-MongoDB/mongoDB-replica-set/Readme.md) repo, to successfully set up a **MongoDB** **replica set** with **Docker Compose**. This ensures that you have a highly available and resilient MongoDB deployment.
+  ```yml
+  services:
+  ```
 
 # Zookeeper
 
+```yml
+services:
+```
+
 # Kafka
+
+```yml
+services:
+```
 
 # Schema Registry
 
-# Kafka UI
+```yml
+services:
+```
 
 # Debezium
 
+```yml
+services:
+```
+
+## Register Debezium Connector
+
+- To **register** the above **connector**, run the below `curl` commands:
+
+  ```sh
+    curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @register-customer-postgresdb-connector.json
+  ```
+
+# Kafka UI
+
+```yml
+services:
+```
+
 # Debezium UI
 
+```yml
+services:
+```
+
 # Service 3: Metabase Docker Container
+
+```yml
+services:
+```
 
 ## Access Metabase
 
@@ -62,8 +113,6 @@
   5. Username: <username>
   6. Password: <password>
 - Now, you should be able to explore your **PostgreSQL** data using **Metabase**!
-
-
 
 # Resources and Further Reading
 
