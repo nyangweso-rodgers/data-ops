@@ -15,6 +15,7 @@ services:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
     #entrypoint: ["mongod", "--auth", "--config", "/etc/mongod.conf"]
+    #command: ["mongod","--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongodb-community-server-volume:/data/db
   ############################################################################
@@ -101,7 +102,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_TEST_DB: ${POSTGRES_TEST_DB} # The PostgreSQL default database (automatically created at first launch)
-    #command: ["postgres", "-c", "wal_level=logical"]
     command:
       [
         "postgres",
@@ -112,6 +112,7 @@ services:
         "-c",
         "max_wal_senders=10",
       ]
+    #command: ["postgres", "-c", "wal_level=logical"]
     volumes:
       - postgres-volume:/var/lib/postgresql/data
       #- ./scripts:/docker-entrypoint-initdb.d
@@ -122,9 +123,14 @@ services:
           "CMD-SHELL",
           "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d ${POSTGRES_TEST_DB} -c 'SELECT 1'",
         ]
+      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+    #logging:
+    #driver: "json-file"
+    #options:
+    #max-size: "2048m"
   ############################################################################
   # pgadmin
   #
@@ -154,6 +160,7 @@ services:
       - "2181:2181"
     environment:
       ZOOKEEPER_SERVER_ID: 1
+      #ZOOKEEPER_SERVER_ID: 2
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     volumes:
@@ -221,8 +228,12 @@ services:
       #KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
       KAFKA_DEFAULT_REPLICATION_FACTOR: "2"
+
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      #KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      #KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
 
       KAFKA_JMX_PORT: 9092
       KAFKA_JMX_HOSTNAME: localhost
@@ -258,6 +269,7 @@ services:
     #image: confluentinc/cp-schema-registry:latest
     container_name: schema-registry
     hostname: schema-registry
+    restart: unless-stopped
     depends_on:
       kafka:
         condition: service_healthy
@@ -267,7 +279,7 @@ services:
       - "8081:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      #SCHEMA_REGISTRY_HOST_NAME: localhost
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
 
       #SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
@@ -277,7 +289,6 @@ services:
       #SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8081
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
-      #SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
       #SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: 1
       SCHEMA_REGISTRY_DEBUG: "true"
     healthcheck:
@@ -285,6 +296,72 @@ services:
       interval: 10s
       retries: 20
       test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
+  ############################################################################
+  # ksqldb-server
+  #
+  ksqldb-server:
+    image: confluentinc/cp-ksqldb-server:latest
+    #image: confluentinc/cp-ksqldb-server:7.5.3
+    container_name: ksqldb-server
+    depends_on:
+      - kafka
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_CONFIG_DIR: "/etc/ksqldb"
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_BOOTSTRAP_SERVERS: kafka:29092
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+      KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      KSQL_HOST_NAME: ksqldb-server
+      KSQL_CONNECT_URL: "http://connect:8083"
+  ############################################################################
+  # debezium
+  #
+  debezium:
+    image: debezium/connect:latest #https://hub.docker.com/r/debezium/connect
+    restart: always
+    container_name: debezium
+    hostname: debezium
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      STATUS_STORAGE_TOPIC: connect_statuses
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      CONFIG_STORAGE_REPLICATION_FACTOR: 2
+      OFFSET_STORAGE_REPLICATION_FACTOR: 2
+      STATUS_STORAGE_REPLICATION_FACTOR: 2
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      ENABLE_DEBEZIUM_SCRIPTING: "true"
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--silent",
+          "--fail",
+          "-X",
+          "GET",
+          "http://localhost:8083/connectors",
+        ]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
   ############################################################################
   # kafka-ui
   #
@@ -304,56 +381,6 @@ services:
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
   ############################################################################
-  # debezium
-  #
-  debezium:
-    image: debezium/connect:latest #https://hub.docker.com/r/debezium/connect
-    #restart: always
-    container_name: debezium
-    hostname: debezium
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8083:8083"
-    environment:
-      #BOOTSTRAP_SERVERS: kafka:9092
-      BOOTSTRAP_SERVERS: kafka:29092
-      GROUP_ID: 1
-      #CONFIG_STORAGE_TOPIC: kafka_connect_configs
-      CONFIG_STORAGE_TOPIC: connect_configs
-
-      #STATUS_STORAGE_TOPIC: kafka_connect_statuses
-      STATUS_STORAGE_TOPIC: connect_statuses
-
-      #OFFSET_STORAGE_TOPIC: kafka_connect_offsets
-      OFFSET_STORAGE_TOPIC: connect_offsets
-
-      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      ENABLE_DEBEZIUM_SCRIPTING: "true"
-      #CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      #CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
-      #CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "curl",
-          "--silent",
-          "--fail",
-          "-X",
-          "GET",
-          "http://localhost:8083/connectors",
-        ]
-      start_period: 10s
-      interval: 10s
-      timeout: 5s
-      retries: 5
-  ############################################################################
   # debezium-ui
   #
   debezium-ui:
@@ -369,26 +396,7 @@ services:
       #- "8082:8082"
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8083
-  ############################################################################
-  # ksqldb
-  #
-  ksqldb:
-    #image: -confluentinc/ksqldb-server:latest
-    image: confluentinc/cp-ksqldb-server:7.5.3
-    hostname: ksqldb
-    container_name: ksqldb
-    depends_on:
-      - kafka
-      - schema-registry
-    ports:
-      - "8088:8088"
-    environment:
-      KSQL_LISTENERS: http://0.0.0.0:8088
-      #KSQL_BOOTSTRAP_SERVERS: kafka:9092
-      KSQL_BOOTSTRAP_SERVERS: kafka:29092
-      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
-      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+
   ############################################################################
   # metabase
   #
