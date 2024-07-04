@@ -7,7 +7,18 @@
   - API service, and a
   - Next.js Application.
 
-# Services
+# Prerequisites
+
+- Before diving into the project, ensure you have the following prerequisites:
+  1. Docker — Docker Compose
+  2. Apache Kafka (Stream Processing)
+  3. PostgreSQL
+  4.
+  5. Superset(Report/Dashboard)
+  6. Kafka UI ( Kafka Monitoring)
+  7. Grafana (System Monitoring)
+
+# Setup
 
 - The project has the following services running as Docker containers
 
@@ -49,25 +60,25 @@
   services:
   ```
 
-# Zookeeper
+# 3. Zookeeper
 
 ```yml
 services:
 ```
 
-# Kafka
+# 4. Kafka
 
 ```yml
 services:
 ```
 
-# Schema Registry
+# 5. Schema Registry
 
 ```yml
 services:
 ```
 
-# Debezium
+# 6. Debezium
 
 ```yml
 services:
@@ -81,19 +92,33 @@ services:
     curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @register-customer-postgresdb-connector.json
   ```
 
-# Kafka UI
+- and
+  ```sh
+    curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @register-delegates-survey-postgresdb-connector.json
+  ```
+
+# 7. Kafka UI
 
 ```yml
 services:
 ```
 
-# Debezium UI
+# 8. Debezium UI
 
 ```yml
 services:
 ```
 
-# Service 3: Metabase Docker Container
+# Build Dashboard
+
+- We can build the dashboards using the following tools:
+  1. Metabase
+  2. Superset
+  3. Redash
+  4. Tableau
+  5. Power BI
+
+# 9. Metabase Docker Container
 
 ```yml
 services:
