@@ -34,7 +34,9 @@
   9. customer-api
   10. nextjs.app
 
-# 1. PostgreSQL Docker Container
+# 1. Databases
+
+# 1.1 PostgreSQL Docker Container
 
 - Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/tree/main/02-Transactional-Databases/01-postgresql/01-setup-postgresql/01-postgres-docker-container), GitHub repo on how to configure and run postgresql docker container using **docker-compose**.
   ```yml
@@ -52,7 +54,7 @@
 - Remarks:
   - Check my [GitHub Repo](https://github.com/nyangweso-rodgers/My-Databases/blob/main/02-Transactional-Databases/01-postgresql/02-connect-to-postgresql/01-psql-commands/Readme.md) for a list of `psql` commands
 
-# 2. MongoDB Docker Container
+# 1.2 MongoDB Docker Container
 
 - Check [github.com/nyangweso-rodgers - Run MongoDB Docker Container](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/02-Setup-MongoDB/01-Run-MongoDB-Docker-Container/Readme.md) repo on how to run a mongo docker container using docker-compose.
 - Check [github.com/nyangweso-rodgers - mongoDB replica set](https://github.com/nyangweso-rodgers/My-Databases/blob/main/03-Working-with-MongoDB/01-Fundamentals-of-MongoDB/mongoDB-replica-set/Readme.md) repo, to successfully set up a **MongoDB** **replica set** with **Docker Compose**. This ensures that you have a highly available and resilient MongoDB deployment.
@@ -60,33 +62,148 @@
   services:
   ```
 
-# 3. Zookeeper
+# 2. Messaging Broker Services
+
+# 2.1 Zookeeper
 
 ```yml
 services:
 ```
 
-# 4. Kafka
+# 2.2 Kafka
 
 ```yml
 services:
 ```
 
-# 5. Schema Registry
+## Access Kafka Shell of the Kafka Container
+
+- Access the shell of the **Kafka container** by running the following command:
+
+  ```sh
+    #access kafka shell
+    docker exec -it kafka bash
+  ```
+
+## List Available Kafka Topics
+
+- Use the `kafka-topics` command to list the topics in the **Kafka cluster**:
+  ```sh
+    #list available kafka topics
+    kafka-topics --list --bootstrap-server kafka:29092
+  ```
+- If no **topics** exists, the following will be returned:
+  ```sh
+    __consumer_offsets
+    _schemas
+  ```
+
+## Delete Kafka Topic
+
+- To delete a topic use the `kafka-topics` command with the `--delete` option.
+  - Syntax:
+    ```sh
+      kafka-topics --bootstrap-server localhost:29092 --delete --topic <topic_name>
+    ```
+- Example:
+  ```sh
+    kafka-topics --bootstrap-server localhost:29092 --delete --topic  test-kafka-topic
+  ```
+
+# 2.3 Schema Registry
 
 ```yml
 services:
 ```
 
-# 6. Debezium
+# 2.4 Debezium
 
 ```yml
 services:
 ```
 
-## Register Debezium Connector
+## Configure Debezum Connector
 
-- To **register** the above **connector**, run the below `curl` commands:
+```json
+{
+  "name": "customer-postgresdb-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "plugin.name": "pgoutput",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "admin",
+    "database.password": "<password>",
+    "database.dbname": "test_db",
+    "database.server.name": "postgres",
+    "table.include.list": "public.customer",
+    "heartbeat.interval.ms": "5000",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": false,
+    "topic.prefix": "test_db",
+    "topic.creation.enable": "true",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+    "topic.creation.default.cleanup.policy": "delete",
+    "topic.creation.default.retention.ms": "604800000"
+  }
+}
+```
+
+## Properties
+
+- Other **properties** include:
+
+  1. `publication.autocreate.mode`
+     - Example: `"publication.autocreate": "filtered"`
+     - Setting `publication.autocreate.mode` property to `"filtered"` instructs **Debezium** to automatically create a **publication** that includes only the tables listed in `table.include.list`. It doesn't specify the exact tables or schema you want to include. However, if you'll be defining your own **publication** explicitly (using `CREATE PUBLICATION` command ), this property is not necessary. Removing it from both connector configurations will streamline your setup.
+
+## Step : Create Publications in PostgreSQL
+
+- Create **publications** for the respective tables in **PostgreSQL**.
+
+  ```sql
+    -- Connect to your PostgreSQL database
+    psql -h localhost -U admin -d test_db
+
+    -- Create a publication for the customer table
+    CREATE PUBLICATION debezium_customer_publication FOR TABLE public.customer;
+
+    -- Create a publication for the delegates_survey table
+    CREATE PUBLICATION debezium_delegates_survey_publication FOR TABLE public.delegates_survey;
+  ```
+
+## Step : Verifying the Setup
+
+1. **Check Replication Slot Status**: Ensure both replication slots are correctly configured and active.
+   ```sql
+    SELECT * FROM pg_replication_slots;
+   ```
+2. **Check Publications**: Verify that the publications include the correct tables.
+   ```sql
+    -- Check the publications
+    SELECT * FROM pg_publication;
+    -- Check the tables associated with each publication
+    SELECT * FROM pg_publication_tables;
+   ```
+3. **Check Kafka Topics**: Ensure that Kafka topics are created and data is being streamed correctly.
+
+## Step : Remove the Unused debezium Slot
+
+1. Drop the Unused Slot:
+   ```sql
+    SELECT pg_drop_replication_slot('debezium');
+   ```
+2. Verify Slots After Dropping:
+   ```sql
+    SELECT * FROM pg_replication_slots;
+   ```
+
+## Step : Register Debezium Connector(s) using `curl` Commands
+
+- To **register** debezium **connector**, run the below `curl` commands:
 
   ```sh
     curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @register-customer-postgresdb-connector.json
@@ -97,19 +214,32 @@ services:
     curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @register-delegates-survey-postgresdb-connector.json
   ```
 
-# 7. Kafka UI
+## Step : Delete Debezium Connector(s) using `curl` Commands
+
+- Remove the **connectors** by:
+  ```sh
+    curl -X DELETE http://localhost:8083/connectors/customer-postgresdb-connector
+  ```
+- And:
+  ```sh
+    curl -X DELETE http://localhost:8083/connectors/delegates-surveys-postgresdb-connector
+  ```
+
+# 3. GUI Servces
+
+## 3.1 Kafka UI
 
 ```yml
 services:
 ```
 
-# 8. Debezium UI
+## 3.2 Debezium UI
 
 ```yml
 services:
 ```
 
-# Build Dashboard
+# 4. Dashboards
 
 - We can build the dashboards using the following tools:
   1. Metabase
@@ -118,7 +248,7 @@ services:
   4. Tableau
   5. Power BI
 
-# 9. Metabase Docker Container
+## 4.1 Metabase Docker Container
 
 ```yml
 services:
