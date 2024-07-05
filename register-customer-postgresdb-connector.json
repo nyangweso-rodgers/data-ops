@@ -12,7 +12,6 @@
     "database.server.name": "postgres",
     "table.include.list": "public.customer",
     "heartbeat.interval.ms": "5000",
-    "publication.autocreate.mode": "filtered",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter.schemas.enable": false,
@@ -21,6 +20,9 @@
     "topic.creation.default.replication.factor": "1",
     "topic.creation.default.partitions": "1",
     "topic.creation.default.cleanup.policy": "delete",
-    "topic.creation.default.retention.ms": "604800000"
+    "topic.creation.default.retention.ms": "604800000",
+    "slot.name": "customer_slot",
+    "publication.name": "debezium_customer_publication",
+    "snapshot.mode": "initial"
   }
 }

@@ -10,9 +10,8 @@
     "database.password": "<password>",
     "database.dbname": "test_db",
     "database.server.name": "postgres",
-    "table.include.list": "public.delegates_surveys",
+    "table.include.list": "public.delegates_survey",
     "heartbeat.interval.ms": "5000",
-    "publication.autocreate.mode": "filtered",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter.schemas.enable": false,
@@ -21,6 +20,9 @@
     "topic.creation.default.replication.factor": "1",
     "topic.creation.default.partitions": "1",
     "topic.creation.default.cleanup.policy": "delete",
-    "topic.creation.default.retention.ms": "604800000"
+    "topic.creation.default.retention.ms": "604800000",
+    "slot.name": "delegates_survey_slot",
+    "publication.name": "debezium_delegates_survey_publication",
+    "snapshot.mode": "initial"
   }
 }
