@@ -22,3 +22,6 @@ bigquery-keyfile.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python
+venv/
