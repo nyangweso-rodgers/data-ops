@@ -62,9 +62,15 @@
   services:
   ```
 
+# Real-Time Change Data Capture (CDC)
+
+- **Change Data Capture** (CDC) is a technique for capturing and recording all the changes made to a database over time. This allows for real-time data replication, making it easy to keep multiple systems in sync. CDC does this by detecting row-level changes in database source tables, which are characterized as “Insert,” “Update,” and “Delete” events. CDC then notifies other systems or services that rely on the same data.​
+
 # 2. Messaging Broker Services
 
 # 2.1 Zookeeper
+
+- When working with Apache Kafka, **ZooKeeper** is primarily used to track the status of nodes in the Kafka cluster and maintain a list of Kafka topics and messages.
 
 ```yml
 services:
@@ -118,49 +124,15 @@ services:
 
 # 2.4 Debezium
 
+- **Debezium** specializes in **CDC**; it’s an open-source platform that allows you to easily stream changes from database to other systems using CDC
+
 ```yml
 services:
 ```
 
-## Configure Debezum Connector
+- For a full setup and configuration, see my []()
 
-```json
-{
-  "name": "customer-postgresdb-connector",
-  "config": {
-    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-    "tasks.max": "1",
-    "plugin.name": "pgoutput",
-    "database.hostname": "postgres",
-    "database.port": "5432",
-    "database.user": "admin",
-    "database.password": "<password>",
-    "database.dbname": "test_db",
-    "database.server.name": "postgres",
-    "table.include.list": "public.customer",
-    "heartbeat.interval.ms": "5000",
-    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
-    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-    "value.converter.schemas.enable": false,
-    "topic.prefix": "test_db",
-    "topic.creation.enable": "true",
-    "topic.creation.default.replication.factor": "1",
-    "topic.creation.default.partitions": "1",
-    "topic.creation.default.cleanup.policy": "delete",
-    "topic.creation.default.retention.ms": "604800000"
-  }
-}
-```
-
-## Properties
-
-- Other **properties** include:
-
-  1. `publication.autocreate.mode`
-     - Example: `"publication.autocreate": "filtered"`
-     - Setting `publication.autocreate.mode` property to `"filtered"` instructs **Debezium** to automatically create a **publication** that includes only the tables listed in `table.include.list`. It doesn't specify the exact tables or schema you want to include. However, if you'll be defining your own **publication** explicitly (using `CREATE PUBLICATION` command ), this property is not necessary. Removing it from both connector configurations will streamline your setup.
-
-## Step : Create Publications in PostgreSQL
+## Step 2: Create Publications in PostgreSQL
 
 - Create **publications** for the respective tables in **PostgreSQL**.
 
@@ -175,7 +147,7 @@ services:
     CREATE PUBLICATION debezium_delegates_survey_publication FOR TABLE public.delegates_survey;
   ```
 
-## Step : Verifying the Setup
+## Step 3: Verifying the Setup
 
 1. **Check Replication Slot Status**: Ensure both replication slots are correctly configured and active.
    ```sql
@@ -190,7 +162,7 @@ services:
    ```
 3. **Check Kafka Topics**: Ensure that Kafka topics are created and data is being streamed correctly.
 
-## Step : Remove the Unused debezium Slot
+## Step 4: Remove the Unused debezium Slot
 
 1. Drop the Unused Slot:
    ```sql
@@ -200,30 +172,6 @@ services:
    ```sql
     SELECT * FROM pg_replication_slots;
    ```
-
-## Step : Register Debezium Connector(s) using `curl` Commands
-
-- To **register** debezium **connector**, run the below `curl` commands:
-
-  ```sh
-    curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @register-customer-postgresdb-connector.json
-  ```
-
-- and
-  ```sh
-    curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @register-delegates-survey-postgresdb-connector.json
-  ```
-
-## Step : Delete Debezium Connector(s) using `curl` Commands
-
-- Remove the **connectors** by:
-  ```sh
-    curl -X DELETE http://localhost:8083/connectors/customer-postgresdb-connector
-  ```
-- And:
-  ```sh
-    curl -X DELETE http://localhost:8083/connectors/delegates-surveys-postgresdb-connector
-  ```
 
 # 3. GUI Servces
 
@@ -275,3 +223,5 @@ services:
 
 2. [github.com/nyangweso-rodgers - Setting Express.js Development Environment](https://github.com/nyangweso-rodgers/Programming-with-JavaScript/blob/main/03-JavaScript-Frameworks/02-Express.js/01-Setting-Express-Development-Environment/Readme.md)
 3. [github.com/nyangweso-rodgers - Docker Compose File](https://github.com/nyangweso-rodgers/My-Journey-Into-Computer-Science/blob/master/04-VMs-vs-Containers/02-Containers/01-Docker/02-Docker-Compose-File/Readme.md)
+4. [mohamed-dhaoui.medium.com - data-streaming-journey-moving-from-postgresql-to-bigquery-with-kafka-connect-and-debezium-2679fdbbffd0](https://mohamed-dhaoui.medium.com/data-streaming-journey-moving-from-postgresql-to-bigquery-with-kafka-connect-and-debezium-2679fdbbffd0)
+5. [Debezium Official Documentation](https://debezium.io/documentation/reference/stable/tutorial.html)
