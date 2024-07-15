@@ -1,5 +1,5 @@
 {
-  "name": "postgresdb-connector-for-customer",
+  "name": "postgresdb-connector-for-customer-v1",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "tasks.max": "1",
