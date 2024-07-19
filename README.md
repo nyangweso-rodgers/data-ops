@@ -132,47 +132,6 @@ services:
 
 - For a full setup and configuration, see my []()
 
-## Step 2: Create Publications in PostgreSQL
-
-- Create **publications** for the respective tables in **PostgreSQL**.
-
-  ```sql
-    -- Connect to your PostgreSQL database
-    psql -h localhost -U admin -d test_db
-
-    -- Create a publication for the customer table
-    CREATE PUBLICATION debezium_customer_publication FOR TABLE public.customer;
-
-    -- Create a publication for the delegates_survey table
-    CREATE PUBLICATION debezium_delegates_survey_publication FOR TABLE public.delegates_survey;
-  ```
-
-## Step 3: Verifying the Setup
-
-1. **Check Replication Slot Status**: Ensure both replication slots are correctly configured and active.
-   ```sql
-    SELECT * FROM pg_replication_slots;
-   ```
-2. **Check Publications**: Verify that the publications include the correct tables.
-   ```sql
-    -- Check the publications
-    SELECT * FROM pg_publication;
-    -- Check the tables associated with each publication
-    SELECT * FROM pg_publication_tables;
-   ```
-3. **Check Kafka Topics**: Ensure that Kafka topics are created and data is being streamed correctly.
-
-## Step 4: Remove the Unused debezium Slot
-
-1. Drop the Unused Slot:
-   ```sql
-    SELECT pg_drop_replication_slot('debezium');
-   ```
-2. Verify Slots After Dropping:
-   ```sql
-    SELECT * FROM pg_replication_slots;
-   ```
-
 # 3. GUI Servces
 
 ## 3.1 Kafka UI
