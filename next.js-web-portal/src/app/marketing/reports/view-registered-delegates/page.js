@@ -1,4 +1,4 @@
-const RegsteredDelegatesReport = () => {
+const RegisteredDelegatesReport = () => {
   return (
     <>
       <section>
@@ -10,4 +10,4 @@ const RegsteredDelegatesReport = () => {
   );
 };
 
-export default RegsteredDelegatesReport;
+export default RegisteredDelegatesReport;

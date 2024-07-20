@@ -37,6 +37,16 @@ const LeftSidebarPage = () => {
                   <span>Reports</span>
                   <ul>
                     <li>
+                      <Link href="/marketing-reports/view-registered-delegates">
+                        View Registered Delegates
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/marketing-reports/view-delegates-survey">
+                        View Delegates Survey
+                      </Link>
+                    </li>
+                    <li>
                       <Link href="/marketing-reports/view-participants-survey">
                         View Participant's Survey
                       </Link>
@@ -62,6 +72,14 @@ const LeftSidebarPage = () => {
                       </Link>
                     </li>
                   </ul>
+                </li>
+              </ul>
+            </li>
+            <li>
+              <span>Sales</span>
+              <ul>
+                <li>
+                  <Link href="#">Payments</Link>
                 </li>
               </ul>
             </li>

@@ -1,6 +1,10 @@
-# Next.js Application
+# Next.js Web Portal
 
 ## Table Of Contents
+
+# Description
+
+Create a Web Portal with Next.js.
 
 # Setup
 
