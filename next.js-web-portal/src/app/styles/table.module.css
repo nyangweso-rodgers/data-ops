@@ -1,6 +1,25 @@
+.table {
+  border-spacing: 2px;
+  text-indent: 0;
+  box-sizing: border-box;
+  border-collapse: separate;
+  text-align: left;
+}
+.tableHead {
+  border-block-end: 2px solid;
+  background: whitesmoke;
+}
+.tableFooter {
+  border-block: 2px solid;
+  background: whitesmoke;
+}
+.tableData {
+  border: 1px solid lightgrey;
+  padding: 0.25rem 0.75rem;
+}
 .tableHeader th {
   padding: 12px 0;
   text-align: left;
-  background-color: #04AA6D;
+  background-color: #04aa6d;
   color: #fff;
 }
