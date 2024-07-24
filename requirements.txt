@@ -1,6 +1,7 @@
 cachetools==5.3.3
 certifi==2024.7.4
 charset-normalizer==3.3.2
+confluent-kafka==2.5.0
 google-api-core==2.19.1
 google-auth==2.32.0
 google-cloud-bigquery==3.25.0
