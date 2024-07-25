@@ -1,0 +1,6 @@
+{
+  "type": "record",
+  "name": "delegatesSurvey",
+  "namespace": "com.example",
+  "fields": [{ "name": "id", "type": "string" }]
+}
