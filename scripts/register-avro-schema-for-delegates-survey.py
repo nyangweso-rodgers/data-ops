@@ -2,7 +2,7 @@ import json
 import requests
 
 # Read the schema file
-with open('./delegates-survey.avsc', 'r') as file:
+with open('../schema/delegates-survey.avsc', 'r') as file:
     schema = file.read()
 
 # Create the payload
