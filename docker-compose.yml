@@ -162,6 +162,8 @@ services:
       start_period: 10s
       retries: 20
       interval: 10s
+    networks:
+      - kafka-network
   ############################################################################
   # kafka
   #
@@ -194,6 +196,10 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "2"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
       #KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9101,PLAINTEXT_INTERNAL://0.0.0.0:29091
       #KAFKA_LISTENERS: PLAINTEXT://kafka:29092, PLAINTEXT_HOST://localhost:9101
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
@@ -205,19 +211,14 @@ services:
       #KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
 
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT, PLAINTEXT_HOST:PLAINTEXT
       #KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
 
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       #KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
 
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-
       #KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
-      KAFKA_DEFAULT_REPLICATION_FACTOR: "2"
 
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       #KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
@@ -236,10 +237,7 @@ services:
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:29092
       CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:2181
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
-
       CONFLUENT_METRICS_ENABLE: "true"
-      #CONFLUENT_METRICS_ENABLE: 'false'
-
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
     #restart: on-failure
     volumes:
@@ -250,6 +248,8 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+    networks:
+      - kafka-network
   ############################################################################
   # schema-registry
   #
@@ -285,15 +285,19 @@ services:
       interval: 10s
       retries: 20
       test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
+    networks:
+      - kafka-network
   ############################################################################
   # ksqldb-server
   #
   ksqldb-server:
     image: confluentinc/cp-ksqldb-server:latest
     #image: confluentinc/cp-ksqldb-server:7.5.3
+    hostname: ksqldb-server
     container_name: ksqldb-server
     depends_on:
       - kafka
+      - schema-registry
     ports:
       - "8088:8088"
     environment:
@@ -305,6 +309,8 @@ services:
       KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
       KSQL_HOST_NAME: ksqldb-server
       KSQL_CONNECT_URL: "http://connect:8083"
+    networks:
+      - kafka-network
   ############################################################################
   # debezium
   #
@@ -329,13 +335,13 @@ services:
       CONFIG_STORAGE_REPLICATION_FACTOR: 2
       OFFSET_STORAGE_REPLICATION_FACTOR: 2
       STATUS_STORAGE_REPLICATION_FACTOR: 2
-      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      #CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      #CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       ENABLE_DEBEZIUM_SCRIPTING: "true"
-      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
-      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      #CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
       PLUGIN_PATH: /kafka/connect/plugins #added as part of the sink connector configuration
       GOOGLE_APPLICATION_CREDENTIALS: /etc/debezium/bigquery-keyfile.json # Specify the path inside the container
     healthcheck:
@@ -357,6 +363,55 @@ services:
       - ./bigquery-keyfile.json:/etc/debezium/bigquery-keyfile.json # Mount the service account key
       - ./plugins:/kafka/connect/plugins # Mount the plugins directory
   ############################################################################
+  cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
+    #image: confluentinc/cp-kafka-connect:latest
+    image: confluentinc/cp-kafka-connect:7.7.0
+    container_name: cp-kafka-connect
+    hostname: cp-kafka-connect
+    depends_on:
+      - kafka
+      - postgres
+    ports:
+      - "8084:8084"
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
+      CONNECT_REST_ADVERTISED_HOST_NAME: cp-kafka-connect
+      CONNECT_GROUP_ID: "kafka-connect"
+      CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
+
+      #CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
+      #CONNECT_CONFIG_STORAGE_TOPIC: _kafka-connect-group-01-configs
+      CONNECT_CONFIG_STORAGE_TOPIC: "__connect-config"
+
+      #CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
+      #CONNECT_OFFSET_STORAGE_TOPIC: _kafka-connect-group-01-offsets
+      CONNECT_OFFSET_STORAGE_TOPIC: "__connect-offsets"
+
+      #CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
+      #CONNECT_STATUS_STORAGE_TOPIC: _kafka-connect-group-01-status
+      CONNECT_STATUS_STORAGE_TOPIC: "__connect-status"
+
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+
+      #CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8085"
+      #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
+
+      #CONNECT_VALUE_CONVERTER: "io.confluent.connect.avro.AvroConverter"
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      #CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
+
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+
+      CONNECT_ZOOKEEPER_CONNECT: "zookeeper1:2181"
+  ############################################################################
   # kafka-ui
   #
   kafka-ui:
@@ -374,31 +429,6 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
-  ############################################################################
-  # akhq
-  #
-  #akhq:
-  #image: tchiotludo/akhq:latest
-  #container_name: akhq
-  #depends_on:
-  #- kafka
-  #- schema-registry
-  #- debezium
-  #ports:
-  #- "8084:8084"
-  #environment:
-  #AKHQ_CONFIGURATION: |
-  #akhq:
-  #connections:
-  #kafka-cluster:
-
-  #properties:
-  #bootstrap.servers: "kafka:29092"
-  #schema-registry:
-  #url: "http://schema-registry:8081"
-  #debezium:
-  #- name: "debezium"
-  #url: "http://debezium:8083"
   ############################################################################
   # ksqldb-cli
   #
@@ -487,7 +517,7 @@ services:
     env_file:
       - ./next.js-web-portal/.env
     #volumes:
-      #- /next.js-web-portal/src/app/prisma
+    #- /next.js-web-portal/src/app/prisma
     #command: sh -c "npx prisma migrate deploy && npm run dev"
     #entrypoint: ["sh", "/migrate.sh"]  # Execute migrate.sh script first
   ############################################################################
@@ -513,47 +543,47 @@ services:
   ############################################################################
   #Superset
   #
-  superset:
-    image: alexmerced/dremio-superset
-    container_name: superset
-    ports:
-      - "8088:8088"
-    environment:
-      - ADMIN_USERNAME=admin
-      - ADMIN_EMAIL=admin@superset.com
-      - ADMIN_PASSWORD=admin
+  #superset:
+  #image: alexmerced/dremio-superset
+  #container_name: superset
+  #ports:
+  #- "8088:8088"
+  #environment:
+  #- ADMIN_USERNAME=admin
+  #- ADMIN_EMAIL=admin@superset.com
+  #- ADMIN_PASSWORD=admin
   ############################################################################
   # kafka-producer-with-node.js
   #
-  kafka-producer-with-node.js:
-    build:
-      context: ./kafka-producer-with-node.js
-      dockerfile: Dockerfile
-    image: kafka-producer-with-node.js
-    container_name: kafka-producer-with-node.js
-    depends_on:
-      - kafka
-    ports:
-      - 3004:3004
-    environment:
-      - KAFKA_HOST=${KAFKA_HOST}
-      - KAFKA_TOPIC=${KAFKA_TOPIC}
-      #KAFKA_BROKER: kafka:9092
+  #kafka-producer-with-node.js:
+  #build:
+  #context: ./kafka-producer-with-node.js
+  #dockerfile: Dockerfile
+  #image: kafka-producer-with-node.js
+  #container_name: kafka-producer-with-node.js
+  #depends_on:
+  #- kafka
+  #ports:
+  #- 3004:3004
+  #environment:
+  #- KAFKA_HOST=${KAFKA_HOST}
+  #- KAFKA_TOPIC=${KAFKA_TOPIC}
+  #KAFKA_BROKER: kafka:9092
   ############################################################################
   # mongodb-change-stream-app
   #
-  mongodb-change-stream-app:
-    build:
-      context: ./mongodb-change-stream-app
-      dockerfile: Dockerfile
-    image: mongodb-change-stream-app
-    container_name: mongodb-change-stream-app
-    depends_on:
-      - mongodb-community-server
-    environment:
-      MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
-    ports:
-      - "4001:4001"
+  #mongodb-change-stream-app:
+  #build:
+  #context: ./mongodb-change-stream-app
+  #dockerfile: Dockerfile
+  #image: mongodb-change-stream-app
+  #container_name: mongodb-change-stream-app
+  #depends_on:
+  #- mongodb-community-server
+  #environment:
+  #MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
+  #ports:
+  #- "4001:4001"
   ############################################################################
   # mongo-to-kafka
   #
@@ -591,6 +621,10 @@ services:
 ############################################################################
 # networks
 #
+networks:
+  kafka-network:
+    driver: bridge
+    name: kafka-network
 ############################################################################
 # volumes
 #
@@ -601,12 +635,6 @@ volumes:
   mongodb-volume:
     name: mongodb-volume
     driver: local
-  #mongo_secondary1_volume:
-  #name: mongo_secondary1_volume
-  #driver: local
-  #mongo_secondary2_volume:
-  #name: mongo_secondary2_volume
-  #driver: local
   postgres-volume:
     name: postgres-volume
     driver: local
