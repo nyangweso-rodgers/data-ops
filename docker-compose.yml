@@ -429,6 +429,8 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
+    networks:
+      - kafka-network
   ############################################################################
   # ksqldb-cli
   #
