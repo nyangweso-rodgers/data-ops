@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Configuration;
 public class KafkaConsumerConfig { 
 
     private static final Logger log = LoggerFactory.getLogger(KafkaConsumerConfig.class);
-    public static void main(String[] args) { 
+    public KafkaConsumerConfig() { 
 		//System.out.println("Test Kafka Consumer"); 
-        log.info("Kafka Consumer");
+        log.info("........................... Starting Kafka Consumer");
 	}  
 }
