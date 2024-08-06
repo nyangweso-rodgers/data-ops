@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: spring-boot-api-with-postgresql
+server:
+  port: 9094
