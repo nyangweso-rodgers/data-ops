@@ -482,6 +482,19 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
   ############################################################################
+  # Node.js Kafka Producer
+  #
+  node.js-kafka-client:
+    build:
+      context: ./kafka-clients/node.js-kafka-client
+      dockerfile: Dockerfile
+    image: node.js-kafka-client
+    container_name: node.js-kafka-client
+    ports:
+      - "3004:3004"
+    depends_on:
+      - kafka
+  ############################################################################
   # metabase
   #
   #metabase:
