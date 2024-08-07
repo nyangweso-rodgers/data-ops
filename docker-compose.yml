@@ -162,8 +162,8 @@ services:
       start_period: 10s
       retries: 20
       interval: 10s
-    networks:
-      - kafka-network
+    #networks:
+    #- kafka-network
   ############################################################################
   # kafka
   #
@@ -248,8 +248,8 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
-    networks:
-      - kafka-network
+    #networks:
+    #- kafka-network
   ############################################################################
   # schema-registry
   #
@@ -285,8 +285,8 @@ services:
       interval: 10s
       retries: 20
       test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
-    networks:
-      - kafka-network
+    #networks:
+    #- kafka-network
   ############################################################################
   # ksqldb-server
   #
@@ -309,8 +309,8 @@ services:
       KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
       KSQL_HOST_NAME: ksqldb-server
       KSQL_CONNECT_URL: "http://connect:8083"
-    networks:
-      - kafka-network
+    #networks:
+    #- kafka-network
   ############################################################################
   # debezium
   #
@@ -329,9 +329,12 @@ services:
     environment:
       BOOTSTRAP_SERVERS: kafka:29092
       GROUP_ID: 1
-      CONFIG_STORAGE_TOPIC: connect_configs
-      STATUS_STORAGE_TOPIC: connect_statuses
-      OFFSET_STORAGE_TOPIC: connect_offsets
+      #CONFIG_STORAGE_TOPIC: connect_configs
+      CONFIG_STORAGE_TOPIC: debezium_connect_configs
+      #STATUS_STORAGE_TOPIC: connect_statuses
+      STATUS_STORAGE_TOPIC: debezium_connect_statuses
+      #OFFSET_STORAGE_TOPIC: connect_offsets
+      OFFSET_STORAGE_TOPIC: debezium_connect_offsets
       CONFIG_STORAGE_REPLICATION_FACTOR: 2
       OFFSET_STORAGE_REPLICATION_FACTOR: 2
       STATUS_STORAGE_REPLICATION_FACTOR: 2
@@ -381,15 +384,18 @@ services:
 
       #CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
       #CONNECT_CONFIG_STORAGE_TOPIC: _kafka-connect-group-01-configs
-      CONNECT_CONFIG_STORAGE_TOPIC: "__connect-config"
+      #CONNECT_CONFIG_STORAGE_TOPIC: "__connect-config"
+      CONNECT_CONFIG_STORAGE_TOPIC: cp_connect_configs
 
       #CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
       #CONNECT_OFFSET_STORAGE_TOPIC: _kafka-connect-group-01-offsets
-      CONNECT_OFFSET_STORAGE_TOPIC: "__connect-offsets"
+      #CONNECT_OFFSET_STORAGE_TOPIC: "__connect-offsets"
+      CONNECT_OFFSET_STORAGE_TOPIC: cp_connect_offsets
 
       #CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
       #CONNECT_STATUS_STORAGE_TOPIC: _kafka-connect-group-01-status
-      CONNECT_STATUS_STORAGE_TOPIC: "__connect-status"
+      #CONNECT_STATUS_STORAGE_TOPIC: "__connect-status"
+      CONNECT_STATUS_STORAGE_TOPIC: cp_connect_statuses
 
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
@@ -429,8 +435,8 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
-    networks:
-      - kafka-network
+    #networks:
+    #- kafka-network
   ############################################################################
   # ksqldb-cli
   #
@@ -460,7 +466,21 @@ services:
       #- "8082:8082"
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8083
-
+  ############################################################################
+  # spring-boot-data-pipeline
+  #
+  spring-boot-data-pipeline:
+    build:
+      context: ./spring-boot-data-pipeline
+      dockerfile: Dockerfile
+    image: spring-boot-data-pipeline
+    container_name: spring-boot-data-pipeline
+    ports:
+      - "9093:9093"
+    depends_on:
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
   ############################################################################
   # metabase
   #
@@ -623,10 +643,10 @@ services:
 ############################################################################
 # networks
 #
-networks:
-  kafka-network:
-    driver: bridge
-    name: kafka-network
+#networks:
+#kafka-network:
+#driver: bridge
+#name: kafka-network
 ############################################################################
 # volumes
 #
