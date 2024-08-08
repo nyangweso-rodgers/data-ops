@@ -4,11 +4,11 @@ import dotenv from "dotenv";
 // Load environment variables from .env file
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI_FOR_SURVEY_SERVICE;
+const MONGODB_URI = process.env.MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE;
 
 // Define an asynchronous function to connect to MongoDB
 const connectToMongoDB = async () => {
-  const mongoClient = new MongoClient(MONGO_URI);
+  const mongoClient = new MongoClient(MONGODB_URI);
 
   try {
     // Attempt to connect to the MongoDB server

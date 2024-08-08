@@ -1,5 +1,6 @@
 import db from "./utils/mongo-db-connection.js";
 
+/*
 // Access the 'notifications' collection from the connected database
 const collection = db.collection("participants_survey");
 
@@ -17,3 +18,4 @@ changeStream.on("change", (change) => {
     console.log("New Participant Survey Response", newParticipantSurvey);
   }
 });
+*/
