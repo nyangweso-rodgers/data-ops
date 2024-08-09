@@ -1,15 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-export const createCustomerService = async (customerData) => {
+
+
+async function createCustomerService(customerData) {
   console.log("New Customer Registration Data:", customerData);
   try {
-    const newCustomer = await prisma.customer.create({
+    const newCustomer = await prisma.customers.create({
       data: customerData,
     });
+    console.log("Customer created:", newCustomer); // Log the created customer
     return newCustomer;
   } catch (error) {
-    console.error(error);
+    console.error("Error in createCustomerService:", error);
     throw error; // Re-throw for handling in controller
   }
-};
+}
+export default createCustomerService;

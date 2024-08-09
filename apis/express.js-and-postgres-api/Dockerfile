@@ -15,15 +15,9 @@ COPY . .
 # Generate the Prisma Client
 RUN npx prisma generate
 
-# Start the application and run migrations on container start
-
 # Expose port
 EXPOSE 3005
 
-
-# Copy entrypoint script and make it executable
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-# Use the entrypoint script
-CMD ["/app/entrypoint.sh"]
+# Start the application (replace 'node app.js' if your entry point differs)
+#CMD ["npm", "run", "dev"]
+CMD [ "node", "app.js" ]

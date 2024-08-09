@@ -23,7 +23,7 @@ model Customers {
   created_by String @default("rodgerso65@gmail.com")
   updated_by String @default("rodgerso65@gmail.com")
 
-  @@map("customers") // This will ensure the table name is lowercase "customer"
+  @@map("customers") // This will ensure the table name is lowercase "customers"
 }
 enum CustomerStatus {
   TRUE

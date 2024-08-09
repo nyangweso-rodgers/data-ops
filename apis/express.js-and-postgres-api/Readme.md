@@ -10,6 +10,140 @@
    1. `controllers/`: Contains controller files, which handle **requests** and **responses**.
    2. `routes/`: Defines the application's routes, linking them to the corresponding **controllers**.
    3. `services/`: Contains business logic and service files that interact with the database through **Prisma**.
+   4. `middleware/`
+4. `config/` directory holds configuration files for your application, such as database connections, server settings, and environment variables.
+5. `utils/`: Utility functions and helper modules are stored in the `utils/` directory. These functions perform common tasks like **validation** and formatting that are used throughout the application.
+
+# Project Structure Description
+
+## 1. `app.js`
+
+- The `app.js` file is the entry point of your application. It’s where you initialize the **Express app**, set up **middleware**, define **routes**, and start the server. Think of it as the control center of your web application.
+
+  ```js
+  const express = require("express");
+  const app = express();
+  const config = require("./config");
+  const routes = require("./routes");
+
+  // Middleware setup
+  app.use(express.json());
+
+  // Routes setup
+  app.use("/api", routes);
+
+  // Start server
+  const PORT = config.port || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+
+  module.exports = app;
+  ```
+
+## 2. `src/controllers/`
+
+- **Role**: **Controllers** handle HTTP **requests** and **responses**. They are responsible for:
+  1. Receiving HTTP requests from the client.
+  2. Passing data to the appropriate service or business logic.
+  3. Returning the appropriate **response** to the client.
+- Each file in the **controllers** directory typically corresponds to a different part of your application (e.g., **customers**, **products**).
+- Example (`controllers/customers-controllers.js`):
+
+  ```js
+  import createCustomerService from "../services/customers-service.js";
+
+  async function createCustomerController(req, res) {
+    console.log("Received request body:", req.body);
+    try {
+      const newCustomer = await createCustomerService(req.body);
+      console.log("Customer successfully created:", newCustomer);
+      res.json(newCustomer);
+    } catch (error) {
+      console.error("Error in createCustomerController:", error);
+      res.status(500).json({ message: "Error creating customer" });
+    }
+  }
+
+  export default createCustomerController;
+  ```
+
+  - Here:
+    - Request Handling: Parse the request `body`, `headers`, and query parameters.
+    - Response Handling: Send back the response, including status codes and data.
+    - Error Handling: Catch errors and return appropriate HTTP error responses.
+
+## 3. `src/services/`
+
+- **Role**: **Services** contain the business logic and interact with the data layer or other external services. They are responsible for:
+
+  1. Performing core business operations.
+  2. Interacting with databases or other external systems.
+  3. Returning data to controllers.
+
+- Example (```src/services/customers-service.js`)
+
+  ```js
+  import { PrismaClient } from "@prisma/client";
+
+  const prisma = new PrismaClient();
+
+  async function createCustomerService(customerData) {
+    console.log("New Customer Registration Data:", customerData);
+    try {
+      const newCustomer = await prisma.customers.create({
+        data: customerData,
+      });
+      console.log("Customer created:", newCustomer);
+      return newCustomer;
+    } catch (error) {
+      console.error("Error in createCustomerService:", error);
+      throw error;
+    }
+  }
+
+  export default createCustomerService;
+  ```
+
+  - Here:
+    - Business Logic: Implement the core functionality and rules of the application.
+    - Data Access: Interact with the database or other services to fetch, update, or delete data.
+    - Error Handling: Handle and possibly log errors related to business operations.
+
+## 4. `src/routes/`
+
+- **Routes** define the paths to different parts of your application and map them to the appropriate **controllers**.
+- Example (`routes/api.js`):
+
+  ```js
+  const express = require("express");
+  const router = express.Router();
+  const customerController = require("../controllers/customer");
+
+  router.get("/customers", customerController.getAllCustomers);
+
+  module.exports = router;
+  ```
+
+## `src/middleware/`
+
+- **Middleware** functions are used to process requests before they reach the **controllers**. They can handle tasks like **authentication**, **logging**, and request validation.
+- Example (`middleware/auth.js`):
+
+  ```js
+  module.exports = (req, res, next) => {
+    const token = req.header("Authorization");
+    if (!token) return res.status(401).json({ message: "Access Denied" });
+
+    try {
+      const verified = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = verified;
+      next();
+    } catch (err) {
+      res.status(400).json({ message: "Invalid Token" });
+    }
+  };
+  ```
 
 # Setup
 
@@ -114,13 +248,21 @@
   ```prisma
     datasource db {
       provider = "PostgreSQL"
-      url      = env("POSTGRES_TEST_DATABASE_URL")
+      url      = env("POSTGRES_USERS_DATABASE_URL")
       }
 
   ```
 
 ### Step 2.5: Prisma Migration
 
+- **Prisma Migrate** is a database migration tool that supports the model/ entity-first migration pattern to manage database schemas in your **local environment** and in **production**.
+- How to get started with migrating your **schema** in a development environment using **Prisma Migrate**.
+  1. Create the first migration:
+     ```sh
+      prisma migrate dev --name init
+     ```
+     - Your **Prisma schema** is now in sync with your database schema and you have initialized a migration history:
+  2.
 - Till now **Prisma** and our database is completely separate! They are able to interact with each other but defining something in **prisma** won't do anything in the database!
 - Suppose We made changes to our **schema**, To reflect those changes in our DB, we have to **migrate** our new **schema**! For that we have to use a command:
   ```sh
@@ -154,6 +296,12 @@
   ```
 
 - This starts a container from the my-node-app image, maps the container's port 3004 to the host's port 3004, and runs the application. You should be able to access your API at http://localhost:3005
+
+# Test API with `curl`
+
+```sh
+  curl -X POST http://localhost:3005/api/customers/create -H "Content-Type: application/json" -d '{"first_name": "John", "last_name": "Doe"}'
+```
 
 # Test API with Postman
 
