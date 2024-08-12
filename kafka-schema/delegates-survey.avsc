@@ -8,6 +8,7 @@
     { "name": "last_name", "type": "string", "default": "" },
     { "name": "company_name", "type": "string", "default": "" },
     { "name": "created_by", "type": "string", "default": "" },
+    { "name": "updated_by", "type": "string", "default": "" },
     { "name": "updated_by_name", "type": "string", "default": "" },
     { "name": "created_by_name", "type": "string", "default": "" }
   ]
