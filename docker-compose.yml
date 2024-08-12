@@ -18,6 +18,8 @@ services:
     #command: ["mongod","--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongodb-community-server-volume:/data/db
+    networks:
+      - my-network
   ############################################################################
   # mongo
   #
@@ -48,42 +50,8 @@ services:
     #start_period: 30s
     #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
     #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-  ############################################################################
-  # mongo-secondary1
-  #
-  #mongo-secondary1:
-  #image: mongo:latest
-  #container_name: mongo-secondary1
-  #ports:
-  #- "27018:27018" # Map different port for each member
-  #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
-  #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27018"]
-  #volumes:
-  #- mongo_secondary1_volume:/data/db
-  #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-  #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-  #entrypoint:
-  #["mongod", "--replSet", "rsmongo", "--bind_ip_all", "--port", "27018"]
-  #networks:
-  #- mongo-network
-  ############################################################################
-  # mongo-secondary2
-  #
-  #mongo-secondary2:
-  #image: mongo:latest
-  #container_name: mongo-secondary2
-  #ports:
-  #- "27019:27019" # Map different port for each member
-  #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
-  #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27019"]
-  #volumes:
-  #- mongo_secondary2_volume:/data/db
-  #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-  #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-  #entrypoint:
-  #["mongod", "--replSet", "rsmongo", "--bind_ip_all", "--port", "27019"]
-  #networks:
-  #- mongo-network
+    networks:
+      - my-network
   ############################################################################
   # postgres DB
   #
@@ -121,6 +89,8 @@ services:
     #driver: "json-file"
     #options:
     #max-size: "2048m"
+    networks:
+      - my-network
   ############################################################################
   # pgadmin
   #
@@ -139,6 +109,8 @@ services:
       - pgadmin-volume:/var/lib/pgadmin
     depends_on:
       - postgres
+    networks:
+      - my-network
   ############################################################################
   # zookeeper
   #
@@ -162,8 +134,8 @@ services:
       start_period: 10s
       retries: 20
       interval: 10s
-    #networks:
-    #- kafka-network
+    networks:
+      - my-network
   ############################################################################
   # kafka
   #
@@ -191,7 +163,7 @@ services:
         condition: service_healthy
     ports:
       - "29092:29092"
-      - "9101:9101"
+      #- "9101:9101"
       - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
@@ -248,8 +220,8 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
-    #networks:
-    #- kafka-network
+    networks:
+      - my-network
   ############################################################################
   # schema-registry
   #
@@ -285,8 +257,8 @@ services:
       interval: 10s
       retries: 20
       test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
-    #networks:
-    #- kafka-network
+    networks:
+      - my-network
   ############################################################################
   # ksqldb-server
   #
@@ -309,8 +281,8 @@ services:
       KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
       KSQL_HOST_NAME: ksqldb-server
       KSQL_CONNECT_URL: "http://connect:8083"
-    #networks:
-    #- kafka-network
+    networks:
+      - my-network
   ############################################################################
   # debezium
   #
@@ -365,6 +337,8 @@ services:
     volumes:
       - ./bigquery-keyfile.json:/etc/debezium/bigquery-keyfile.json # Mount the service account key
       - ./plugins:/kafka/connect/plugins # Mount the plugins directory
+    networks:
+      - my-network
   ############################################################################
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
     #image: confluentinc/cp-kafka-connect:latest
@@ -417,6 +391,8 @@ services:
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
 
       CONNECT_ZOOKEEPER_CONNECT: "zookeeper1:2181"
+    networks:
+      - my-network
   ############################################################################
   # kafka-ui
   #
@@ -435,8 +411,8 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
-    #networks:
-    #- kafka-network
+    networks:
+      - my-network
   ############################################################################
   # ksqldb-cli
   #
@@ -450,6 +426,8 @@ services:
       - ksqldb-server
     entrypoint: /bin/sh
     tty: true
+    networks:
+      - my-network
   ############################################################################
   # debezium-ui
   #
@@ -466,6 +444,8 @@ services:
       #- "8082:8082"
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8083
+    networks:
+      - my-network
   ############################################################################
   # spring-boot-data-pipeline
   #
@@ -481,6 +461,8 @@ services:
       - kafka
     environment:
       SPRING_PROFILES_ACTIVE: dev
+    networks:
+      - my-network
   ############################################################################
   # Node.js Kafka Producer
   #
@@ -494,6 +476,8 @@ services:
       - "3004:3004"
     depends_on:
       - kafka
+    networks:
+      - my-network
   ############################################################################
   # metabase
   #
@@ -555,10 +539,12 @@ services:
     #- /next.js-web-portal/src/app/prisma
     #command: sh -c "npx prisma migrate deploy && npm run dev"
     #entrypoint: ["sh", "/migrate.sh"]  # Execute migrate.sh script first
+    networks:
+      - my-network
   ############################################################################
   # api - with Express.js and postgresql
   #
-  express.js-and-postgresql-api:
+  express.js-and-postgres-api:
     build:
       context: ./apis/express.js-and-postgres-api
       dockerfile: Dockerfile
@@ -568,7 +554,11 @@ services:
       - "3005:3005"
     depends_on:
       - postgres
-    command: sh -c "npx prisma migrate dev --name init && npm start"
+      - pgadmin
+    #command: sh -c "npx prisma migrate dev --name init && npm start" #remove this line after the first deployment
+    #command: ["sh", "-c", "npx prisma migrate dev --name init && npm start"] #This ensures that the migrations are applied in a non-interactive manner.
+    # Add this line
+    #tty: true # Enables interactive mode
     environment:
       PGHOST: ${PGHOST}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -576,6 +566,8 @@ services:
       POSTGRES_USERS_DB: ${POSTGRES_USERS_DB}
     env_file:
       - ./apis/express.js-and-postgres-api/.env
+    networks:
+      - my-network
   ############################################################################
   #Superset
   #
@@ -588,23 +580,6 @@ services:
   #- ADMIN_USERNAME=admin
   #- ADMIN_EMAIL=admin@superset.com
   #- ADMIN_PASSWORD=admin
-  ############################################################################
-  # kafka-producer-with-node.js
-  #
-  #kafka-producer-with-node.js:
-  #build:
-  #context: ./kafka-producer-with-node.js
-  #dockerfile: Dockerfile
-  #image: kafka-producer-with-node.js
-  #container_name: kafka-producer-with-node.js
-  #depends_on:
-  #- kafka
-  #ports:
-  #- 3004:3004
-  #environment:
-  #- KAFKA_HOST=${KAFKA_HOST}
-  #- KAFKA_TOPIC=${KAFKA_TOPIC}
-  #KAFKA_BROKER: kafka:9092
   ############################################################################
   # mongodb-change-stream-app
   #
@@ -620,26 +595,6 @@ services:
   #MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
   #ports:
   #- "4001:4001"
-  ############################################################################
-  # mongo-to-kafka
-  #
-  #mongo-to-kafka:
-  #build:
-  #context: ./mongo-to-kafka
-  #dockerfile: Dockerfile
-  #image: mongo-to-kafka
-  #container_name: mongo-to-kafka
-  #depends_on:
-  #- mongo
-  #- kafka
-  #environment:
-  #- MONGO_URI=${MONGO_URI_FOR_SURVEY_SERVICE}
-  #- KAFKA_HOST=${KAFKA_HOST}
-  #- KAFKA_TOPIC=${KAFKA_TOPIC}
-  #env_file:
-  #- .env
-  #ports:
-  #- "4000:4000"
 
   ############################################################################
   # api-with-express-and-mongo
@@ -657,10 +612,11 @@ services:
 ############################################################################
 # networks
 #
-#networks:
-#kafka-network:
-#driver: bridge
-#name: kafka-network
+networks:
+  my-network:
+  #kafka-network:
+  #driver: bridge
+  #name: kafka-network
 ############################################################################
 # volumes
 #
