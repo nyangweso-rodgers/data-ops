@@ -362,20 +362,9 @@ services:
       CONNECT_GROUP_ID: "kafka-connect"
       CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
 
-      #CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
-      #CONNECT_CONFIG_STORAGE_TOPIC: _kafka-connect-group-01-configs
-      #CONNECT_CONFIG_STORAGE_TOPIC: "__connect-config"
-      CONNECT_CONFIG_STORAGE_TOPIC: cp_connect_configs
-
-      #CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
-      #CONNECT_OFFSET_STORAGE_TOPIC: _kafka-connect-group-01-offsets
-      #CONNECT_OFFSET_STORAGE_TOPIC: "__connect-offsets"
-      CONNECT_OFFSET_STORAGE_TOPIC: cp_connect_offsets
-
-      #CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
-      #CONNECT_STATUS_STORAGE_TOPIC: _kafka-connect-group-01-status
-      #CONNECT_STATUS_STORAGE_TOPIC: "__connect-status"
-      CONNECT_STATUS_STORAGE_TOPIC: cp_connect_statuses
+      CONNECT_CONFIG_STORAGE_TOPIC: _cp-kafka-connect-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: _cp-kafka-connect-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: _cp-kafka-connect-statuses
 
       CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
