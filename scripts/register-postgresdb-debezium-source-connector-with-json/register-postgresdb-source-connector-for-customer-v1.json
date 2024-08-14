@@ -1,35 +1,30 @@
 {
-  "name": "postgresdb-source-connector-for-delegates-survey-v1",
+  "name": "postgresdb-source-connector-for-customer-v1",
   "config": {
     "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
     "tasks.max": "1",
     "plugin.name": "pgoutput",
-
     "database.hostname": "postgres",
     "database.port": "5432",
     "database.user": "admin",
     "database.password": "mypassword",
     "database.dbname": "test_db",
     "database.server.name": "postgres",
-    "database.history.kafka.bootstrap.servers": "kafka:29092",
-    "database.history.kafka.topic": "schema-changes.delegates-survey",
-
-    "table.include.list": "public.delegates_survey",
-
+    "table.include.list": "public.customer",
     "heartbeat.interval.ms": "5000",
 
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter.schemas.enable": false,
 
-    "topic.prefix": "surveys",
+    "topic.prefix": "customer",
     "topic.creation.enable": "true",
     "topic.creation.default.replication.factor": "1",
     "topic.creation.default.partitions": "1",
     "topic.creation.default.cleanup.policy": "compact",
     "topic.creation.default.retention.ms": "604800000",
-
-    "slot.name": "delegates_survey_slot",
-    "publication.name": "debezium_delegates_survey_publication",
+    "slot.name": "customer_slot",
+    "publication.name": "debezium_customer_publication",
     "snapshot.mode": "initial"
   }
 }
