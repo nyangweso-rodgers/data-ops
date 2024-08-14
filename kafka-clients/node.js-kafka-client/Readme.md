@@ -12,6 +12,24 @@
 
 ## Step : Setup Kafka Producer using `kafka-node` Node.js Library
 
+## Step : Create `test-node-js-topic` Kafka Topic
+
+- Access the shell of the **Kafka container** by running the following command:
+
+  ```sh
+    docker exec -it kafka bash
+  ```
+
+- Create a new **kafka topic**, `test-node-js-topic` with `docker exec` command
+  ```sh
+    kafka-topics --create --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1 --topic test-node-js-topic
+  ```
+- Use the `kafka-topics` command to list the **topics** in the **Kafka cluster**:
+  ```sh
+    #available kafka topics
+    kafka-topics --list --bootstrap-server kafka:29092
+  ```
+
 ## Step : Setup Kafka Consumer using `kafka-node` Node.js Library
 
 ## Step : Setup `express.js` Routes
@@ -25,7 +43,7 @@
 ### Send Kafka Message using `curl` Command
 
 ```sh
-  curl -X POST -H "Content-Type: application/json" -d '{"topic": "test-topic", "message": "Hello, Kafka!"}' http://localhost:3004/kafka/send-message
+  curl -X POST -H "Content-Type: application/json" -d '{"topic": "test-node-js-topic", "message": "Test Message with Node.js Client"}' http://localhost:3004/kafka/send-message
 ```
 
 ### Send Kafka Message using `POST`
