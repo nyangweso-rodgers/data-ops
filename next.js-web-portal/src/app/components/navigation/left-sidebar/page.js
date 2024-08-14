@@ -13,7 +13,7 @@ const LeftSidebarPage = () => {
               <Link href="#">Home</Link>
             </li>
             <li>
-              <Link href="#">Dashboard</Link>
+              <Link href="/dashboard">Dashboard</Link>
             </li>
             <li>
               <span>Marketing</span>
