@@ -358,8 +358,8 @@ services:
       - "8084:8084"
     environment:
       CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
-      CONNECT_REST_ADVERTISED_HOST_NAME: cp-kafka-connect
-      CONNECT_GROUP_ID: "kafka-connect"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "cp-kafka-connect"
+      CONNECT_GROUP_ID: "cp-kafka-connect-group"
       CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
 
       CONNECT_CONFIG_STORAGE_TOPIC: _cp-kafka-connect-configs
@@ -386,6 +386,16 @@ services:
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
 
       CONNECT_ZOOKEEPER_CONNECT: "zookeeper1:2181"
+
+      CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
+      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
+      CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/connectors,/usr/share/confluent-hub-components/"
+    volumes:
+      - ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
+      - ./cp-kafka-connect/config:/etc/kafka-connect
+      - ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
+    #command:
     networks:
       - my-network
   ############################################################################
@@ -411,18 +421,18 @@ services:
   ############################################################################
   # ksqldb-cli
   #
-  ksqldb-cli:
-    #image: confluentinc/cp-ksqldb-cli:6.1.0
-    image: confluentinc/cp-ksqldb-cli:latest # usage -> docker-compose exec ksqldb-cli ksql http://ksqldb-server:8088
-    container_name: ksqldb-cli
-    depends_on:
-      - kafka
-      - debezium
-      - ksqldb-server
-    entrypoint: /bin/sh
-    tty: true
-    networks:
-      - my-network
+  #ksqldb-cli:
+  #image: confluentinc/cp-ksqldb-cli:6.1.0
+  #image: confluentinc/cp-ksqldb-cli:latest # usage -> docker-compose exec ksqldb-cli ksql http://ksqldb-server:8088
+  #container_name: ksqldb-cli
+  #depends_on:
+  #- kafka
+  #- debezium
+  #- ksqldb-server
+  #entrypoint: /bin/sh
+  #tty: true
+  #networks:
+  #- my-network
   ############################################################################
   # debezium-ui
   #
