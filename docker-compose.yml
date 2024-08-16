@@ -301,27 +301,29 @@ services:
     environment:
       GROUP_ID: 1
       # Kafka config
-      CONFIG_STORAGE_TOPIC: debezium_connect_configs
-      STATUS_STORAGE_TOPIC: debezium_connect_statuses
-      OFFSET_STORAGE_TOPIC: debezium_connect_offsets
+      CONFIG_STORAGE_TOPIC: _debezium_connect_configs
+      STATUS_STORAGE_TOPIC: _debezium_connect_statuses
+      OFFSET_STORAGE_TOPIC: _debezium_connect_offsets
       BOOTSTRAP_SERVERS: kafka:29092
       CONFIG_STORAGE_REPLICATION_FACTOR: 2
       OFFSET_STORAGE_REPLICATION_FACTOR: 2
       STATUS_STORAGE_REPLICATION_FACTOR: 2
       #CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      #CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      ENABLE_DEBEZIUM_SCRIPTING: "true"
       #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      #KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+       #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
+
+      #CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       #CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      #VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      #CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
+
+      ENABLE_DEBEZIUM_SCRIPTING: "true"
+
       PLUGIN_PATH: /kafka/connect/plugins #added as part of the sink connector configuration
       GOOGLE_APPLICATION_CREDENTIALS: /etc/debezium/bigquery-keyfile.json # Specify the path inside the container
-      # Avro config
-      #KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
-      #VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
-      #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
-      #CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
       #KAFKA_CONNECT_PLUGINS_DIR: /kafka/connect
     healthcheck:
       test:
