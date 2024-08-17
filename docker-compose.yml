@@ -16,6 +16,7 @@ services:
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
     #entrypoint: ["mongod", "--auth", "--config", "/etc/mongod.conf"]
     #command: ["mongod","--replSet", "rs0", "--bind_ip_all"]
+    ######### Volumes ##########
     volumes:
       - mongodb-community-server-volume:/data/db
     networks:
@@ -37,6 +38,7 @@ services:
     #command: [--auth]
     #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27017"]
+    ######### Volumes ##########
     volumes:
       - mongodb-volume:/data/db
     #- ./init-replica-set.js:/docker-entrypoint-initdb.d/init-replica-set.js
@@ -72,6 +74,7 @@ services:
       POSTGRES_TEST_DB: ${POSTGRES_TEST_DB} # The PostgreSQL default database (automatically created at first launch)
     #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
     command: ["postgres", "-c", "wal_level=logical"]
+    ######### Volumes ##########
     volumes:
       - postgres-volume:/var/lib/postgresql/data
     healthcheck:
@@ -105,6 +108,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ######### Volumes ##########
     volumes:
       - pgadmin-volume:/var/lib/pgadmin
     depends_on:
@@ -125,6 +129,7 @@ services:
       #ZOOKEEPER_SERVER_ID: 2
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    ######### Volumes ##########
     volumes:
       - zookeeper-volume:/var/lib/zookeeper/data
     #restart: on-failure
@@ -212,6 +217,7 @@ services:
       CONFLUENT_METRICS_ENABLE: "true"
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
     #restart: on-failure
+    ######### Volumes ##########
     volumes:
       - kafka-volume:/var/lib/kafka/data
     healthcheck:
@@ -262,27 +268,27 @@ services:
   ############################################################################
   # ksqldb-server
   #
-  ksqldb-server:
-    image: confluentinc/cp-ksqldb-server:latest
-    #image: confluentinc/cp-ksqldb-server:7.5.3
-    hostname: ksqldb-server
-    container_name: ksqldb-server
-    depends_on:
-      - kafka
-      - schema-registry
-    ports:
-      - "8088:8088"
-    environment:
-      KSQL_CONFIG_DIR: "/etc/ksqldb"
-      KSQL_LISTENERS: http://0.0.0.0:8088
-      KSQL_BOOTSTRAP_SERVERS: kafka:29092
-      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
-      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
-      KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
-      KSQL_HOST_NAME: ksqldb-server
-      KSQL_CONNECT_URL: "http://connect:8083"
-    networks:
-      - my-network
+  #ksqldb-server:
+  #image: confluentinc/cp-ksqldb-server:latest
+  #image: confluentinc/cp-ksqldb-server:7.5.3
+  #hostname: ksqldb-server
+  #container_name: ksqldb-server
+  #depends_on:
+  #- kafka
+  #- schema-registry
+  #ports:
+  #- "8088:8088"
+  #environment:
+  #KSQL_CONFIG_DIR: "/etc/ksqldb"
+  #KSQL_LISTENERS: http://0.0.0.0:8088
+  #KSQL_BOOTSTRAP_SERVERS: kafka:29092
+  #KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+  #KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+  #KSQL_KSQL_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+  #KSQL_HOST_NAME: ksqldb-server
+  #KSQL_CONNECT_URL: "http://connect:8083"
+  #networks:
+  #- my-network
   ############################################################################
   # debezium
   #
@@ -312,7 +318,7 @@ services:
       #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       #KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
-       #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
+      #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
 
       #CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
@@ -350,20 +356,24 @@ services:
   ############################################################################
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
     #image: confluentinc/cp-kafka-connect:latest
-    image: confluentinc/cp-kafka-connect:7.7.0
+    #image: confluentinc/cp-kafka-connect:7.7.0
+    build: ./cp-kafka-connect
     container_name: cp-kafka-connect
     hostname: cp-kafka-connect
-    depends_on:
-      - kafka
-      - postgres
     ports:
       - "8084:8084"
+    depends_on:
+      - kafka
+      - schema-registry
+      - zookeeper
     environment:
       CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
       CONNECT_REST_ADVERTISED_HOST_NAME: "cp-kafka-connect"
       CONNECT_GROUP_ID: "cp-kafka-connect-group"
       CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
-
+      ########## Storage Topics ##########
+      # config.storage.topic
+      #   The name of the Kafka topic where connector configurations are stored
       CONNECT_CONFIG_STORAGE_TOPIC: _cp-kafka-connect-configs
       CONNECT_OFFSET_STORAGE_TOPIC: _cp-kafka-connect-offsets
       CONNECT_STATUS_STORAGE_TOPIC: _cp-kafka-connect-statuses
@@ -372,9 +382,11 @@ services:
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
 
-      #CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
-      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8085"
+      ########## Converters ##########
+      #CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8085"
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
       #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
 
@@ -387,17 +399,31 @@ services:
       CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
 
-      CONNECT_ZOOKEEPER_CONNECT: "zookeeper1:2181"
+      CONNECT_ZOOKEEPER_CONNECT: "zookeeper:2181"
 
-      CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
-      CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
-      CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
-      CONNECT_PLUGIN_PATH: "/usr/share/java,/connectors,/usr/share/confluent-hub-components/"
-    volumes:
-      - ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
-      - ./cp-kafka-connect/config:/etc/kafka-connect
-      - ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
+      #CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
+      #CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
+      #CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
+      # plugin.path
+      #   List of paths separated by commas (,) that contain plugins (connectors, converters, transformations). The
+      #   list should consist of top level directories that include any combination of: a) directories immediately
+      #   containing jars with plugins and their dependencies b) uber-jars with plugins and their dependencies c)
+      #   directories immediately containing the package directory structure of classes of plugins and their
+      #   dependencies Note: symlinks will be followed to discover dependencies or plugins. Examples:
+      #   plugin.path=/usr/local/share/java,/usr/local/share/kafka/plugins,/opt/connectors
+      #CONNECT_PLUGIN_PATH: "/usr/share/java,/connectors,/usr/share/confluent-hub-components/"
+      #CONNECT_PLUGIN_PATH: "/usr/share/java"
+      ########## SSL ##########
+      ########## Additional Configuration ##########
+      ########## Metric Reporter ##########
+
+    ######### Volumes ##########
+    #volumes:
+    #- ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
+    #- ./cp-kafka-connect/config:/etc/kafka-connect
+    #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
     #command:
+    ######### Network ##########
     networks:
       - my-network
   ############################################################################
@@ -416,6 +442,7 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
       KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
+    ######### Volumes ##########
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
     networks:
