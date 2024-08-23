@@ -1,21 +1,28 @@
 {
-  "name": "postgresdb-connector-for-customers-v1",
+  "name": "jdbc-json-connector-for-customers-postgresdb",
   "config": {
     "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
     "tasks.max": "1",
     "connection.url": "jdbc:postgresql://postgres:5432/users",
     "connection.user": "admin",
-    "connection.password": "<>",
-    "mode": "incrementing",
-    "incrementing.column.name": "id",
+    "connection.password": "<specify yur password>",
+
+    "mode": "timestamp",
+    "timestamp.column.name": "updated_at",
+
     "table.whitelist": "customers",
-    "topic.prefix": "users",
+    "topic.prefix": "users.",
     "poll.interval.ms": "5000",
     "validate.non.null": "true",
 
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "schema.registry.url": "http://your-schema-registry:8081",
-    "schema.name": "your_schema_name"
+
+    "transforms": "InsertKey, ExtractId",
+    "transforms.InsertKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.InsertKey.fields": "id",
+    "transforms.ExtractId.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.ExtractId.field": "id"
   }
 }

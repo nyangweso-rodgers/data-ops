@@ -355,6 +355,7 @@ services:
       - kafka
       - schema-registry
       - zookeeper
+      - postgres
     environment:
       # About CONNECT_BOOTSTRAP_SERVERS
       # -------------------------------
@@ -409,6 +410,7 @@ services:
       ########## SSL ##########
       ########## Additional Configuration ##########
       ########## Metric Reporter ##########
+      # Export JMX metrics to :9876/metrics for Prometheus
 
     ######### Volumes ##########
     #volumes:
