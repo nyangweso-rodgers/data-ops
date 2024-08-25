@@ -2,3 +2,6 @@
 assets/
 etc/
 doc/
+
+# secrets
+bigquery-keyfile.json
