@@ -395,25 +395,13 @@ services:
 
       CONNECT_ZOOKEEPER_CONNECT: zookeeper:2181
 
-      #CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
-      #CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
-      #CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
-      # plugin.path
-      #   List of paths separated by commas (,) that contain plugins (connectors, converters, transformations). The
-      #   list should consist of top level directories that include any combination of: a) directories immediately
-      #   containing jars with plugins and their dependencies b) uber-jars with plugins and their dependencies c)
-      #   directories immediately containing the package directory structure of classes of plugins and their
-      #   dependencies Note: symlinks will be followed to discover dependencies or plugins. Examples:
-      #   plugin.path=/usr/local/share/java,/usr/local/share/kafka/plugins,/opt/connectors
-      #CONNECT_PLUGIN_PATH: "/usr/share/java,/connectors,/usr/share/confluent-hub-components/"
-      #CONNECT_PLUGIN_PATH: "/usr/share/java"
-      ########## SSL ##########
-      ########## Additional Configuration ##########
-      ########## Metric Reporter ##########
-      # Export JMX metrics to :9876/metrics for Prometheus
+      ########## SSL Configurations ##########
+      ########## Additional Configurations ##########
+      ########## Metric Reporter Configurations ##########
 
     ######### Volumes ##########
-    #volumes:
+    volumes:
+    - ./cp-kafka-connect/plugins/bigquery-keyfile.json:/etc/plugins/bigquery-keyfile.json
     #- ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
     #- ./cp-kafka-connect/config:/etc/kafka-connect
     #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
