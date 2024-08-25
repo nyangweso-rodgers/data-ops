@@ -8,16 +8,16 @@
     "connection.user": "admin",
     "connection.password": "<specify password>",
 
-    "key.converter": "org.apache.kafka.connect.converters.LongConverter",
-    "key.converter.schemas.enable": "false",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
 
     "value.converter": "io.confluent.connect.avro.AvroConverter",
     "value.converter.schema.registry.url": "http://schema-registry:8081",
     "value.converter.schemas.enable": "true",
 
-    "mode": "incrementing",
-    "incrementing.column.name": "id",
-    "topic.prefix": "jdbcgenericavro-",
-    "table.whitelist": "locations"
+    "mode": "timestamp",
+    "timestamp.column.name": "updated_at",
+
+    "topic.prefix": "users.",
+    "table.whitelist": "customers"
   }
 }

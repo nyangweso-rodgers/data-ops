@@ -19,7 +19,7 @@
     "key.converter": "org.apache.kafka.connect.storage.StringConverter",
 
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-    "schema.registry.url": "http://your-schema-registry:8081",
+    "schema.registry.url": "http://schema-registry:8081",
 
     "transforms": "InsertKey, ExtractId",
     "transforms.InsertKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
