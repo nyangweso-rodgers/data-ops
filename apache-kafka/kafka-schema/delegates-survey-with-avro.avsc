@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "delegatesSurvey",
+  "namespace": "com.example",
+  "fields": [
+    { "name": "id", "type": "string" },
+    { "name": "first_name", "type": "string", "default": "" },
+    { "name": "last_name", "type": "string", "default": "" },
+    { "name": "company_name", "type": "string", "default": "" },
+    { "name": "created_by", "type": "string", "default": "" },
+    { "name": "updated_by", "type": "string", "default": "" },
+    { "name": "updated_by_name", "type": "string", "default": "" },
+    { "name": "created_by_name", "type": "string", "default": "" }
+  ]
+}
