@@ -10,4 +10,7 @@ RUN confluent-hub install --no-prompt confluentinc/kafka-connect-avro-converter:
 ############## Install JDBC plugins ##############
 #RUN confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.1.1
 RUN confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.7.6
+
+############## Install BigQuery plugins ##############
 RUN confluent-hub install --no-prompt wepay/kafka-connect-bigquery:2.5.6
+#RUN confluent-hub install --no-prompt wepay/kafka-connect-bigquery:latest
