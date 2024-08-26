@@ -9,6 +9,9 @@ ENV CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components"
 #RUN confluent-hub install --no-prompt confluentinc/kafka-connect-avro-converter:5.5.4
 RUN confluent-hub install --no-prompt confluentinc/kafka-connect-avro-converter:7.7.0
 
+# https://www.confluent.io/hub/confluentinc/kafka-connect-protobuf-converter
+# RUN confluent-hub install --no-prompt confluentinc/kafka-connect-protobuf-converter:7.7.0 
+
 ############## Install JDBC plugins ##############
 #RUN confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.1.1
 RUN confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.7.6

@@ -401,7 +401,7 @@ services:
 
     ######### Volumes ##########
     volumes:
-    - ./cp-kafka-connect/plugins/bigquery-keyfile.json:/etc/plugins/bigquery-keyfile.json
+      - ./cp-kafka-connect/plugins/bigquery-keyfile.json:/etc/plugins/bigquery-keyfile.json
     #- ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
     #- ./cp-kafka-connect/config:/etc/kafka-connect
     #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
@@ -515,6 +515,21 @@ services:
     container_name: node.js-kafka-client
     ports:
       - "3004:3004"
+    depends_on:
+      - kafka
+    networks:
+      - my-network
+  ############################################################################
+  # Python Kafka Client
+  #
+  python-kafka-client:
+    build:
+      context: ./apache-kafka/kafka-clients/python-kafka-client
+      dockerfile: Dockerfile
+    image: python-kafka-client
+    container_name: python-kafka-client
+    ports:
+      - "3005:3005"
     depends_on:
       - kafka
     networks:
