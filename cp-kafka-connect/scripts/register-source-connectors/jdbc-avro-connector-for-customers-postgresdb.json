@@ -6,7 +6,7 @@
 
     "connection.url": "jdbc:postgresql://postgres:5432/users",
     "connection.user": "admin",
-    "connection.password": "<specify password>",
+    "connection.password": "<Specify Password>",
 
     "key.converter": "org.apache.kafka.connect.storage.StringConverter",
 
@@ -18,6 +18,15 @@
     "timestamp.column.name": "updated_at",
 
     "topic.prefix": "users.",
-    "table.whitelist": "customers"
+    "table.whitelist": "customers",
+
+    "transforms": "InsertKey,ExtractId",
+
+    "transforms.InsertKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.InsertKey.fields": "id",
+
+    "transforms.ExtractId.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.extractInt.field": "id",
+    "transforms.ExtractId.field": "id"
   }
 }
