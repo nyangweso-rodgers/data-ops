@@ -19,3 +19,6 @@ RUN confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.7.6
 ############## Install BigQuery plugins ##############
 RUN confluent-hub install --no-prompt wepay/kafka-connect-bigquery:2.5.6
 #RUN confluent-hub install --no-prompt wepay/kafka-connect-bigquery:latest
+
+############## Install MongoDB plugins ##############
+#RUN confluent-hub install --no-prompt mongodb/kafka-connect-mongodb:1.13.0
