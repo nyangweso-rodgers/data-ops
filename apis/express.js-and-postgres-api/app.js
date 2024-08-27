@@ -11,7 +11,7 @@ const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
 
 // Import and use routes
-app.use("/create-customers", customerRoutes);
+app.use("/customer", customerRoutes);
 
 // database connetion validation
 async function validateDatabaseConnection() {
