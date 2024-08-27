@@ -505,11 +505,11 @@ services:
     networks:
       - my-network
   ############################################################################
-  # Node.js Kafka Producer
+  # Node.js Kafka Client - Consumer & Producer
   #
   node.js-kafka-client:
     build:
-      context: ./kafka-clients/node.js-kafka-client
+      context: ./apache-kafka/kafka-clients/node.js-kafka-client
       dockerfile: Dockerfile
     image: node.js-kafka-client
     container_name: node.js-kafka-client

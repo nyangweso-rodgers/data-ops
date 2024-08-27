@@ -62,9 +62,6 @@
   services:
   ```
 
-# Real-Time Change Data Capture (CDC)
-
-- **Change Data Capture** (CDC) is a technique for capturing and recording all the changes made to a database over time. This allows for real-time data replication, making it easy to keep multiple systems in sync. CDC does this by detecting row-level changes in database source tables, which are characterized as “Insert,” “Update,” and “Delete” events. CDC then notifies other systems or services that rely on the same data.​
 
 # 2. Messaging Broker Services
 
