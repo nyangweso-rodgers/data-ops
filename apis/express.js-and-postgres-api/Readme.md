@@ -4,43 +4,6 @@
 
 # Project Structure
 
-1. `app.js`: The main entry point for the Express application, where the Express app is set up and middlewares, routes, etc., are applied.
-2. `prisma/`: Contains the Prisma schema and migration files.
-3. `src/`: The source code directory
-   1. `controllers/`: Contains controller files, which handle **requests** and **responses**.
-   2. `routes/`: Defines the application's routes, linking them to the corresponding **controllers**.
-   3. `services/`: Contains business logic and service files that interact with the database through **Prisma**.
-   4. `middleware/`
-4. `config/` directory holds configuration files for your application, such as database connections, server settings, and environment variables.
-5. `utils/`: Utility functions and helper modules are stored in the `utils/` directory. These functions perform common tasks like **validation** and formatting that are used throughout the application.
-
-# Project Structure Description
-
-## 1. `app.js`
-
-- The `app.js` file is the entry point of your application. It’s where you initialize the **Express app**, set up **middleware**, define **routes**, and start the server. Think of it as the control center of your web application.
-
-  ```js
-  const express = require("express");
-  const app = express();
-  const config = require("./config");
-  const routes = require("./routes");
-
-  // Middleware setup
-  app.use(express.json());
-
-  // Routes setup
-  app.use("/api", routes);
-
-  // Start server
-  const PORT = config.port || 3000;
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
-
-  module.exports = app;
-  ```
-
 ## 2. `src/controllers/`
 
 - **Role**: **Controllers** handle HTTP **requests** and **responses**. They are responsible for:
@@ -285,7 +248,15 @@
 3. Use `app.put` for updating existing customers (`/update-customer/:id`).
 4. Use `app.delete` for deleting customers (`/delete-customer/:id`).
 
-## Step : Dockerize the Application
+## Step 3.1: `POST` customer
+
+## Step 3.2: `GET` customer
+
+## Step 3.1: `PUT` customer
+
+## Step 3.1: `DELETE` customer
+
+## Step 4: Dockerize the Application
 
 ### Step : Running the Container
 
