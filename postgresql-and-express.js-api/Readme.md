@@ -56,25 +56,3 @@
     }
     export default createCustomer;
     ```
-
-## READ Customers
-
-- To, View all records add the following code to the main function:
-- Remarkss:
-  - We can also retrieve a single data with unique identifier!
-    ```javascript
-    const customerById = await prisma.customer.findUnique({
-      where: { id: "" },
-    });
-    console.log(customerById);
-    ```
-
-## Middleware
-
-- `app.use(express.json())`: This **middleware** parses incoming request bodies in `JSON` format, allowing you to access data sent from the client in the `req.body` object.
-
-
-
-# Resources and Further Reading
-
-1. []()
