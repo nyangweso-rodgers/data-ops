@@ -5,8 +5,6 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Import routes
-import createCustomer from "./src/app/api/create-customer/route.js";
-import readCustomers from "./src/app/api/read-customer/route.js";
 import updateCustomer from "./src/app/api/update-customer/route.js";
 import deleteCustomer from "./src/app/api/delete-customer/route.js";
 
@@ -14,28 +12,6 @@ const app = express();
 
 // Middleware to parse JSON
 app.use(express.json());
-
-// Create customer
-app.post("/create-customer", async (req, res) => {
-  try {
-    const newCustomer = await createCustomer(req); // Pass req object
-    res.json(newCustomer); // Send the created customer data
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error creating customer" });
-  }
-});
-
-// Read customers
-app.get("/read-customer", async (req, res) => {
-  try {
-    const allCustomers = await readCustomers();
-    res.json(allCustomers); // Send all customer data
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error retrieving customers" });
-  }
-});
 
 // Update customer
 app.put("/update-customer/:id", async (req, res) => {
