@@ -1,6 +1,5 @@
 import express from "express";
 import dotenv from "dotenv";
-import customerRoutes from "./src/routes/customers-route.js";
 import customerRoute  from "./src/app/routes/customer-route.js";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
@@ -12,7 +11,6 @@ const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
 
 // Import and use routes
-app.use("/customer", customerRoutes);
 app.use("/customer", customerRoute);
 
 // database connetion validation
