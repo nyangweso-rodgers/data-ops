@@ -1,0 +1,37 @@
+{
+  "name": "jdbc-avro-connector-for-customers-postgresdb",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+    "tasks.max": "1",
+
+    "connection.url": "jdbc:postgresql://postgres:5432/users",
+    "connection.user": "admin",
+    "connection.password": "<spcif your password>",
+    "connection.attempts": "3",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter.schemas.enable": "true",
+    "value.subject.name.strategy": "io.confluent.kafka.serializers.subject.strategy.SubjectNameStrategy",
+
+    "mode": "timestamp",
+    "timestamp.column.name": "updated_at",
+
+    "table.whitelist": "customers",
+
+    "topic.prefix": "users.avro.v1.",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+
+    "transforms": "InsertKey,ExtractId",
+
+    "transforms.InsertKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.InsertKey.fields": "id",
+
+    "transforms.ExtractId.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.extractInt.field": "id",
+    "transforms.ExtractId.field": "id"
+  }
+}

@@ -1,24 +1,29 @@
 {
-  "name": "jdbc-avro-connector-for-customers-postgresdb",
+  "name": "jdbc-protobuf-connector-for-customers-postgresdb",
   "config": {
     "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
     "tasks.max": "1",
 
     "connection.url": "jdbc:postgresql://postgres:5432/users",
     "connection.user": "admin",
-    "connection.password": "<Specify Password>",
+    "connection.password": "<specify your password>",
 
     "key.converter": "org.apache.kafka.connect.storage.StringConverter",
 
-    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter": "io.confluent.connect.protobuf.ProtobufConverter",
     "value.converter.schema.registry.url": "http://schema-registry:8081",
     "value.converter.schemas.enable": "true",
+    "value.subject.name.strategy": "io.confluent.kafka.serializers.subject.strategy.SubjectNameStrategy",
 
     "mode": "timestamp",
     "timestamp.column.name": "updated_at",
 
-    "topic.prefix": "users.",
     "table.whitelist": "customers",
+
+    "topic.prefix": "users.protobuf.v1.",
+    "topic.creation.default.cleanup.policy": "compact",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
 
     "transforms": "InsertKey,ExtractId",
 
