@@ -7,7 +7,7 @@ conf = {'bootstrap.servers': 'localhost:9092'}
 # Initialize AdminClient
 admin = AdminClient(conf)
 
-topic_name = "users.customers.protobuf.v1"
+topic_name = "users.avro.v1customers"
 
 # Delete a topic and its contents
 def delete_topic(admin, topic):
