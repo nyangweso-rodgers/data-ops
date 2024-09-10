@@ -1,6 +1,14 @@
-
+import "bootstrap/dist/css/bootstrap.css";
 //import styles from "./page.module.css";
 
-export default function Home() {
-  return <main></main>;
+import ParticipantsSurveyForm from "../app/forms/participants-survey/page.js";
+
+export default function HomePage() {
+  return (
+    <>
+      <main>
+        <ParticipantsSurveyForm />
+      </main>
+    </>
+  );
 }
