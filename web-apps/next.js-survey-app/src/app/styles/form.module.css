@@ -1,0 +1,31 @@
+.label {
+  /*color: #b4886b;*/
+  color: #2b3a4a;
+  font-weight: bold;
+  float: left;
+  padding: 0.5rem 0;
+  font-size: 16px;
+}
+.input,
+.select {
+  min-height: 6vh;
+  background: #fdfdfe;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-weight: 600;
+  font-size: 16px;
+}
+.input:hover {
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.94);
+}
+.input:focus {
+  background-color: rgba(177, 170, 170, 0.961);
+}
+
+.textarea {
+  border-radius: 10px;
+  border: 2px solid #ccc;
+  font-size: 1.5rem;
+  transition: all 0.3s;
+  padding: 1.2rem 2rem;
+}
