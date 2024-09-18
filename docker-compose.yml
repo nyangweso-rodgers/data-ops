@@ -123,6 +123,7 @@ services:
     container_name: zookeeper
     ports:
       - "2181:2181"
+    restart: always
     environment:
       ZOOKEEPER_SERVER_ID: 1
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -164,6 +165,8 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
+    restart: always
+    #restart: on-failure
     ports:
       # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
       # An important note about accessing Kafka from clients on other machines:
@@ -229,7 +232,6 @@ services:
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
       CONFLUENT_METRICS_ENABLE: "true"
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
-    #restart: on-failure
     ######### Volumes ##########
     volumes:
       - kafka-volume:/var/lib/kafka/data
@@ -249,7 +251,8 @@ services:
     #image: confluentinc/cp-schema-registry:latest
     container_name: schema-registry
     hostname: schema-registry
-    restart: unless-stopped
+    #restart: unless-stopped
+    restart: always
     depends_on:
       kafka:
         condition: service_healthy
@@ -348,6 +351,7 @@ services:
     build: ./cp-kafka-connect
     container_name: cp-kafka-connect
     hostname: cp-kafka-connect
+    restart: always
     ports:
       - "8083:8083"
     depends_on:
@@ -438,6 +442,7 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
+    restart: always
     ports:
       - 8080:8080
     depends_on:
