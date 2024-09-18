@@ -1,6 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
-import customerRoute  from "./src/app/routes/customer-route.js";
+import customerRoute from "./src/app/routes/customer-route.js";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
@@ -20,9 +20,11 @@ async function validateDatabaseConnection() {
   try {
     const prisma = new PrismaClient();
     await prisma.$connect();
-    console.log("Postgres Database connection successful");
+    console.log(
+      "Postgres Database Connection has been established successfully!"
+    );
   } catch (error) {
-    console.error("Postgres Database connection failed:", error);
+    console.error("Unable to connect to the Postgres Database!", error);
     throw error; // Or handle the error appropriately
   }
 }
