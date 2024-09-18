@@ -99,6 +99,7 @@ services:
     #image: dpage/pgadmin4:latest
     image: dpage/pgadmin4:8.7 #https://hub.docker.com/layers/dpage/pgadmin4/8.7/images/sha256-198236db5d90e491354c351ccd02a21ce736030b72cd0f8b05430bc48a59d86b?context=explore
     container_name: postgres-pgadmin
+    restart: always
     ports:
       - "5050:80"
     env_file:
@@ -563,6 +564,27 @@ services:
   #- "3000:3000"
   #environment:
   #- GF_SECURITY_ADMIN_PASSWORD=123456
+  ############################################################################
+  # next.js survey app
+  #
+  next.js-survey-app:
+    build:
+      context: ./web-apps/next.js-survey-app
+      dockerfile: Dockerfile
+    image: next.js-survey-app
+    container_name: next.js-survey-app
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+    environment:
+      PGHOST: ${PGHOST}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - ./web-apps/next.js-survey-app/.env
+    networks:
+      - my-network
   ############################################################################
   # next.js app
   #
