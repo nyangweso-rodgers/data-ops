@@ -581,6 +581,7 @@ services:
       PGHOST: ${PGHOST}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_SURVEY_DB: ${POSTGRES_SURVEY_DB}
     env_file:
       - ./web-apps/next.js-survey-app/.env
     networks:
