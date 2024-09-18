@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prestart": "npx prisma generate",
+    "postinstall": "prisma generate",
     "dev": "next dev -p 3002",
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "next lint"
   },
   "dependencies": {
+    "prisma": "^5.19.1",
+    "@prisma/client": "^5.19.1",
     "bootstrap": "^5.3.3",
     "next": "14.2.7",
     "react": "^18",

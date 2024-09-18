@@ -1,12 +1,72 @@
+"use client";
+
+import React, { useState } from "react";
+
 import pageStyles from "../../styles/page.module.css";
 import buttonStyles from "../../styles/button.module.css";
 import formStyles from "../../styles/form.module.css";
+//import { headers } from "next/headers";
 
 const ParticipantsSurveyForm = () => {
+  const [formStatus, setFormStatus] = useState(null); // To track form submission status
+
+  const handleParticipantSurveyForm = async (event) => {
+    // Stop the form from submitting and refreshing the page.
+    event.preventDefault();
+
+    // get data from form
+    const participantSurveyFormData = new FormData(event.target);
+
+    const participantSurveyFormEntries = Object.fromEntries(
+      participantSurveyFormData
+    );
+
+    console.log(
+      "Participant's Survey Form Entries: ",
+      participantSurveyFormEntries
+    );
+
+    // Send the data to the server in JSON format
+    const participantSurveyFormJsonData = JSON.stringify(
+      participantSurveyFormEntries
+    );
+
+    // API endpoint where we send form data.
+    const createParticipantSurveyEndpoint =
+      "/api/participant-survey/create-participant-survey";
+
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: participantSurveyFormJsonData,
+    };
+    try {
+      // Send the form data to our forms API and get a response.
+      const response = await fetch(createParticipantSurveyEndpoint, options);
+
+      // Get the response data from server as JSON.
+      const result = await response.json();
+
+      if (response.ok) {
+        setFormStatus("success"); // Display success feedback
+        console.log("Participants Survey Form Submission Successful: ", result);
+      } else {
+        setFormStatus("error"); // Display error feedback
+        console.log("Participants Survey Form Submission Failed");
+      }
+    } catch (error) {
+      setFormStatus("error");
+      console.log("Error Submitting Participants Survey Form: ", error);
+    }
+    // Optionally reset the form
+    event.target.reset();
+  };
   return (
     <>
       <main className="border border-primary p-5">
-        <form className={`container`}>
+        <form onSubmit={handleParticipantSurveyForm} className={`container`}>
           <div className={`row ${pageStyles.row}`}>
             <div>
               <h4>Contact Information</h4>
@@ -15,7 +75,10 @@ const ParticipantsSurveyForm = () => {
           <div className={`row ${pageStyles.row}`}>
             <div className={`col-md-6`}>
               <div>
-                <label className={`form-label ${formStyles.label}`}>
+                <label
+                  htmlFor="firstName"
+                  className={`form-label ${formStyles.label}`}
+                >
                   First Name
                 </label>
                 <input
@@ -28,7 +91,10 @@ const ParticipantsSurveyForm = () => {
             </div>
             <div className={`col-md-6`}>
               <div>
-                <label className={`form-label ${formStyles.label}`}>
+                <label
+                  htmlFor="lastName"
+                  className={`form-label ${formStyles.label}`}
+                >
                   Last Name
                 </label>
                 <input
@@ -43,7 +109,10 @@ const ParticipantsSurveyForm = () => {
           <div className={`row ${pageStyles.row}`}>
             <div className={`col-md-6`}>
               <div>
-                <label className={`form-label ${formStyles.label}`}>
+                <label
+                  htmlFor="emailAddress"
+                  className={`form-label ${formStyles.label}`}
+                >
                   Email
                 </label>
                 <input
@@ -56,7 +125,10 @@ const ParticipantsSurveyForm = () => {
             </div>
             <div className={`col-md-6`}>
               <div>
-                <label className={`form-label ${formStyles.label}`}>
+                <label
+                  htmlFor="phoneNumber"
+                  className={`form-label ${formStyles.label}`}
+                >
                   Phone Number
                 </label>
                 <input
@@ -76,7 +148,10 @@ const ParticipantsSurveyForm = () => {
           <div className={`row ${pageStyles.row}`}>
             <div className={`col-md-6`}>
               <div>
-                <label className={`form-label ${formStyles.label}`}>
+                <label
+                  htmlFor="nationality"
+                  className={`form-label ${formStyles.label}`}
+                >
                   Nationality
                 </label>
                 <select
@@ -92,7 +167,12 @@ const ParticipantsSurveyForm = () => {
             </div>
             <div className={`col-md-6`}>
               <div>
-                <label className={`form-label ${formStyles.label}`}>City</label>
+                <label
+                  htmlFor="city"
+                  className={`form-label ${formStyles.label}`}
+                >
+                  City
+                </label>
                 <input
                   className={`form-control ${formStyles.input}`}
                   type="text"
@@ -104,7 +184,10 @@ const ParticipantsSurveyForm = () => {
           </div>
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <label className={`form-label ${formStyles.label}`}>
+              <label
+                htmlFor="keepDoing"
+                className={`form-label ${formStyles.label}`}
+              >
                 What should we KEEP doing?
               </label>
               <textarea
@@ -118,7 +201,10 @@ const ParticipantsSurveyForm = () => {
           </div>
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <label className={`form-label ${formStyles.label}`}>
+              <label
+                htmlFor="startDoing"
+                className={`form-label ${formStyles.label}`}
+              >
                 What should we START doing?
               </label>
               <textarea
@@ -131,7 +217,10 @@ const ParticipantsSurveyForm = () => {
           </div>
           <div className={`row ${pageStyles.row}`}>
             <div>
-              <label className={`form-label ${formStyles.label}`}>
+              <label
+                htmlFor="stopDoing"
+                className={`form-label ${formStyles.label}`}
+              >
                 What should we STOP doing?
               </label>
               <textarea
@@ -152,6 +241,15 @@ const ParticipantsSurveyForm = () => {
               </button>
             </div>
           </div>
+          {/* Display feedback after submission */}
+          {formStatus === "success" && (
+            <p className="text-success">Form submitted successfully!</p>
+          )}
+          {formStatus === "error" && (
+            <p className="text-danger">
+              Failed to submit the form. Please try again.
+            </p>
+          )}
         </form>
       </main>
     </>
