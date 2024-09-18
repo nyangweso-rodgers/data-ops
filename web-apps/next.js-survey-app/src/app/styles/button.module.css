@@ -1,5 +1,7 @@
 .button {
-  padding: 10px 60px;
+  /*padding: 10px 60px;*/
+  padding: 1.25rem 2rem;
+  font-size: 1rem;
   margin: 4px 2px;
   cursor: pointer;
   text-align: center;
@@ -7,6 +9,7 @@
   border: none;
   line-height: 1.25;
   font-weight: 600;
+  border-radius: 4px;
 }
 .submitButton {
   color: #04aa6d;

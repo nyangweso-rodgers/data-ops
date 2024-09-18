@@ -1,3 +1,5 @@
+import HeaderStyles from "../../../styles/header.module.css";
+
 const SurveyHeaderPage = () => {
   return (
     <>
