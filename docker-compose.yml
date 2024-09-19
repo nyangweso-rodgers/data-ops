@@ -96,7 +96,6 @@ services:
   # pgadmin
   #
   pgadmin:
-    #image: dpage/pgadmin4:latest
     image: dpage/pgadmin4:8.7 #https://hub.docker.com/layers/dpage/pgadmin4/8.7/images/sha256-198236db5d90e491354c351ccd02a21ce736030b72cd0f8b05430bc48a59d86b?context=explore
     container_name: postgres-pgadmin
     restart: always
@@ -118,20 +117,18 @@ services:
   # zookeeper
   #
   zookeeper:
-    #image: confluentinc/cp-zookeeper:latest
     image: confluentinc/cp-zookeeper:7.6.1
     container_name: zookeeper
+    restart: always
+    #restart: on-failure
     ports:
       - "2181:2181"
-    restart: always
     environment:
       ZOOKEEPER_SERVER_ID: 1
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ######### Volumes ##########
     volumes:
       - zookeeper-volume:/var/lib/zookeeper/data
-    #restart: on-failure
     healthcheck:
       test: echo srvr | nc zookeeper 2181 || exit 1
       #test: curl -s localhost:2181 || exit 1 # using curl to query the Zookeeper server status:
@@ -232,7 +229,6 @@ services:
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
       CONFLUENT_METRICS_ENABLE: "true"
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
-    ######### Volumes ##########
     volumes:
       - kafka-volume:/var/lib/kafka/data
     healthcheck:
@@ -248,7 +244,6 @@ services:
   #
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
-    #image: confluentinc/cp-schema-registry:latest
     container_name: schema-registry
     hostname: schema-registry
     #restart: unless-stopped
@@ -338,15 +333,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    ######### Volumes ##########
-    #volumes:
     #volumes:
     #- ./jar_files:/kafka/connect/avro_jar_files
     networks:
       - my-network
   ############################################################################
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
-    #image: confluentinc/cp-kafka-connect:latest
     #image: confluentinc/cp-kafka-connect:7.7.0
     build: ./cp-kafka-connect
     container_name: cp-kafka-connect
@@ -409,7 +401,6 @@ services:
     #- ./cp-kafka-connect/config:/etc/kafka-connect
     #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
     #command:
-    ######### Network ##########
     networks:
       - my-network
   ############################################################################
@@ -453,7 +444,6 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
       KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
-    ######### Volumes ##########
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
     networks:
