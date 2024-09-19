@@ -70,6 +70,7 @@ const ParticipantsSurveyForm = () => {
           <div className={`row ${pageStyles.row}`}>
             <div>
               <h4>Contact Information</h4>
+              <p>Please enter your contact information.</p>
             </div>
           </div>
           <div className={`row ${pageStyles.row}`}>
