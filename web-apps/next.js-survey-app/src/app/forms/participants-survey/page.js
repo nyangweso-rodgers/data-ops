@@ -65,7 +65,7 @@ const ParticipantsSurveyForm = () => {
   };
   return (
     <>
-      <main className="border border-primary p-5">
+      <main className="">
         <form onSubmit={handleParticipantSurveyForm} className={`container`}>
           <div className={`row ${pageStyles.row}`}>
             <div>
