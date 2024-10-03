@@ -1,0 +1,10 @@
+name: Fetch Google Spreadsheet Data
+
+on:
+  schedule:
+    # Runs at 4 AM UTC
+    - cron: "0 4 * * *"
+  workflow_dispatch: # This line enables manual triggering of the action
+jobs:
+  fetch_data:
+    runs-on: ubuntu-latest
