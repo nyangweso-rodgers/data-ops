@@ -36,23 +36,69 @@
 
 # 1. Databases
 
-# 1.1 PostgreSQL Docker Container
+# Setup Local PostgreSQL Using Docker Compose
 
-- Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/tree/main/02-Transactional-Databases/01-postgresql/01-setup-postgresql/01-postgres-docker-container), GitHub repo on how to configure and run postgresql docker container using **docker-compose**.
+- **Remarks**:
+
+  - Check my [github.com/nyangweso-rodgers - Running PostgreSQL Docker Container](https://github.com/nyangweso-rodgers/My-Databases/tree/main/02-Transactional-Databases/01-postgresql/01-setup-postgresql/01-postgres-docker-container), GitHub repo on how to configure and run postgresql docker container using **docker-compose**.
+
+- Create a `docker-compose.yml` file with the following configurations:
+
   ```yml
+  version: "3.8"
+
   services:
+    db:
+      image: postgres:latest
+      container_name: local-postgres
+      environment:
+        POSTGRES_USER: postgres_user
+        POSTGRES_PASSWORD: postgres_password
+          POSTGRES_DB: postgres_db
+      ports:
+        - "5432:5432"
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+        - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # Optional: initialize with SQL script
+    volumes:
+      postgres_data:
   ```
 
-## Connect to a Postgres Docker Container
+- Environment Variables:
 
-- To connect to a **PostgreSQL** instance running within a **Docker container**, you can use the `docker exec` command combined with the `psql` command:
-- Example:
-  ```bash
-    #accessing postgres docker container
-    docker exec -it postgres psql -U admin -d test_db
-  ```
-- Remarks:
-  - Check my [GitHub Repo](https://github.com/nyangweso-rodgers/My-Databases/blob/main/02-Transactional-Databases/01-postgresql/02-connect-to-postgresql/01-psql-commands/Readme.md) for a list of `psql` commands
+  - `POSTGRES_USER`: Set the username for the PostgreSQL instance.
+  - `POSTGRES_PASSWORD`: Set the password for the PostgreSQL instance.
+  - `POSTGRES_DB`: Set the default database to be created.
+  - **Ports**: The 5432:5432 mapping lets you access the database locally on port 5432.
+
+- Volumes:
+
+  - `postgres_data`: Persist PostgreSQL data even after stopping the container.
+  - `init.sql`: Optional SQL script that runs automatically when the container starts (you can customize this file for initial configurations).
+
+- Step : Start the PostgreSQL Service
+  - Run the following command to start the PostgreSQL container with Docker Compose:
+    ```sh
+      docker-compose up -d
+    ```
+- Step : Connect to PostgreSQL
+
+  - Once the container is running, connect to PostgreSQL from your local machine using a tool like `psql` or a database GUI like **DBeaver** or **pgAdmin**.
+  - Using `psql` Command:
+    ```sh
+      psql -h localhost -p 5432 -U postgres_user -d postgres_db
+    ```
+  - To connect to a **PostgreSQL** instance running within a **Docker container**, you can use the `docker exec` command combined with the `psql` command:
+    ```sh
+      #accessing postgres docker container
+      docker exec -it postgres psql -U admin -d <database-name>
+    ```
+
+- Step : Stop and Remove the Container (Optional)
+  - To stop and remove the container, use:
+    ```sh
+      docker-compose down
+    ```
 
 # 1.2 MongoDB Docker Container
 
@@ -61,7 +107,6 @@
   ```yml
   services:
   ```
-
 
 # 2. Messaging Broker Services
 
@@ -72,7 +117,9 @@
 ```yml
 services:
 ```
-# Run 
+
+# Run
+
 # 2.2 Kafka
 
 ```yml
