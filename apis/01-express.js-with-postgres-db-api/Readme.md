@@ -2,6 +2,17 @@
 
 ## Table Of Contents
 
+# Description
+
+- RESTful API built with Node.js and Express, designed to interact with a PostgreSQL database. The API provides endpoints for managing customer data and includes authentication features.
+- **Features** include:
+  1. **Get All Customers**: Retrieve a list of all customers
+  2. **Get Customer by ID**: Retrieve a specific customer by their ID.
+  3. **Create Customer**: Add a new Customer to the database.
+  4. **Update Customer**: Update details of an existing Customer.
+  5. **Delete Customer**: Remove a Customer from the database.
+  6. **Customer Authentication**: Secure API access using JSON Web Tokens (JWT).
+
 # Project Structure
 
 ## 2. `src/controllers/`
