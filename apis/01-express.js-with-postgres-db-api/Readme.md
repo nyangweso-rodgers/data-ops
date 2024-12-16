@@ -1,11 +1,13 @@
 # API with Node.js, Express.js and PostgreSQL
 
+## Creating a Secure REST API in Node.js, Express.js and PostgreSQL
+
 ## Table Of Contents
 
 # Description
 
-- RESTful API built with Node.js and Express, designed to interact with a PostgreSQL database. The API provides endpoints for managing customer data and includes authentication features.
-- **Features** include:
+- **RESTful API** built with **Node.js** and **Express**, designed to interact with a **PostgreSQL database**. The API provides endpoints for managing `customer` data and includes authentication features.
+- API **Features** include:
   1. **Get All Customers**: Retrieve a list of all customers
   2. **Get Customer by ID**: Retrieve a specific customer by their ID.
   3. **Create Customer**: Add a new Customer to the database.
