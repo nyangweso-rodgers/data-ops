@@ -1,0 +1,18 @@
+{
+  "name": "02-users-api-with-express.js-and-mongo-db",
+  "version": "1.0.0",
+  "description": "- Create a secure REST API for a resource called `users`.\r - The resource will have the following structure:",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.8.4"
+  }
+}

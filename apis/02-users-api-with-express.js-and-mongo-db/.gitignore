@@ -1,0 +1,30 @@
+#IDE
+.vscode/
+
+# dependencies
+/node_modules
+
+# local env files
+.env*.local
+.env
+
+# Docker volumnes
+pgadmin-volume/
+mongodb-volume/
+pgadmin-volume/
+
+# BigQuery Keyfile
+bigquery-keyfile.json
+
+# test output
+/tests
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# python
+venv/
