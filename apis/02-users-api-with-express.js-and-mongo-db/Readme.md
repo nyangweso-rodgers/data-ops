@@ -4,9 +4,37 @@
 
 ## Table Of Contents
 
+# Features
+
+1. **User Management**:
+
+   - **Get All Users**: Retrieve a list of all users.
+   - **Get User by ID**: Retrieve a specific user by their ID.
+   - **Create User**: Add a new user to the database.
+   - **Update User**: Update details of an existing user.
+   - **Delete User**: Remove a user from the database (soft delete functionality).
+
+2. **Authentication & Authorization**:
+
+   - **User Authentication**: Secure API access using **JSON Web Tokens** (**JWT**).
+   - **Role-based Access Control** (**RBAC**): Control access to resources based on user roles (e.g., admin, user).
+
+3. **Swagger API Documentation**:
+
+   - **Swagger** integrated for real-time API documentation and testing directly in the browser.
+
+4. **Database**
+
+   - Integration with **MongoDB** for storing user data.
+   - Soft delete functionality: Mark users as deleted without removing their data.
+
+5. **Unit Testing**:
+   - Comprehensive unit tests using [Mocha]() and [Chai]() to ensure the reliability of the application.
+   - **Test Cases**: Includes tests for user creation, update, deletion, and authentication.
+
 # Description
 
-- Create a secure REST API for a resource called `users`.
+- Create a secure **REST API** for a resource called `users`.
 - The resource will have the following structure:
 
   1. `id` (an auto-generated UUID)
