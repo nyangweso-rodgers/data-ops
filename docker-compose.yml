@@ -1,12 +1,12 @@
-version: "3"
+#version: "3"
 services:
   ############################################################################
-  # mongodb-community-server
+  # data-ops-mongodb-community-server
   #
-  mongodb-community-server:
+  data-ops-mongodb-community-server:
     #image: mongodb/mongodb-community-server:latest
-    image: mongodb/mongodb-community-server:7.0.7-ubi8 #https://hub.docker.com/r/mongodb/mongodb-community-server
-    container_name: mongodb-community-server
+    image: mongodb/mongodb-community-server:7.0.7-ubi8 #https://hub.docker.com/r/mongodb/mongodb-community-server  #mongodb-community-server
+    container_name: data-ops-mongodb-community-server
     ports:
       - "27017:27017"
     env_file:
@@ -14,22 +14,19 @@ services:
     environment:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
-    #entrypoint: ["mongod", "--auth", "--config", "/etc/mongod.conf"]
-    #command: ["mongod","--replSet", "rs0", "--bind_ip_all"]
-    ######### Volumes ##########
     volumes:
-      - mongodb-community-server-volume:/data/db
+      - data-ops-mongodb-community-server-volume:/data/db
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # mongo
   #
-  mongodb:
+  data-ops-mongodb:
     #image: mongo:latest
     image: mongo:5.0.27 # https://hub.docker.com/_/mongo
-    container_name: mongodb
+    container_name: data-ops-mongodb
     ports:
-      - "27018:27018"
+      - "27018:27017" # Expose this container on port 27018 (maps to the container's default 27017)
     env_file:
       - .env
     environment:
@@ -38,9 +35,8 @@ services:
     #command: [--auth]
     #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27017"]
-    ######### Volumes ##########
     volumes:
-      - mongodb-volume:/data/db
+      - data-ops-mongodb-volume:/data/db
     #- ./init-replica-set.js:/docker-entrypoint-initdb.d/init-replica-set.js
     #healthcheck:
     #test: echo 'db.runCommand("ping").ok' | mongo --username ${MONGO_INITDB_ROOT_USERNAME} --password ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --quiet
@@ -53,14 +49,14 @@ services:
     #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
     #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # postgres DB
   #
-  postgres:
+  data-ops-postgres-db:
     image: postgres:16.3-alpine3.20 #https://hub.docker.com/layers/library/postgres/16.3-alpine3.20/images/sha256-5eb2698ee6a3331df0788e1786145dc248e9a33e98dd161c4d1168a9fdf12a01?context=explore
-    container_name: postgres
-    hostname: postgres
+    container_name: data-ops-postgres-db
+    #hostname: data-ops-postgres-db
     restart: always
     ports:
       - "5432:5432"
@@ -71,10 +67,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_TEST_DB: ${POSTGRES_TEST_DB} # The PostgreSQL default database (automatically created at first launch)
     #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
-    command: ["postgres", "-c", "wal_level=logical"]
+    #command: ["postgres", "-c", "wal_level=logical"]
     ######### Volumes ##########
     volumes:
-      - postgres-volume:/var/lib/postgresql/data
+      - data-ops-postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
       #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
@@ -91,7 +87,7 @@ services:
     #options:
     #max-size: "2048m"
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # pgadmin
   #
@@ -110,9 +106,9 @@ services:
     volumes:
       - pgadmin-volume:/var/lib/pgadmin
     depends_on:
-      - postgres
+      - data-ops-postgres-db
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # zookeeper
   #
@@ -136,7 +132,7 @@ services:
       retries: 20
       interval: 10s
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # kafka
   #
@@ -238,7 +234,7 @@ services:
       timeout: 10s
       retries: 10
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # schema-registry
   #
@@ -275,7 +271,7 @@ services:
       retries: 20
       test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # debezium
   #
@@ -285,7 +281,7 @@ services:
     container_name: debezium-connect
     hostname: debezium-connect
     depends_on:
-      postgres:
+      data-ops-postgres-db:
         condition: service_healthy
       kafka:
         condition: service_healthy
@@ -336,7 +332,7 @@ services:
     #volumes:
     #- ./jar_files:/kafka/connect/avro_jar_files
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
     #image: confluentinc/cp-kafka-connect:7.7.0
@@ -350,7 +346,7 @@ services:
       - kafka
       - schema-registry
       - zookeeper
-      - postgres
+      - data-ops-postgres-db
     environment:
       # About CONNECT_BOOTSTRAP_SERVERS
       # -------------------------------
@@ -402,7 +398,7 @@ services:
     #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
     #command:
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # ksqldb-server
   #
@@ -426,7 +422,7 @@ services:
   #KSQL_HOST_NAME: ksqldb-server
   #KSQL_CONNECT_URL: "http://connect:8083"
   #networks:
-  #- my-network
+  #- data-ops-network
   ############################################################################
   # kafka-ui
   #
@@ -447,7 +443,7 @@ services:
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # ksqldb-cli
   #
@@ -462,7 +458,7 @@ services:
   #entrypoint: /bin/sh
   #tty: true
   #networks:
-  #- my-network
+  #- data-ops-network
   ############################################################################
   # debezium-ui
   #
@@ -480,54 +476,54 @@ services:
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8084
     networks:
-      - my-network
+      - data-ops-network
   ############################################################################
   # spring-boot-data-pipeline
   #
-  spring-boot-data-pipeline:
-    build:
-      context: ./spring-boot-data-pipeline
-      dockerfile: Dockerfile
-    image: spring-boot-data-pipeline
-    container_name: spring-boot-data-pipeline
-    ports:
-      - "9093:9093"
-    depends_on:
-      - kafka
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-    networks:
-      - my-network
+  #spring-boot-data-pipeline:
+  #build:
+  #context: ./spring-boot-data-pipeline
+  #dockerfile: Dockerfile
+  #image: spring-boot-data-pipeline
+  #container_name: spring-boot-data-pipeline
+  #ports:
+  #- "9093:9093"
+  #depends_on:
+  #- kafka
+  #environment:
+  #SPRING_PROFILES_ACTIVE: dev
+  #networks:
+  #- data-ops-network
   ############################################################################
   # Node.js Kafka Client - Consumer & Producer
   #
-  node.js-kafka-client:
-    build:
-      context: ./apache-kafka/kafka-clients/node.js-kafka-client
-      dockerfile: Dockerfile
-    image: node.js-kafka-client
-    container_name: node.js-kafka-client
-    ports:
-      - "3004:3004"
-    depends_on:
-      - kafka
-    networks:
-      - my-network
+  #node.js-kafka-client:
+  #build:
+  #context: ./apache-kafka/kafka-clients/node.js-kafka-client
+  #dockerfile: Dockerfile
+  #image: node.js-kafka-client
+  #container_name: node.js-kafka-client
+  #ports:
+  #- "3004:3004"
+  #depends_on:
+  #- kafka
+  #networks:
+  #- data-ops-network
   ############################################################################
   # Python Kafka Client
   #
-  python-kafka-client:
-    build:
-      context: ./apache-kafka/kafka-clients/python-kafka-client
-      dockerfile: Dockerfile
-    image: python-kafka-client
-    container_name: python-kafka-client
-    ports:
-      - "3005:3005"
-    depends_on:
-      - kafka
-    networks:
-      - my-network
+  #python-kafka-client:
+  #build:
+  #context: ./apache-kafka/kafka-clients/python-kafka-client
+  #dockerfile: Dockerfile
+  #image: python-kafka-client
+  #container_name: python-kafka-client
+  #ports:
+  #- "3005:3005"
+  #depends_on:
+  #- kafka
+  #networks:
+  #- data-ops-network
   ############################################################################
   # metabase
   #
@@ -562,144 +558,133 @@ services:
   ############################################################################
   # next.js survey app
   #
-  next.js-survey-app:
-    build:
-      context: ./web-apps/next.js-survey-app
-      dockerfile: Dockerfile
-    image: next.js-survey-app
-    container_name: next.js-survey-app
-    ports:
-      - "3002:3002"
-    depends_on:
-      - postgres
-    environment:
-      PGHOST: ${PGHOST}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_SURVEY_DB: ${POSTGRES_SURVEY_DB}
-    env_file:
-      - ./web-apps/next.js-survey-app/.env
-    networks:
-      - my-network
+  #next.js-survey-app:
+  #build:
+  #context: ./web-apps/next.js-survey-app
+  #dockerfile: Dockerfile
+  #image: next.js-survey-app
+  #container_name: next.js-survey-app
+  #ports:
+  #- "3002:3002"
+  #depends_on:
+  #- postgres-db
+  #environment:
+  #PGHOST: ${PGHOST}
+  #POSTGRES_USER: ${POSTGRES_USER}
+  #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #POSTGRES_SURVEY_DB: ${POSTGRES_SURVEY_DB}
+  #env_file:
+  #- ./web-apps/next.js-survey-app/.env
+  #networks:
+  #- data-ops-network
   ############################################################################
   # next.js app
   #
-  next.js-web-portal:
-    build:
-      context: ./next.js-web-portal
-      dockerfile: Dockerfile
-    image: next.js-web-portal
-    container_name: next.js-web-portal
-    ports:
-      - "3003:3003"
-    depends_on:
-      #- mongodb-community-server
-      - postgres
-    restart: always
-    environment:
-      #- MONGODB_URI_FOR_SURVEY_SERVICE=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/survey-service?authSource=admin
-      #MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
-      MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE: ${MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE}
-      PGHOST: ${PGHOST}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB}
-      #POSTGRES_TEST_DATABASE_URL: ${POSTGRES_TEST_DATABASE_URL}
-    env_file:
-      - ./next.js-web-portal/.env
-    #volumes:
-    #- /next.js-web-portal/src/app/prisma
-    #command: sh -c "npx prisma migrate deploy && npm run dev"
-    #entrypoint: ["sh", "/migrate.sh"]  # Execute migrate.sh script first
-    networks:
-      - my-network
+  #next.js-web-portal:
+  #build:
+  #context: ./next.js-web-portal
+  #dockerfile: Dockerfile
+  #image: next.js-web-portal
+  #container_name: next.js-web-portal
+  #ports:
+  #- "3003:3003"
+  #depends_on:
+  #- mongodb-community-server
+  #- postgres-db
+  #restart: always
+  #environment:
+  #- MONGODB_URI_FOR_SURVEY_SERVICE=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/survey-service?authSource=admin
+  #MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
+  #MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE: ${MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE}
+  #PGHOST: ${PGHOST}
+  #POSTGRES_USER: ${POSTGRES_USER}
+  #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #POSTGRES_TEST_DB: ${POSTGRES_TEST_DB}
+  #POSTGRES_TEST_DATABASE_URL: ${POSTGRES_TEST_DATABASE_URL}
+  #env_file:
+  #- ./next.js-web-portal/.env
+  #volumes:
+  #- /next.js-web-portal/src/app/prisma
+  #command: sh -c "npx prisma migrate deploy && npm run dev"
+  #entrypoint: ["sh", "/migrate.sh"]  # Execute migrate.sh script first
+  #networks:
+  #- data-ops-network
   ############################################################################
   # api - with Express.js and postgresql
   #
-  express.js-and-postgres-api:
+  #express.js-and-postgres-api:
+  #build:
+  #context: ./apis/express.js-and-postgres-api
+  #dockerfile: Dockerfile
+  #image: express.js-and-postgres-api
+  #container_name: express.js-and-postgres-api
+  #ports:
+  #- "3005:3005"
+  #depends_on:
+  #- postgres-db
+  #- pgadmin
+  #command: sh -c "npx prisma migrate dev --name init && npm start" #remove this line after the first deployment
+  #command: ["sh", "-c", "npx prisma migrate dev --name init && npm start"] #This ensures that the migrations are applied in a non-interactive manner.
+  # Add this line
+  #tty: true # Enables interactive mode
+  #environment:
+  #PGHOST: ${PGHOST}
+  #POSTGRES_USER: ${POSTGRES_USER}
+  #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #POSTGRES_USERS_DB: ${POSTGRES_USERS_DB}
+  #env_file:
+  #- ./apis/express.js-and-postgres-api/.env
+  #networks:
+  #- data-ops-network
+  ############################################################################
+  # users api with Express.js and MongoDB
+  #
+  users-api:
     build:
-      context: ./apis/express.js-and-postgres-api
+      context: ./apis/02-users-api-with-express.js-and-mongo-db
       dockerfile: Dockerfile
-    image: express.js-and-postgres-api
-    container_name: express.js-and-postgres-api
+    image: users-api
+    container_name: users-api
     ports:
-      - "3005:3005"
-    depends_on:
-      - postgres
-      - pgadmin
-    #command: sh -c "npx prisma migrate dev --name init && npm start" #remove this line after the first deployment
-    #command: ["sh", "-c", "npx prisma migrate dev --name init && npm start"] #This ensures that the migrations are applied in a non-interactive manner.
-    # Add this line
-    #tty: true # Enables interactive mode
-    environment:
-      PGHOST: ${PGHOST}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      #POSTGRES_USERS_DB: ${POSTGRES_USERS_DB}
+      - "3002:3002"
     env_file:
-      - ./apis/express.js-and-postgres-api/.env
+      - ./apis/02-users-api-with-express.js-and-mongo-db/.env
+    depends_on:
+      #- data-ops-mongodb
+      - data-ops-mongodb-community-server
     networks:
-      - my-network
-  ############################################################################
-  #Superset
-  #
-  #superset:
-  #image: alexmerced/dremio-superset
-  #container_name: superset
-  #ports:
-  #- "8088:8088"
-  #environment:
-  #- ADMIN_USERNAME=admin
-  #- ADMIN_EMAIL=admin@superset.com
-  #- ADMIN_PASSWORD=admin
-  ############################################################################
-  # mongodb-change-stream-app
-  #
-  #mongodb-change-stream-app:
-  #build:
-  #context: ./mongodb-change-stream-app
-  #dockerfile: Dockerfile
-  #image: mongodb-change-stream-app
-  #container_name: mongodb-change-stream-app
-  #depends_on:
-  #- mongodb-community-server
-  #environment:
-  #MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
-  #ports:
-  #- "4001:4001"
-
-  ############################################################################
-  # api-with-express-and-mongo
-  #
-  #api-with-mongo:
-  #build:
-  #context: ./api-with-mongo
-  #dockerfile: Dockerfile
-  #image: api-with-mongo
-  #container_name: api-with-mongo
-  #ports:
-  #- "3200:3200"
-  #depends_on:
-  #- mongo
+      - data-ops-network
+############################################################################
+#Superset
+#
+#superset:
+#image: alexmerced/dremio-superset
+#container_name: superset
+#ports:
+#- "8088:8088"
+#environment:
+#- ADMIN_USERNAME=admin
+#- ADMIN_EMAIL=admin@superset.com
+#- ADMIN_PASSWORD=admin
 ############################################################################
 # networks
 #
 networks:
-  my-network:
-    name: my-network
+  data-ops-network:
+    name: data-ops-network
     driver: bridge
 ############################################################################
 # volumes
 #
 volumes:
-  mongodb-community-server-volume:
-    name: mongodb-community-server-volume
+  data-ops-mongodb-community-server-volume:
+    name: data-ops-mongodb-community-server-volume
     driver: local
-  mongodb-volume:
-    name: mongodb-volume
+  data-ops-mongodb-volume:
+    name: data-ops-mongodb-volume
     driver: local
-  postgres-volume:
-    name: postgres-volume
+  data-ops-postgres-db-volume:
+    name: data-ops-postgres-db-volume
     driver: local
     #driver_opts:
     #type: none

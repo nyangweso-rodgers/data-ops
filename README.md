@@ -13,10 +13,11 @@
   1. Docker — Docker Compose
   2. Apache Kafka (Stream Processing)
   3. PostgreSQL
-  4.
-  5. Superset(Report/Dashboard)
-  6. Kafka UI ( Kafka Monitoring)
-  7. Grafana (System Monitoring)
+  4. Superset(Report/Dashboard)
+  5. Kafka UI ( Kafka Monitoring)
+  6. Grafana (System Monitoring)
+
+# Technologies Used
 
 # Setup
 
