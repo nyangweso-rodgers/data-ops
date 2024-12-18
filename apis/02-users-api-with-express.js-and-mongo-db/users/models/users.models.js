@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
+
 const { Schema, model } = mongoose;
 
 const PERMISSION_LEVELS = {
@@ -73,5 +74,5 @@ userSchema.pre("save", async function (next) {
 });
 
 // Create and export the model
-const users = model("users", userSchema);
-export default users;
+const usersModel = model("users", userSchema);
+export default usersModel;

@@ -120,5 +120,22 @@
 
 - Create an `app.js` file in the root directory and add the following:
 
+# Testing API Endpoints
+
+1. Create a new User
+
+   - Request: `POST http://localhost:3002/api/v1/users/`
+   - Response
+
+2. Fetch All users
+
+   - Request: `GET http://localhost:3002/api/v1/users/`
+   - Response:
+
+3. Fetch a User by ID
+   - Request:  `GET http://localhost:3002/api/v1/users/675ff32f25012b973cce49d6`
+   - Response:
+
 # Resources and Further Reading
+
 1. [Build a Login and Logout API using Express.js (Node.js)](https://hackernoon.com/build-a-login-and-logout-api-using-expressjs-nodejs?ref=dailydev)
