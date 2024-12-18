@@ -72,11 +72,21 @@
 - Run `npm init -y ` to initialize the project or run `npm install` to install the project.
 - Install the following dependencies
   ```sh
-    npm i express mongoose dotenv
+    npm i express mongoose dotenv bcrypt cookie-parser cors express-validator jsonwebtoken
+  ```
+- Additonally, install **Nodemon** as dev dependency:
+  ```sh
+    npm install --save-dev nodemon
   ```
 - We will be using the following dependencies:
-  1. [Mongoose](https://mongoosejs.com/), an object data modeling (**ODM**) library for MongoDB, to create the user model within the user schema.
-  2. [Express.js]()
+  1. [Mongoose](https://mongoosejs.com/), an object data modeling (**ODM**) library for **MongoDB** and **Node.js**., to create the user model within the user schema. It manages relationships between data, provides schema validation, and is used to translate between objects in code and the representation of those objects in **MongoDB**
+  2. [Express.js](https://expressjs.com) is a minimal and flexible **Node.js** web application framework that provides a robust set of features for web and mobile applications.
+  3. [Bcrypt]() is a library to help you hash passwords. It uses a password-hashing function that is based on the Blowfish cipher. We will use this to hash sensitive things like passwords.
+  4. [Cookie-parser]() is a **middleware** used to parse the Cookie header and populate `req.cookies` with an object keyed by the cookie names. Optionally you may enable signed cookie support by passing a secret string, which assigns req.secret so it may be used by other middleware.
+  5. [Dotenv]() is a zero-dependency module that loads environment variables from a `.env` file into `process.env`.
+  6. [CORS]() is a node.js package for providing a Connect/Express middleware that can be used to enable CORS with various options. We don’t necessarily need this as we are developing just the API, however, good that you know in case you want to implement one.
+  7. [Express-Validator]() is a set of express.js middlewares that wraps validator.js validator and sanitiser functions. You may want to check for an empty request body or validate or even sanitize the request body. This package is very useful for that. You will add one or two of its functions in your code later.
+  8. [Nodemon]() is a tool that helps develop **Node.js** based applications by automatically restarting the node application when file changes in the directory are detected. With this, you don’t have to manually restart your application each time you make changes. Another powerful tool used mostly in production is pm2.
 
 # Steps
 
@@ -111,3 +121,4 @@
 - Create an `app.js` file in the root directory and add the following:
 
 # Resources and Further Reading
+1. [Build a Login and Logout API using Express.js (Node.js)](https://hackernoon.com/build-a-login-and-logout-api-using-expressjs-nodejs?ref=dailydev)
