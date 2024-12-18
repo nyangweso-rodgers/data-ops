@@ -14,6 +14,8 @@ services:
     environment:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
+    command: ["mongod", "--bind_ip_all"] # Remove the --auth flag to disable authentication - for a development setup
+    # command: ["mongod", "--bind_ip_all", "--auth"]
     volumes:
       - data-ops-mongodb-community-server-volume:/data/db
     networks:
@@ -109,6 +111,21 @@ services:
       - data-ops-postgres-db
     networks:
       - data-ops-network
+  ############################################################################
+  # mysql
+  #
+  mysql:
+    build: ./databases/03-mysql # Build MySQL image from Dockerfile in the directory
+    container_name: mysql_service # Name the container
+    environment: # Set environment variables
+      MYSQL_ROOT_PASSWORD: root # Set MySQL root password
+      MYSQL_DATABASE: my_database # Create a database named my_database
+      MYSQL_USER: user # Create a user named user
+      MYSQL_PASSWORD: password # Set user password
+    ports: # Expose MySQL port
+      - "3306:3306" # Map container port 3306 to host port 3306
+    volumes: # Attach volumes
+      - ./mysql_data:/var/lib/mysql # Attach volume to persist MySQL data in the same directory
   ############################################################################
   # zookeeper
   #
@@ -636,6 +653,9 @@ services:
   #- ./apis/express.js-and-postgres-api/.env
   #networks:
   #- data-ops-network
+  ############################################################################
+  # customers api with Express.js and postgres
+  #
   ############################################################################
   # users api with Express.js and MongoDB
   #
