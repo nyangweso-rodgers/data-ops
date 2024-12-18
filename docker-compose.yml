@@ -495,6 +495,39 @@ services:
     networks:
       - data-ops-network
   ############################################################################
+  # grafana
+  #
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=supersecret
+  ############################################################################
+  # prometheus
+  #
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    #restart: always
+    volumes:
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - data-ops-network
+  ############################################################################
+  # loki
+  #
+  loki:
+    image: grafana/loki
+    ports:
+      - "3100:3100"
+  ############################################################################
   # spring-boot-data-pipeline
   #
   #spring-boot-data-pipeline:
@@ -719,3 +752,8 @@ volumes:
   kafka-volume:
     name: kafka-volume
     driver: local
+  grafana-data:
+    name: grafana-data
+  prometheus-data:
+    name: prometheus-data
+    #driver: local
