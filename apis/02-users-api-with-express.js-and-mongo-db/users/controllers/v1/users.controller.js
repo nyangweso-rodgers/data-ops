@@ -95,10 +95,31 @@ const updateUser = async (req, res) => {
   }
 };
 
+// Delete a user
+const deleteUser = async (req, res) => {
+  try {
+    const deletedUser = await usersModel.findByIdAndDelete(req.params.id);
+
+    if (!deletedUser) {
+      console.error(`User with ID ${req.params.id} not found for deletion.`);
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    console.log(`User deleted successfully: ${deletedUser}`);
+    res
+      .status(200)
+      .json({ message: "User deleted successfully", user: deletedUser });
+  } catch (error) {
+    console.error("Failed to delete user:", error);
+    res.status(500).json({ error: "Internal Server Error", details: error });
+  }
+};
+
 // Export functions
 export default {
   createUser,
   getAllUsers,
   getUsersById,
   updateUser,
+  deleteUser,
 };

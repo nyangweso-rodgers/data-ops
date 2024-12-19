@@ -152,6 +152,11 @@
       }
      ```
 
+5. Delete User By Id
+   - Request: `DELETE http://localhost:3002/api/v1/users/675ff32f25012b973cce49d6`
+   - Response: 
+
 # Resources and Further Reading
 
 1. [Build a Login and Logout API using Express.js (Node.js)](https://hackernoon.com/build-a-login-and-logout-api-using-expressjs-nodejs?ref=dailydev)
+2. [Creating a Secure REST API in Node.js](https://www.toptal.com/nodejs/secure-rest-api-in-nodejs?ref=dailydev)
