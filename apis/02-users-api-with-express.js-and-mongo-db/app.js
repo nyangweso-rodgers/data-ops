@@ -10,8 +10,8 @@ import v1UserRoutes from "./users/routes/v1/users.routes.js";
 // Uncomment the next line if you're adding a v2 route in the future
 // import v2UserRoutes from "./users/routes/v2/users.routes.js"; 
 
-//dotenv.config(); // Load environment variables from .env file
-dotenv.config({ path: ".env" }); // Adjust the path based on your folder structure
+dotenv.config({path: '../../.env'}); // Load environment variables from .env file
+//dotenv.config({ path: ".env" }); // Adjust the path based on your folder structure
 
 // Connect to MongoDB
 const MONGO_URI = process.env.MONGODB_URI_FOR_USERS;
