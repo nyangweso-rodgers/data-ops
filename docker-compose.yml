@@ -4,52 +4,20 @@ services:
   # data-ops-mongodb-community-server
   #
   data-ops-mongodb-community-server:
-    #image: mongodb/mongodb-community-server:latest
-    image: mongodb/mongodb-community-server:7.0.7-ubi8 #https://hub.docker.com/r/mongodb/mongodb-community-server  #mongodb-community-server
+    build:
+      context: ./databases/02-mongodb-community-server
+      dockerfile: Dockerfile
     container_name: data-ops-mongodb-community-server
     ports:
       - "27017:27017"
+    #env_file: ./databases/02-mongodb-community-server/.env
     env_file:
       - .env
     environment:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
-    command: ["mongod", "--bind_ip_all"] # Remove the --auth flag to disable authentication - for a development setup
-    # command: ["mongod", "--bind_ip_all", "--auth"]
     volumes:
       - data-ops-mongodb-community-server-volume:/data/db
-    networks:
-      - data-ops-network
-  ############################################################################
-  # mongo
-  #
-  data-ops-mongodb:
-    #image: mongo:latest
-    image: mongo:5.0.27 # https://hub.docker.com/_/mongo
-    container_name: data-ops-mongodb
-    ports:
-      - "27018:27017" # Expose this container on port 27018 (maps to the container's default 27017)
-    env_file:
-      - .env
-    environment:
-      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
-      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
-    #command: [--auth]
-    #command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
-    #command: ["--replSet", "my-replica-set", "--bind_ip_all", "--port", "27017"]
-    volumes:
-      - data-ops-mongodb-volume:/data/db
-    #- ./init-replica-set.js:/docker-entrypoint-initdb.d/init-replica-set.js
-    #healthcheck:
-    #test: echo 'db.runCommand("ping").ok' | mongo --username ${MONGO_INITDB_ROOT_USERNAME} --password ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --quiet
-    #test: test $$(echo "rs.initiate({_id:'my-replica-set',members:[{_id:0,host:\"mongo:27017\"},{_id:1,host:\"mongo-secondary1:27018\"},{_id:2,host:\"mongo-secondary2:27019\"}]}).ok || rs.status().ok" | mongo --port 27017 --quiet) -eq 1
-    #test: test $$(echo "db.adminCommand('ping').ok" | mongo --username ${MONGO_INITDB_ROOT_USERNAME} --password ${MONGO_INITDB_ROOT_PASSWORD} --quiet) -eq 1
-    #interval: 10s
-    #timeout: 5s
-    #retries: 5
-    #start_period: 30s
-    #entrypoint: ["/usr/bin/mongod", "--replSet", "rsmongo", "--bind_ip_all"]
-    #entrypoint: ["mongod", "--replSet", "rsmongo", "--bind_ip_all"]
     networks:
       - data-ops-network
   ############################################################################
@@ -701,9 +669,9 @@ services:
     ports:
       - "3002:3002"
     env_file:
-      - ./apis/02-users-api-with-express.js-and-mongo-db/.env
+      #- ./apis/02-users-api-with-express.js-and-mongo-db/.env
+      - .env # Reference the root .env file here
     depends_on:
-      #- data-ops-mongodb
       - data-ops-mongodb-community-server
     networks:
       - data-ops-network
