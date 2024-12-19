@@ -3,6 +3,8 @@ import express from "express";
 import mongoose, { mongo } from "mongoose";
 import dotenv from "dotenv";
 
+import connectToMongodb from "./config/db.connection.js";
+
 // Import routes
 import v1UserRoutes from "./users/routes/v1/users.routes.js";
 // Uncomment the next line if you're adding a v2 route in the future
@@ -11,14 +13,11 @@ import v1UserRoutes from "./users/routes/v1/users.routes.js";
 //dotenv.config(); // Load environment variables from .env file
 dotenv.config({ path: ".env" }); // Adjust the path based on your folder structure
 
-//connect to MongoDB Atlas
+// Connect to MongoDB
 const MONGO_URI = process.env.MONGODB_URI_FOR_USERS;
 console.log("MONGO_URI:", MONGO_URI); // Debugging log
+connectToMongodb(MONGO_URI);
 
-mongoose
-  .connect(MONGO_URI /*, { serverSelectionTimeoutMS: 5000 }*/)
-  .then(() => console.log("Connected to MongoDB Successfully!"))
-  .catch((err) => console.error("Error Connecting to MongoDB:", err));
 
 // create an express application object
 const app = express();

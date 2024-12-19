@@ -133,8 +133,24 @@
    - Response:
 
 3. Fetch a User by ID
-   - Request:  `GET http://localhost:3002/api/v1/users/675ff32f25012b973cce49d6`
+
+   - Request: `GET http://localhost:3002/api/v1/users/675ff32f25012b973cce49d6`
    - Response:
+
+4. Update User by ID
+
+   - Request:
+
+     ```sh
+      PUT http://localhost:3002/api/v1/users/6763a74d1a85ef1fd7e2d29b
+
+      Content-Type: application/json
+
+      {
+        "name": "Updated User",
+        "email": "updateduser@example.com"
+      }
+     ```
 
 # Resources and Further Reading
 

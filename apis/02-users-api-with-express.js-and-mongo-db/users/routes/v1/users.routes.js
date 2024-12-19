@@ -1,5 +1,5 @@
 import express from "express";
-import usersController from "../../controllers/users.controller.js";
+import usersController from "../../controllers/v1/users.controller.js";
 
 const router = express.Router();
 
@@ -7,5 +7,6 @@ const router = express.Router();
 router.post("/users", usersController.createUser);
 router.get("/users", usersController.getAllUsers); // Get all users
 router.get("/users/:id", usersController.getUsersById); // Get a specific user by ID
+router.put("/users/:id", usersController.updateUser); // Update user details
 
 export default router;
