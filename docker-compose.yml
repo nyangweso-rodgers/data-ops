@@ -24,7 +24,9 @@ services:
   # postgres DB
   #
   data-ops-postgres-db:
-    image: postgres:16.3-alpine3.20 #https://hub.docker.com/layers/library/postgres/16.3-alpine3.20/images/sha256-5eb2698ee6a3331df0788e1786145dc248e9a33e98dd161c4d1168a9fdf12a01?context=explore
+    build:
+      context: ./databases/01-postgresql
+      dockerfile: Dockerfile
     container_name: data-ops-postgres-db
     #hostname: data-ops-postgres-db
     restart: always
@@ -35,20 +37,19 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB} # The PostgreSQL default database (automatically created at first launch)
     #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
     #command: ["postgres", "-c", "wal_level=logical"]
     ######### Volumes ##########
     volumes:
       - data-ops-postgres-db-volume:/var/lib/postgresql/data
+      - ./databases/postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
     healthcheck:
       #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
-      test:
-        [
+      test: [
           "CMD-SHELL",
-          "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d ${POSTGRES_TEST_DB} -c 'SELECT 1'",
-        ]
+          "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d postgres -c 'SELECT 1'",
+        ] # Use default database `postgres`
       interval: 10s
       timeout: 5s
       retries: 3
@@ -72,7 +73,6 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ######### Volumes ##########
     volumes:
       - pgadmin-volume:/var/lib/pgadmin
     depends_on:
