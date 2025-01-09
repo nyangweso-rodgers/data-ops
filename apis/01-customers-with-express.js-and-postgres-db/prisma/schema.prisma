@@ -10,22 +10,18 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("POSTGRES_USERS_DATABASE_URL")
+  url      = env("POSTGRES_CUSTOMERS_DATABASE_URL")
 }
 
 model Customers {
   id String @id @default(uuid())
   first_name String
   last_name String
-  status     CustomerStatus  @default(TRUE)
+  status     Boolean  @default(true)  // Use a simple Boolean
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   created_by String @default("rodgerso65@gmail.com")
   updated_by String @default("rodgerso65@gmail.com")
 
   @@map("customers") // This will ensure the table name is lowercase "customers"
-}
-enum CustomerStatus {
-  TRUE
-  FALSE
 }

@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prisma-migrate-dev": "docker exec express.js-and-postgres-api npx prisma migrate dev",
+    "prisma-migrate-dev": "docker exec 01-customers-with-express.js-and-postgres-db npx prisma migrate dev",
+    "prisma-studio": "docker exec 01-customers-with-express.js-and-postgres-db npx prisma studio",
     "start": "node app.js"
   },
   "type": "module",

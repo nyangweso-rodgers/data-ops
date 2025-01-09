@@ -159,90 +159,41 @@
 
 ### Step : Running the Container
 
-- Run the application by:
-
-  ```bash
-      docker-compose up -d --build api-with-postgresql-and-express.js
-  ```
-
-- This starts a container from the my-node-app image, maps the container's port 3004 to the host's port 3004, and runs the application. You should be able to access your API at http://localhost:3005
-
-# Test API with `curl`
+# Testing API Endpoints Using curl
 
 ```sh
-  curl -X POST http://localhost:3005/api/customers/create -H "Content-Type: application/json" -d '{"first_name": "John", "last_name": "Doe"}'
+  curl -X POST http://localhost:3001/api/v1/customers/ -H "Content-Type: application/json" -d '{"first_name": "John", "last_name": "Doe"}'
 ```
 
-# Test API with Postman
+# Testing API Endpoints Using Postman
 
-## Setup Postman
+1. Create a new Customer
 
-### Step 1: Create a New Collection
+   - Request: `POST http://localhost:3001/api/v1/customers/`
+   - Add the `JSON` payload for creating a new customer. Example
 
-- Open postman
-- Click on the Collections tab on the left sidebar.
-- Click the New button and select Collection.
-- Name your collection (e.g., "Customer API").
+     ```json
+     {
+       "first_name": "Test Customer first_name 1",
+       "last_name": "Test Customer last_name 1"
+     }
+     ```
 
-## Create Customer (POST)
+   - Response
+   - Remarks:
 
-- Click the Add Request button within your new collection.
-- Name your request (e.g., "Create Customer").
-- Set the `HTTP` method to `POST`.
-- Enter the URL: http://localhost:3004/create-customer.
-- Go to the Body tab, select raw and set the format to `JSON`
-- Add the `JSON` payload for creating a new customer. Example
+- To create multiple customers, specify the following in message body:
   ```json
-  {
-    "first_name": "Test Customer first_name 1",
-    "last_name": "Test Customer last_name 1"
-  }
+  [
+    {
+      "first_name": "John",
+      "last_name": "Doe"
+    },
+    {
+      "first_name": "Jane",
+      "last_name": "Smith"
+    }
+  ]
   ```
-- Click **Save** and then **Send** to test the request.
-- Remarks:
-  - To create multiple customers, specify the following in message body:
-    ```json
-    [
-      {
-        "first_name": "John",
-        "last_name": "Doe"
-      },
-      {
-        "first_name": "Jane",
-        "last_name": "Smith"
-      }
-    ]
-    ```
-
-## Read Customers (GET)
-
-- Add another request to the collection.
-- Name your request (e.g., "**Read Customers**").
-- Set the `HTTP` method to `GET`
-- Enter the URL: http://localhost:3004/read-customer
-- Click **Save** and then **Send** to test the request.
-
-## Update Customer (PUT)
-
-- Add another request to the collection.
-- Name your request (e.g., "**Update Customer**").
-- Set the `HTTP` method to `PUT`.
-- Enter the URL: http://localhost:3004/update-customer/:id (replace :id with the actual customer ID).
-- Go to the Body tab, select raw and set the format to JSON.
-- Add the JSON payload for updating the customer. Example
-  ```json
-  {
-    "first_name": "Updated First Name"
-  }
-  ```
-- Click **Save** and then **Send** to test the request.
-
-## Delete Customer (DELETE)
-
-- Add another request to the collection.
-- Name your request (e.g., "**Delete Customer**").
-- Set the `HTTP` method to `DELETE`.
-- Enter the URL: http://localhost:3004/delete-customer/:id (replace :id with the actual customer ID).
-- Click **Save** and then **Send** to test the request.
 
 # Resources and Further Reading

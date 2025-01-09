@@ -1,8 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
-import customerRoute from "./src/app/routes/customer-route.js";
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import v1CustomerRoutes from "./src/app/customers/routes/v1/customers.routes.js";
+import { connectToPostgresDb } from "./config/db.connection.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -10,37 +9,22 @@ dotenv.config();
 const app = express();
 app.use(express.json()); // Middleware to parse JSON bodies
 
-// Import and use routes
-app.use("/customer", customerRoute);
 
-// database connetion validation
-async function validateDatabaseConnection() {
-  // Implement your validation logic here
-  // For example, try to connect to the database and catch potential errors
-  try {
-    const prisma = new PrismaClient();
-    await prisma.$connect();
-    console.log(
-      "Postgres Database Connection has been established successfully!"
-    );
-  } catch (error) {
-    console.error("Unable to connect to the Postgres Database!", error);
-    throw error; // Or handle the error appropriately
-  }
-}
+// Register routes
+app.use("/api/v1", v1CustomerRoutes); // Prefix all routes with "/api"
 
 // Start the server
-const port = process.env.APP_PORT || 3005;
+const port = process.env.APP_PORT || 3001;
 
 const start = async () => {
   try {
     // Validate the database connection during startup
-    await validateDatabaseConnection();
+    await connectToPostgresDb();
 
     // Start the server
     app.listen(port, () => {
       console.log(
-        `Express.js and Postgresql API Server is running on http://localhost:${port}`
+        `Express.js and PostgreSQL API Server is running on http://localhost:${port}`
       );
     });
   } catch (error) {
