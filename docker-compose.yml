@@ -3,11 +3,11 @@ services:
   ############################################################################
   # data-ops-mongodb-community-server
   #
-  data-ops-mongodb-community-server:
+  mongo-db-community-server:
     build:
       context: ./databases/02-mongodb-community-server
       dockerfile: Dockerfile
-    container_name: data-ops-mongodb-community-server
+    container_name: mongo-db-community-server
     ports:
       - "27017:27017"
     #env_file: ./databases/02-mongodb-community-server/.env
@@ -17,32 +17,33 @@ services:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
     volumes:
-      - data-ops-mongodb-community-server-volume:/data/db
+      - mongo-db-community-server-volume:/data/db
     networks:
       - data-ops-network
   ############################################################################
   # postgres DB
   #
-  data-ops-postgres-db:
+  postgres-db:
     build:
-      context: ./databases/01-postgresql
+      context: ./databases/01-postgres
       dockerfile: Dockerfile
-    container_name: data-ops-postgres-db
-    #hostname: data-ops-postgres-db
+    container_name: postgres-db
+    hostname: postgres
     restart: always
     ports:
       - "5432:5432"
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      #POSTGRES_USER: ${POSTGRES_USER} # does not work for whatever reason
+      PGUSER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
     #command: ["postgres", "-c", "wal_level=logical"]
     ######### Volumes ##########
     volumes:
-      - data-ops-postgres-db-volume:/var/lib/postgresql/data
-      - ./databases/postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./databases/01-postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
     healthcheck:
       #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
@@ -63,8 +64,9 @@ services:
   # pgadmin
   #
   pgadmin:
-    image: dpage/pgadmin4:8.7 #https://hub.docker.com/layers/dpage/pgadmin4/8.7/images/sha256-198236db5d90e491354c351ccd02a21ce736030b72cd0f8b05430bc48a59d86b?context=explore
-    container_name: postgres-pgadmin
+    #image: dpage/pgadmin4:8.7 # https://hub.docker.com/layers/dpage/pgadmin4/8.7/images/sha256-198236db5d90e491354c351ccd02a21ce736030b72cd0f8b05430bc48a59d86b?context=explore
+    image: dpage/pgadmin4:8.14.0 # https://hub.docker.com/r/dpage/pgadmin4/tags
+    container_name: pgadmin
     restart: always
     ports:
       - "5050:80"
@@ -76,15 +78,15 @@ services:
     volumes:
       - pgadmin-volume:/var/lib/pgadmin
     depends_on:
-      - data-ops-postgres-db
+      - postgres-db
     networks:
       - data-ops-network
   ############################################################################
   # mysql
   #
-  mysql:
+  mysql-db:
     build: ./databases/03-mysql # Build MySQL image from Dockerfile in the directory
-    container_name: mysql_service # Name the container
+    container_name: mysql-db # Name the container
     environment: # Set environment variables
       MYSQL_ROOT_PASSWORD: root # Set MySQL root password
       MYSQL_DATABASE: my_database # Create a database named my_database
@@ -93,7 +95,7 @@ services:
     ports: # Expose MySQL port
       - "3306:3306" # Map container port 3306 to host port 3306
     volumes: # Attach volumes
-      - ./mysql_data:/var/lib/mysql # Attach volume to persist MySQL data in the same directory
+      - ./mysql-db-volume:/var/lib/mysql # Attach volume to persist MySQL data in the same directory
   ############################################################################
   # zookeeper
   #
@@ -266,7 +268,7 @@ services:
     container_name: debezium-connect
     hostname: debezium-connect
     depends_on:
-      data-ops-postgres-db:
+      postgres-db:
         condition: service_healthy
       kafka:
         condition: service_healthy
@@ -331,7 +333,7 @@ services:
       - kafka
       - schema-registry
       - zookeeper
-      - data-ops-postgres-db
+      - postgres-db
     environment:
       # About CONNECT_BOOTSTRAP_SERVERS
       # -------------------------------
@@ -657,12 +659,28 @@ services:
   ############################################################################
   # customers api with Express.js and postgres
   #
+  customers-api:
+    build:
+      context: ./apis/01-customers-with-express.js-and-postgres-db
+      dockerfile: Dockerfile
+    image: customers-api
+    container_name: customers-api
+    ports:
+      - "3001:3001"
+    env_file:
+      #- .env
+      - ./apis/01-customers-with-express.js-and-postgres-db/.env
+    depends_on:
+      - postgres-db
+      - pgadmin
+    networks:
+      - data-ops-network
   ############################################################################
   # users api with Express.js and MongoDB
   #
   users-api:
     build:
-      context: ./apis/02-users-api-with-express.js-and-mongo-db
+      context: ./apis/02-users-with-express.js-and-mongo-db
       dockerfile: Dockerfile
     image: users-api
     container_name: users-api
@@ -672,7 +690,7 @@ services:
       #- ./apis/02-users-api-with-express.js-and-mongo-db/.env
       - .env # Reference the root .env file here
     depends_on:
-      - data-ops-mongodb-community-server
+      - mongo-db-community-server
     networks:
       - data-ops-network
 ############################################################################
@@ -698,30 +716,27 @@ networks:
 # volumes
 #
 volumes:
-  data-ops-mongodb-community-server-volume:
-    name: data-ops-mongodb-community-server-volume
-    driver: local
+  mongo-db-community-server-volume:
+    name: mongodb-community-server-volume
+    #driver: local
   data-ops-mongodb-volume:
     name: data-ops-mongodb-volume
-    driver: local
-  data-ops-postgres-db-volume:
-    name: data-ops-postgres-db-volume
-    driver: local
+    #driver: local
+  postgres-db-volume:
+    name: postgres-db-volume
+    #driver: local
     #driver_opts:
     #type: none
     #o: bind
     #device: ./data
   pgadmin-volume:
     name: pgadmin-volume
-    driver: local
+    #driver: local
   zookeeper-volume:
     name: zookeeper-volume
-    driver: local
   kafka-volume:
     name: kafka-volume
-    driver: local
   grafana-data:
     name: grafana-data
   prometheus-data:
     name: prometheus-data
-    #driver: local
