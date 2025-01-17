@@ -55,6 +55,7 @@ export const getCustomerById = async (req, res) => {
     return res.status(200).json(customer);
   } catch (error) {
     console.log("Error fetching customer:", error);
+  
 
     // Send a generic error response
     return res.status(500).json({ error: "Internal Server Error" });
