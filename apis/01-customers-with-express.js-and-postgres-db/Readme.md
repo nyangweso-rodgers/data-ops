@@ -161,9 +161,20 @@
 
 # Testing API Endpoints Using curl
 
-```sh
-  curl -X POST http://localhost:3001/api/v1/customers/ -H "Content-Type: application/json" -d '{"first_name": "John", "last_name": "Doe"}'
-```
+1. Create a new customer
+
+   - Command:
+   - Example: `curl -X POST http://localhost:3001/api/v1/customers/ -H "Content-Type: application/json" -d '{"first_name": "John", "last_name": "Doe"}'`
+
+2. Get Customer By Id:
+
+   - Command:
+   - Example: `curl -X GET http://localhost:3001/api/v1/customers/205decf1-9e22-40bf-9713-5d28f29b6e1b`
+   - Output:
+
+3. Get Customers:
+   - Command:
+   - Example: `curl -X GET http://localhost:3001/api/v1/customers`
 
 # Testing API Endpoints Using Postman
 
@@ -195,5 +206,16 @@
     }
   ]
   ```
+
+2. Get Customer By Id
+
+   - Request: `GET http://<server_address>:<port>/api/v1/customers/:id`
+   - Example: `GET http://localhost:3001/api/v1/customers/205decf1-9e22-40bf-9713-5d28f29b6e1b`
+   - Response
+
+3. Get Customers
+   - Request: `GET http://<server_address>:<port>/api/v1/customers/`
+   - Example: `GET http://localhost:3001/api/v1/customers/`
+   - Response
 
 # Resources and Further Reading

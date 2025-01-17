@@ -31,29 +31,6 @@ export const createCustomerService = async (newCustomerData) => {
   }
 };
 
-export const readCustomersService = async (id) => {
-  // Ensure 'id' is received as a parameter
-  try {
-    // Validate that 'id' is provided and is not an empty string
-    if (!id || id.trim() === "") {
-      throw new Error("Invalid customer ID");
-    }
-
-    // Fetch the customer by ID
-    const readCustomerById = await prisma.customers.findUnique({
-      where: { id },
-    });
-
-    // Check if the customer exists
-    if (!readCustomerById) {
-      throw new Error("Customer not found");
-    }
-    return readCustomerById;
-  } catch (error) {
-    console.error(error);
-  }
-};
-
 export const updateCustomerService = async (id, updateCustomerData) => {
   try {
     // Fetch the current record before updating
