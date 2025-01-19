@@ -1,0 +1,7 @@
+# confluent plugins
+assets/
+etc/
+doc/
+
+# secrets
+bigquery-keyfile.json

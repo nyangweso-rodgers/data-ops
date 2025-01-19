@@ -1,0 +1,34 @@
+{
+  "name": "jdbc-json-connector-for-customers-postgresdb",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+    "tasks.max": "1",
+
+    "connection.url": "jdbc:postgresql://postgres:5432/customers",
+    "connection.user": "postgres",
+    "connection.password": "<spevify password>",
+
+   "mode": "timestamp",
+    "timestamp.column.name": "updated_at",
+
+    "table.whitelist": "customers",
+
+    "topic.prefix": "customers.",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+
+    "poll.interval.ms": "5000",
+    "validate.non.null": "true",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "schema.registry.url": "http://schema-registry:8081",
+
+    "transforms": "InsertKey, ExtractId",
+    "transforms.InsertKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.InsertKey.fields": "id",
+    "transforms.ExtractId.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.ExtractId.field": "id"
+  }
+}

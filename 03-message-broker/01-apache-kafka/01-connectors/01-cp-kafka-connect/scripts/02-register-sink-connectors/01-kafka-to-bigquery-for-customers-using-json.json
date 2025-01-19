@@ -1,0 +1,39 @@
+{
+  "name": "bigquery-json-connector-for-customers",
+  "config": {
+    "connector.class": "com.wepay.kafka.connect.bigquery.BigQuerySinkConnector",
+    "tasks.max": "1",
+    "consumer.auto.offset.reset": "earliest",
+    "topics": "users.customers",
+    "topicsToTables": "users.customers=customers",
+    "sanitizeTopics": "true",
+
+    "maxWriteSize": "10000",
+    "retry": "3",
+    "retryWait": "10000",
+    "autoCreateTables": false,
+    "autoUpdateSchemas": false,
+
+    "tableWriteWait": "1000",
+    "allBQFieldsNullable": true,
+    "allowNewBigQueryFields": true,
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+
+    "transforms": "extractAfterData",
+    "transforms.extractAfterData.type": "org.apache.kafka.connect.transforms.ExtractField$Value",
+    "transforms.extractAfterData.drop.tombstones": "true",
+    "transforms.extractAfterData.field": "after",
+
+    "errors.tolerance": "all",
+    "errors.log.enabled": "true",
+    "errors.log.include.messages": "true",
+
+    "project": "general-364419",
+    "defaultDataset": "kafka_dataset",
+
+    "keyfile": "/etc/plugins/bigquery-keyfile.json"
+  }
+}

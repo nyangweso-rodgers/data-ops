@@ -1,0 +1,41 @@
+{
+  "name": "bigquery-avro-sink-connector-for-customers",
+  "config": {
+    "connector.class": "com.wepay.kafka.connect.bigquery.BigQuerySinkConnector",
+    "tasks.max": "1",
+
+    "topics": "users.customers",
+    "project": "general-364419",
+    "defaultDataset": "kafka_dataset",
+    "keyfile": "/etc/plugins/bigquery-keyfile.json",
+    "autoCreateTables": true,
+    "autoUpdateSchemas": true,
+
+    "tableWriteWait": "1000",
+    "bufferSize": "1000",
+    "flush.size": "10000",
+
+    "retry": "3",
+    "retryWait": "10000",
+
+    "consumer.auto.offset.reset": "earliest",
+
+    "topicsToTables": "users.customers=customers",
+    "sanitizeTopics": "true",
+
+    "maxWriteSize": "10000",
+
+    "allBQFieldsNullable": true,
+    "allowNewBigQueryFields": true,
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter.schemas.enable": "true",
+
+    "errors.tolerance": "all",
+    "errors.log.enabled": "true",
+    "errors.log.include.messages": "true"
+  }
+}

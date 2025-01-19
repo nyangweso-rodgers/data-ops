@@ -1,0 +1,32 @@
+{
+  "name": "postgresdb-connector-for-customers-v1",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "plugin.name": "pgoutput",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "admin",
+    "database.password": "<specify your password>",
+    "database.dbname": "users",
+    "database.server.name": "postgres",
+    "table.include.list": "public.customers",
+    "heartbeat.interval.ms": "5000",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+
+    "value.converter.schema.registry.url": "http://localhost:8081",
+    "value.converter.schemas.enable": "true",
+    "key.converter.schema.registry.url": "http://localhost:8081",
+
+    "topic.prefix": "users",
+    "topic.creation.enable": "true",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+    "topic.creation.default.cleanup.policy": "compact",
+    "topic.creation.default.retention.ms": "604800000",
+    "slot.name": "customers_slot",
+    "publication.name": "debezium_customers_publication",
+    "snapshot.mode": "initial"
+  }
+}
