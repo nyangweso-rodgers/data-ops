@@ -10,6 +10,8 @@ export const createCustomer = async (req, res) => {
     const {
       first_name,
       last_name,
+      phone_number,
+      email,
       status,
       created_by,
       updated_by /**  ... other fields */,
@@ -17,7 +19,7 @@ export const createCustomer = async (req, res) => {
 
     // 1. Validate required fields
     // Check for mandatory fields
-    if (!first_name || !last_name) {
+    if (!first_name || !last_name || !phone_number || !email) {
       return res.status(400).json({
         error:
           "Missing mandatory fields: first_name and last_name are required",
@@ -31,8 +33,8 @@ export const createCustomer = async (req, res) => {
     }
     */
 
-    /** 
-     * //3. Check email uniqueness
+     
+    // 3. Check email uniqueness
     const existingCustomer = await prisma.customers.findUnique({
       where: { email },
     });
@@ -40,12 +42,13 @@ export const createCustomer = async (req, res) => {
     if (existingCustomer) {
       return res.status(400).json({ error: 'Email already exists' });
     }
-    */
 
     const newCustomer = await prisma.customers.create({
       data: {
         first_name,
         last_name,
+        phone_number,
+        email,
         status: status ?? true, // Default to true if not provided
         created_by: created_by ?? "rodgerso65@gmail.com", // Default email
         updated_by: updated_by ?? "rodgerso65@gmail.com", // Default email

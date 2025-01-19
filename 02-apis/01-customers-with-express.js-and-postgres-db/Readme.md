@@ -17,6 +17,22 @@
   5. **Delete Customer**: Remove a Customer from the database.
   6. **Customer Authentication**: Secure API access using JSON Web Tokens (JWT).
 
+# Project Setup and Dependencies
+
+- To start, create a Node.js project and install the required packages:
+  ```sh
+    mkdir customers-api
+    cd customers-api
+    npm init -y
+    npm i express body-parser --save
+  ```
+
+# Configuring the Database
+
+# Setting Up Express and Routes
+
+# Implementing the /customers Endpoint
+
 # Project Structure
 
 ## 2. `src/controllers/`
@@ -46,7 +62,28 @@
     npm init -y
   ```
 
-## Step 2: Prisma Setup
+## Step 2: Prisma Configurations
+
+- Update Prism Schema:
+  - Access `customers-api` Docker Container via **shell**:
+    - On Windows CMD (after switching to bash):
+      ```sh
+        docker exec -it customers-api //bin//sh
+        # or
+        docker exec -it customers-api sh
+      ```
+  - In a development environment, use the migrate dev command to generate and apply migrations:
+    ```sh
+      npx prisma migrate dev
+    ```
+  - In production and testing environments, use the migrate deploy command to apply migrations:
+    ```sh
+      npx prisma migrate deploy
+    ```
+  - Run Prisma Migration Inside the Docker container:
+    ```sh
+      npx prisma migrate dev --name <add field1, field2>
+    ```
 
 ### Step 2.6: CRUD Operations with Prisma Client
 
@@ -93,7 +130,12 @@
    - Command:
    - Example: `curl -X GET http://localhost:3001/api/v1/customers`
 
-4. Delete Customer:
+4. Update Customer By Id:
+
+   - Command:
+   - Example: `curl -X PUT http://localhost:3000/movies/1 -H "Content-Type: application/json" -d '{"rating": 9.0}'`
+
+5. Delete Customer:
    - Command: `curl -X DELETE http://localhost:3001/api/v1/customers/{id}`
    - Example: `curl -X DELETE http://localhost:3001/api/v1/customers/40aebc7e-3f7e-49f5-bb4d-913f101737b4`
 

@@ -17,9 +17,18 @@ model Customers {
   id String @id @default(uuid())
   first_name String
   last_name String
-  status     Boolean  @default(true)  // Use a simple Boolean
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  country_code String? @default("Ke")
+  status Boolean  @default(true)  // Use a simple Boolean
+
+  phone_number String   // Required field (not nullable)
+  alt_phone_number String?  // Optional field (nullable)
+
+  email String @unique // Enforces uniqueness in the database
+  alt_email String?
+  
+  created_at DateTime @default(now()) // Default value, non-nullable by default
+  updated_at DateTime @updatedAt // Non-nullable, updated automatically
+  
   created_by String @default("rodgerso65@gmail.com")
   updated_by String @default("rodgerso65@gmail.com")
 
