@@ -5,7 +5,7 @@ services:
   #
   mongo-db-community-server:
     build:
-      context: ./databases/02-mongodb-community-server
+      context: ./01-databases/02-mongodb-community-server
       dockerfile: Dockerfile
     container_name: mongo-db-community-server
     ports:
@@ -25,7 +25,7 @@ services:
   #
   postgres-db:
     build:
-      context: ./databases/01-postgres
+      context: ./01-databases/01-postgres
       dockerfile: Dockerfile
     container_name: postgres-db
     hostname: postgres
@@ -85,7 +85,7 @@ services:
   # mysql
   #
   mysql-db:
-    build: ./databases/03-mysql # Build MySQL image from Dockerfile in the directory
+    build: ./01-databases/03-mysql # Build MySQL image from Dockerfile in the directory
     container_name: mysql-db # Name the container
     environment: # Set environment variables
       MYSQL_ROOT_PASSWORD: root # Set MySQL root password
@@ -121,25 +121,15 @@ services:
     networks:
       - data-ops-network
   ############################################################################
+  # clickhouse-zookeeper
+  #
+  ############################################################################
   # kafka
   #
   kafka:
-    # An important note about accessing Kafka from clients on other machines:
-    # -----------------------------------------------------------------------
-    #
-    # The config used here exposes port 9092 for _external_ connections to the broker
-    #i.e. those from _outside_ the docker network. This could be from the host machine
-    # running docker, or maybe further afield if you've got a more complicated setup.
-    # If the latter is true, you will need to change the value 'localhost' in
-    # KAFKA_ADVERTISED_LISTENERS to one that is resolvable to the docker host from those
-    # remote clients
-    #
-    # For connections _internal_ to the docker network, such as from other services and components, use kafka:29092.
-    #
-    # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
-    #
-    #image: confluentinc/cp-kafka:latest
-    image: confluentinc/cp-kafka:7.6.1
+    build: 
+      context: ./03-message-broker/01-apache-kafka
+      dockerfile: Dockerfile
     hostname: kafka
     container_name: kafka
     depends_on:
@@ -220,6 +210,27 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+    networks:
+      - data-ops-network
+  ############################################################################
+  # kafka-ui
+  #
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: always
+    ports:
+      - 8080:8080
+    depends_on:
+      - kafka
+    environment:
+      DYNAMIC_CONFIG_ENABLED: "true"
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
+      KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
+    #volumes:
+    #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
     networks:
       - data-ops-network
   ############################################################################
@@ -323,7 +334,7 @@ services:
   ############################################################################
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
     #image: confluentinc/cp-kafka-connect:7.7.0
-    build: ./cp-kafka-connect
+    build: ./03-message-broker/01-apache-kafka/01-connectors/01-cp-kafka-connect
     container_name: cp-kafka-connect
     hostname: cp-kafka-connect
     restart: always
@@ -411,27 +422,6 @@ services:
   #networks:
   #- data-ops-network
   ############################################################################
-  # kafka-ui
-  #
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    restart: always
-    ports:
-      - 8080:8080
-    depends_on:
-      - kafka
-    environment:
-      DYNAMIC_CONFIG_ENABLED: "true"
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
-      KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
-    #volumes:
-    #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
-    networks:
-      - data-ops-network
-  ############################################################################
   # ksqldb-cli
   #
   #ksqldb-cli:
@@ -474,7 +464,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - grafana-data:/var/lib/grafana
+      - grafana-volume:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=supersecret
   ############################################################################
@@ -545,27 +535,95 @@ services:
   #networks:
   #- data-ops-network
   ############################################################################
+  # clickhouse
+  #
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8.7.41
+    #build:
+    #context: ./data-warehouse/01-clickhouse
+    #dockerfile: Dockerfile
+    #image: clickhouse
+    container_name: clickhouse
+    depends_on:
+      - postgres-db
+      - pgadmin
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+      - "9009:9009"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: mypassword
+    volumes:
+      - clickhouse-volume:/var/lib/clickhouse/ # Persistent storage for data
+      - ./data-warehouse/01-clickhouse/config/config.xml:/etc/clickhouse-server/config.xml # Mount the local config.xml
+      #- ./clickhouse-logs:/var/log/clickhouse-server/ # Persistent storage for logs
+    restart: always
+    networks:
+      - data-ops-network
+  ############################################################################
+  # clickhouse-node-1
+  #
+  clickhouse-node-1:
+    #image: clickhouse/clickhouse-server:latest
+    image: clickhouse/clickhouse-server:24.8.7.41
+    container_name: clickhouse-node-1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    links:
+      - zookeeper
+    volumes:
+      - ./config/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./config/zookeeper.xml:/etc/clickhouse-server/config.d/zookeeper.xml
+      - ./config/access_management.xml:/etc/clickhouse-server/users.d/access_management.xml
+      - ./config/default-password.xml:/etc/clickhouse-server/users.d/default-password.xml
+      - ./config/storage.xml:/etc/clickhouse-server/config.d/storage.xml
+      - ./config/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+      - ./config/macros1.xml:/etc/clickhouse-server/config.d/macros.xml
+      - clickhouse-node-1-volume:/var/lib/clickhouse/
+      #- clickhouse-logs:/var/log/clickhouse-server/
+    networks:
+      - data-ops-network
+  ############################################################################
   # metabase
   #
-  #metabase:
-  #image: metabase/metabase:latest
-  #container_name: metabase
-  #depends_on:
-  #- postgres
-  #ports:
-  #- 3000:3000
-  #environment:
-  #MB_DB_TYPE: ${MB_DB_TYPE}
-  #MB_DB_DBNAME: metabaseappdb
-  #MB_DB_PORT: 5432
-  #MB_DB_USER: metabase
-  #MB_DB_PASS: mysecretpassword
-  #MB_DB_HOST: postgres
-  #healthcheck:
-  #test: curl --fail -I http://localhost:3000/api/health || exit 1
-  #interval: 15s
-  #timeout: 5s
-  #retries: 5
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    depends_on:
+      - postgres-db
+      - pgadmin
+    ports:
+      - 3000:3000
+    environment:
+      MB_DB_TYPE: ${MB_DB_TYPE}
+      MB_DB_DBNAME: metabaseappdb
+      MB_DB_PORT: 5432
+      MB_DB_USER: metabase
+      MB_DB_PASS: mypassword
+      MB_DB_HOST: postgres
+    healthcheck:
+      test: curl --fail -I http://localhost:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data-ops-network
   ############################################################################
   # grafana
   #
@@ -630,38 +688,11 @@ services:
   #networks:
   #- data-ops-network
   ############################################################################
-  # api - with Express.js and postgresql
-  #
-  #express.js-and-postgres-api:
-  #build:
-  #context: ./apis/express.js-and-postgres-api
-  #dockerfile: Dockerfile
-  #image: express.js-and-postgres-api
-  #container_name: express.js-and-postgres-api
-  #ports:
-  #- "3005:3005"
-  #depends_on:
-  #- postgres-db
-  #- pgadmin
-  #command: sh -c "npx prisma migrate dev --name init && npm start" #remove this line after the first deployment
-  #command: ["sh", "-c", "npx prisma migrate dev --name init && npm start"] #This ensures that the migrations are applied in a non-interactive manner.
-  # Add this line
-  #tty: true # Enables interactive mode
-  #environment:
-  #PGHOST: ${PGHOST}
-  #POSTGRES_USER: ${POSTGRES_USER}
-  #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #POSTGRES_USERS_DB: ${POSTGRES_USERS_DB}
-  #env_file:
-  #- ./apis/express.js-and-postgres-api/.env
-  #networks:
-  #- data-ops-network
-  ############################################################################
   # customers api with Express.js and postgres
   #
   customers-api:
     build:
-      context: ./apis/01-customers-with-express.js-and-postgres-db
+      context: ./02-apis/01-customers-with-express.js-and-postgres-db
       dockerfile: Dockerfile
     image: customers-api
     container_name: customers-api
@@ -669,7 +700,7 @@ services:
       - "3001:3001"
     env_file:
       #- .env
-      - ./apis/01-customers-with-express.js-and-postgres-db/.env
+      - ./02-apis/01-customers-with-express.js-and-postgres-db/.env
     depends_on:
       - postgres-db
       - pgadmin
@@ -680,7 +711,7 @@ services:
   #
   users-api:
     build:
-      context: ./apis/02-users-with-express.js-and-mongo-db
+      context: ./02-apis/02-users-with-express.js-and-mongo-db
       dockerfile: Dockerfile
     image: users-api
     container_name: users-api
@@ -729,6 +760,12 @@ volumes:
     #type: none
     #o: bind
     #device: ./data
+  clickhouse-volume:
+    name: clickhouse-volume
+    #driver: local
+  clickhouse-node-1-volume:
+    name: clickhouse-node-1-volume
+    #driver: local
   pgadmin-volume:
     name: pgadmin-volume
     #driver: local
@@ -736,7 +773,7 @@ volumes:
     name: zookeeper-volume
   kafka-volume:
     name: kafka-volume
-  grafana-data:
-    name: grafana-data
+  grafana-volume:
+    name: grafana-volume
   prometheus-data:
     name: prometheus-data
