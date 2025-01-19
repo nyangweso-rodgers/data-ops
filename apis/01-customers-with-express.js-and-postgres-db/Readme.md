@@ -1,5 +1,7 @@
 # API with Node.js, Express.js and PostgreSQL
 
+## Table Of Contents
+
 ## Creating a Secure REST API in Node.js, Express.js and PostgreSQL
 
 ## Table Of Contents
@@ -26,100 +28,14 @@
 - Each file in the **controllers** directory typically corresponds to a different part of your application (e.g., **customers**, **products**).
 - Example (`controllers/customers-controllers.js`):
 
-  ```js
-  import createCustomerService from "../services/customers-service.js";
-
-  async function createCustomerController(req, res) {
-    console.log("Received request body:", req.body);
-    try {
-      const newCustomer = await createCustomerService(req.body);
-      console.log("Customer successfully created:", newCustomer);
-      res.json(newCustomer);
-    } catch (error) {
-      console.error("Error in createCustomerController:", error);
-      res.status(500).json({ message: "Error creating customer" });
-    }
-  }
-
-  export default createCustomerController;
-  ```
-
-  - Here:
-    - Request Handling: Parse the request `body`, `headers`, and query parameters.
-    - Response Handling: Send back the response, including status codes and data.
-    - Error Handling: Catch errors and return appropriate HTTP error responses.
-
-## 3. `src/services/`
-
-- **Role**: **Services** contain the business logic and interact with the data layer or other external services. They are responsible for:
-
-  1. Performing core business operations.
-  2. Interacting with databases or other external systems.
-  3. Returning data to controllers.
-
-- Example (```src/services/customers-service.js`)
-
-  ```js
-  import { PrismaClient } from "@prisma/client";
-
-  const prisma = new PrismaClient();
-
-  async function createCustomerService(customerData) {
-    console.log("New Customer Registration Data:", customerData);
-    try {
-      const newCustomer = await prisma.customers.create({
-        data: customerData,
-      });
-      console.log("Customer created:", newCustomer);
-      return newCustomer;
-    } catch (error) {
-      console.error("Error in createCustomerService:", error);
-      throw error;
-    }
-  }
-
-  export default createCustomerService;
-  ```
-
-  - Here:
-    - Business Logic: Implement the core functionality and rules of the application.
-    - Data Access: Interact with the database or other services to fetch, update, or delete data.
-    - Error Handling: Handle and possibly log errors related to business operations.
-
 ## 4. `src/routes/`
 
 - **Routes** define the paths to different parts of your application and map them to the appropriate **controllers**.
-- Example (`routes/api.js`):
-
-  ```js
-  const express = require("express");
-  const router = express.Router();
-  const customerController = require("../controllers/customer");
-
-  router.get("/customers", customerController.getAllCustomers);
-
-  module.exports = router;
-  ```
 
 ## `src/middleware/`
 
 - **Middleware** functions are used to process requests before they reach the **controllers**. They can handle tasks like **authentication**, **logging**, and request validation.
-- Example (`middleware/auth.js`):
-
-  ```js
-  module.exports = (req, res, next) => {
-    const token = req.header("Authorization");
-    if (!token) return res.status(401).json({ message: "Access Denied" });
-
-    try {
-      const verified = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = verified;
-      next();
-    } catch (err) {
-      res.status(400).json({ message: "Invalid Token" });
-    }
-  };
-  ```
+- Example:
 
 # Setup
 
@@ -173,8 +89,13 @@
    - Output:
 
 3. Get Customers:
+
    - Command:
    - Example: `curl -X GET http://localhost:3001/api/v1/customers`
+
+4. Delete Customer:
+   - Command: `curl -X DELETE http://localhost:3001/api/v1/customers/{id}`
+   - Example: `curl -X DELETE http://localhost:3001/api/v1/customers/40aebc7e-3f7e-49f5-bb4d-913f101737b4`
 
 # Testing API Endpoints Using Postman
 
@@ -214,8 +135,25 @@
    - Response
 
 3. Get Customers
+
    - Request: `GET http://<server_address>:<port>/api/v1/customers/`
    - Example: `GET http://localhost:3001/api/v1/customers/`
    - Response
+
+4. Update Customer By Id:
+
+   - Request: `PUT http://<server_address>:<port>/api/v1/customers/:id`
+   - Example: `PUT http://localhost:3001/api/v1/customers/1a8e6a0d-a12f-41ae-8363-39ba6cfd1a16`
+   - Message Body:
+     ```json
+     {
+       "status": false
+     }
+     ```
+   - Response
+
+5. Delete Customer By Id:
+   - Request: `DELETE http://localhost:3001/api/v1/customers/{id}`
+   - Example: `DELETE http://localhost:3001/api/v1/customers/40aebc7e-3f7e-49f5-bb4d-913f101737b4`
 
 # Resources and Further Reading
