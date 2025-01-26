@@ -1,0 +1,14 @@
+# dependencies
+
+/node_modules
+
+# local env files
+
+.env*.local
+
+Dockerfile
+.dockerignore
+.git
+.gitignore
+
+README.md
