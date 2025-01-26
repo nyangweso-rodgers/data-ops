@@ -28,3 +28,5 @@ next-env.d.ts
 
 # python
 venv/
+airflow_env/
+airflow-env/
