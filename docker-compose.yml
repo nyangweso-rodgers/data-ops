@@ -107,6 +107,7 @@ services:
     ports:
       - "2181:2181"
     environment:
+      #- ALLOW_ANONYMOUS_LOGIN=yes
       ZOOKEEPER_SERVER_ID: 1
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -479,13 +480,18 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    hostname: grafana
     restart: always
     ports:
-      - "3000:3000"
+      - "3006:3006"
+      #- "127.0.0.1:3000:3000"
     volumes:
       - grafana-volume:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=supersecret
+      - GF_SECURITY_ADMIN_PASSWORD=mypassword
+      #- GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+    networks:
+      - data-ops-network
   ############################################################################
   # prometheus
   #
@@ -598,7 +604,10 @@ services:
       - zookeeper
     ports:
       - "9000:9000"
+      #-'127.0.0.1:9000:9000'
       - "8123:8123"
+      #- '127.0.0.1:8123:8123'
+      #-- '127.0.0.1:9004:9004'
     ulimits:
       nproc: 65535
       nofile:
@@ -607,13 +616,13 @@ services:
     links:
       - zookeeper
     volumes:
-      - ./config/config.xml:/etc/clickhouse-server/config.d/config.xml
-      - ./config/zookeeper.xml:/etc/clickhouse-server/config.d/zookeeper.xml
-      - ./config/access_management.xml:/etc/clickhouse-server/users.d/access_management.xml
-      - ./config/default-password.xml:/etc/clickhouse-server/users.d/default-password.xml
-      - ./config/storage.xml:/etc/clickhouse-server/config.d/storage.xml
-      - ./config/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
-      - ./config/macros1.xml:/etc/clickhouse-server/config.d/macros.xml
+      - ./04-data-warehouse/01-clickhouse/config/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./04-data-warehouse/01-clickhouse/config/zookeeper.xml:/etc/clickhouse-server/config.d/zookeeper.xml
+      - ./04-data-warehouse/01-clickhouse/config/access_management.xml:/etc/clickhouse-server/users.d/access_management.xml
+      - ./04-data-warehouse/01-clickhouse/config/default-password.xml:/etc/clickhouse-server/users.d/default-password.xml
+      - ./04-data-warehouse/01-clickhouse/config/storage.xml:/etc/clickhouse-server/config.d/storage.xml
+      - ./04-data-warehouse/01-clickhouse/config/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
+      - ./04-data-warehouse/01-clickhouse/config/macros1.xml:/etc/clickhouse-server/config.d/macros.xml
       - clickhouse-node-1-volume:/var/lib/clickhouse/
       #- clickhouse-logs:/var/log/clickhouse-server/
     networks:
@@ -643,15 +652,6 @@ services:
       retries: 5
     networks:
       - data-ops-network
-  ############################################################################
-  # grafana
-  #
-  #grafana:
-  #image: grafana/grafana:latest
-  #ports:
-  #- "3000:3000"
-  #environment:
-  #- GF_SECURITY_ADMIN_PASSWORD=123456
   ############################################################################
   # next.js survey app
   #

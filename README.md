@@ -17,23 +17,27 @@
   5. Kafka UI ( Kafka Monitoring)
   6. Grafana (System Monitoring)
 
-# Technologies Used
+# Services
 
-# Setup
+## 1. Databases
 
-- The project has the following services running as Docker containers
+## 2. APIs
 
-  1. mongo
-  2. postgres
-  3. pgadmin
-     - [dpage/pgadmin4](https://hub.docker.com/r/dpage/pgadmin4) is a web based administration tool for the PostgreSQL database.
-  4. kafka
-  5. kafka-ui
-  6. zookeeper
-  7. schema-registry
-  8. sale-order-api
-  9. customer-api
-  10. nextjs.app
+## 3. Messaging
+
+### 3.1 Zookeeper
+
+- When working with Apache Kafka, **ZooKeeper** is primarily used to track the status of nodes in the Kafka cluster and maintain a list of Kafka topics and messages.
+
+## 4. Data Warehouse
+
+## 5. Data Pipelines
+
+## 6. Datashboards
+
+## 7. Machine Learning (ML) Models
+
+## Web Applications
 
 # 1. Databases
 
@@ -109,23 +113,7 @@
   services:
   ```
 
-# 2. Messaging Broker Services
 
-# 2.1 Zookeeper
-
-- When working with Apache Kafka, **ZooKeeper** is primarily used to track the status of nodes in the Kafka cluster and maintain a list of Kafka topics and messages.
-
-```yml
-services:
-```
-
-# Run
-
-# 2.2 Kafka
-
-```yml
-services:
-```
 
 ## Access Kafka Shell of the Kafka Container
 
