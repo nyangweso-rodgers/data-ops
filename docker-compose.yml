@@ -560,40 +560,6 @@ services:
   #networks:
   #- data-ops-network
   ############################################################################
-  # clickhouse
-  #
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.8.7.41
-    #build:
-    #context: ./data-warehouse/01-clickhouse
-    #dockerfile: Dockerfile
-    #image: clickhouse
-    container_name: clickhouse
-    depends_on:
-      - postgres-db
-      - pgadmin
-    ports:
-      - "9000:9000"
-      - "8123:8123"
-      - "9009:9009"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 262144
-        hard: 262144
-    environment:
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: mypassword
-    volumes:
-      - clickhouse-volume:/var/lib/clickhouse/ # Persistent storage for data
-      - ./data-warehouse/01-clickhouse/config/config.xml:/etc/clickhouse-server/config.xml # Mount the local config.xml
-      #- ./clickhouse-logs:/var/log/clickhouse-server/ # Persistent storage for logs
-    restart: always
-    networks:
-      - data-ops-network
-  ############################################################################
   # clickhouse-node-1
   #
   clickhouse-node-1:
@@ -602,12 +568,16 @@ services:
     container_name: clickhouse-node-1
     depends_on:
       - zookeeper
+      - postgres-db
+      - pgadmin
     ports:
       - "9000:9000"
       #-'127.0.0.1:9000:9000'
       - "8123:8123"
       #- '127.0.0.1:8123:8123'
       #-- '127.0.0.1:9004:9004'
+      - "9009:9009"
+    restart: always
     ulimits:
       nproc: 65535
       nofile:
@@ -779,9 +749,6 @@ volumes:
     #type: none
     #o: bind
     #device: ./data
-  clickhouse-volume:
-    name: clickhouse-volume
-    #driver: local
   clickhouse-node-1-volume:
     name: clickhouse-node-1-volume
     #driver: local
