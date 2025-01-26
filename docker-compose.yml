@@ -127,7 +127,7 @@ services:
   # kafka
   #
   kafka:
-    build: 
+    build:
       context: ./03-message-broker/01-apache-kafka
       dockerfile: Dockerfile
     hostname: kafka
@@ -448,12 +448,31 @@ services:
       debezium-connect:
         condition: service_healthy
     ports:
-      - "8082:8080"
-      #- "8082:8082"
+      #- "8082:8080"
+      - "8082:8082"
     environment:
       KAFKA_CONNECT_URIS: http://debezium:8084
     networks:
       - data-ops-network
+  ############################################################################
+  # apache-airflow
+  #
+  apache-airflow:
+    build:
+      context: ./05-pipeline/01-apache-airflow
+      dockerfile: Dockerfile
+    container_name: apache-airflow
+    #command: webserver
+    command: airflow standalone
+    ports:
+      #- "8080:8080"
+      - "${APACHE_AIRFLOW_PORT}:8080"
+    volumes:
+      - apache-airflow-volume:/opt/airflow
+      #- ./05-pipeline/01-apache-airflow/airflow_home:/opt/airflow_home # Mount the airflow_home directory, not the entire /opt/airflow
+      - ./05-pipeline/01-apache-airflow/airflow_home/logs:/opt/airflow/logs
+      - ./05-pipeline/01-apache-airflow/airflow_home/plugins:/opt/airflow/plugins
+      - ./05-pipeline/01-apache-airflow/dags:/opt/airflow/dags
   ############################################################################
   # grafana
   #
@@ -611,7 +630,7 @@ services:
     ports:
       - 3000:3000
     environment:
-      MB_DB_TYPE: ${MB_DB_TYPE}
+      #MB_DB_TYPE: ${MB_DB_TYPE}
       MB_DB_DBNAME: metabaseappdb
       MB_DB_PORT: 5432
       MB_DB_USER: metabase
@@ -777,3 +796,6 @@ volumes:
     name: grafana-volume
   prometheus-data:
     name: prometheus-data
+  apache-airflow-volume:
+    name: apache-airflow-volume
+    #driver: local  # Uncomment if necessary, depending on your setup

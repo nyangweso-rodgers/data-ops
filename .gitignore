@@ -30,3 +30,6 @@ next-env.d.ts
 venv/
 airflow_env/
 airflow-env/
+
+# apache airflow
+airflow_home/
