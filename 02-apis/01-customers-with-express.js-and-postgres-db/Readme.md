@@ -68,8 +68,6 @@
   - Access `customers-api` Docker Container via **shell**:
     - On Windows CMD (after switching to bash):
       ```sh
-        docker exec -it customers-api //bin//sh
-        # or
         docker exec -it customers-api sh
       ```
   - In a development environment, use the migrate dev command to generate and apply migrations:
@@ -80,7 +78,7 @@
     ```sh
       npx prisma migrate deploy
     ```
-  - Run Prisma Migration Inside the Docker container:
+  - Run **Prisma Migration** Inside the **Docker container**:
     ```sh
       npx prisma migrate dev --name <add field1, field2>
     ```
