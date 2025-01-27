@@ -29,13 +29,12 @@ services:
       dockerfile: Dockerfile
     container_name: postgres-db
     hostname: postgres
-    restart: always
+    #restart: always
     ports:
       - "5432:5432"
     env_file:
       - .env
     environment:
-      #POSTGRES_USER: ${POSTGRES_USER} # does not work for whatever reason
       PGUSER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
@@ -43,9 +42,10 @@ services:
     ######### Volumes ##########
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
-      - ./databases/01-postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
+      - ./01-databases/01-postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
     healthcheck:
-      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
+      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"] 
+      # or
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
       test: [
           "CMD-SHELL",
