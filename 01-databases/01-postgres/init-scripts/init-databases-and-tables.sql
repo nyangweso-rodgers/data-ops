@@ -12,6 +12,7 @@ CREATE TABLE customers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
+    country_code VARCHAR(100) NOT NULL,
     status BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT now(),
     updated_at TIMESTAMP DEFAULT now(),
@@ -34,5 +35,5 @@ CREATE TABLE orders (
     customer_id UUID NOT NULL,
     order_date TIMESTAMP DEFAULT now(),
     amount NUMERIC(10, 2) NOT NULL,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
+    --FOREIGN KEY (customer_id) REFERENCES customers(id)
 );

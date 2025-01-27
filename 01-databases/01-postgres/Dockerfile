@@ -9,5 +9,8 @@ ENV POSTGRES_PASSWORD=mypassword
 # Add custom initialization script to create multiple databases
 COPY ./init-scripts/init-databases-and-tables.sql /docker-entrypoint-initdb.d/
 
+# Set PostgreSQL configuration options
+CMD ["postgres", "-c", "max_replication_slots=10", "-c", "wal_level=logical"]
+
 # Expose the port Postgres will listen on
 EXPOSE 5432
