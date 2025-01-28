@@ -1,0 +1,17 @@
+{
+  "name": "01-with-node",
+  "version": "1.0.0",
+  "description": "- Prerequisites:\r   1. Node.js\r   2. Npm",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3"
+  }
+}
