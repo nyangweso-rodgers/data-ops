@@ -481,7 +481,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     hostname: grafana
-    restart: always
+    #restart: always
     ports:
       - "3006:3006"
       #- "127.0.0.1:3000:3000"
@@ -569,7 +569,7 @@ services:
     depends_on:
       - zookeeper
       - postgres-db
-      - pgadmin
+      #- pgadmin
     ports:
       - "9000:9000"
       #-'127.0.0.1:9000:9000'
@@ -692,7 +692,7 @@ services:
       - ./02-apis/01-customers-with-express.js-and-postgres-db/.env
     depends_on:
       - postgres-db
-      - pgadmin
+      #- pgadmin
     networks:
       - data-ops-network
   ############################################################################
