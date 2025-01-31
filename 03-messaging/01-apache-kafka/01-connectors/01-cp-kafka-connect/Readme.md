@@ -2,82 +2,88 @@
 
 ## Table Of Contents
 
-# Commands:
+# What is Kafka Connect?
 
-## Command 1. Get Available Connector Plugins
+- **Kafka Connect** is a component of **Apache Kafka** that’s used to perform streaming integration between **Kafka** and other systems such as **databases**, **cloud services**, **search indexes**, **file systems**, and **key-value stores**. It makes it simple to quickly define **connectors** that move large data sets in and out of **Kafka**.
 
-- If you need to check the list of available **plugins** you should hit `localhost:8083/connector-plugins`
+# Commands
 
-  ```sh
-      curl localhost:8083/connector-plugins
-      # or
-      curl localhost:8083/connector-plugins | json_pp
-  ```
+1. **Command 1**: **Get Available Connector Plugins**
 
-- Examle Output:
+   - If you need to check the list of available **plugins** you should hit `localhost:8083/connector-plugins`
 
-  ```json
-  [
-    {
-      "class": "io.confluent.connect.jdbc.JdbcSinkConnector",
-      "type": "sink",
-      "version": "10.7.6"
-    },
-    {
-      "class": "io.confluent.connect.jdbc.JdbcSourceConnector",
-      "type": "source",
-      "version": "10.7.6"
-    },
-    {
-      "class": "org.apache.kafka.connect.mirror.MirrorCheckpointConnector",
-      "type": "source",
-      "version": "1"
-    },
-    {
-      "class": "org.apache.kafka.connect.mirror.MirrorHeartbeatConnector",
-      "type": "source",
-      "version": "1"
-    },
-    {
-      "class": "org.apache.kafka.connect.mirror.MirrorSourceConnector",
-      "type": "source",
-      "version": "1"
-    }
-  ]
-  ```
+     ```sh
+         curl localhost:8083/connector-plugins
+         # or
+         curl localhost:8083/connector-plugins | json_pp
+     ```
 
-## Command 2. Register Source Connector
+   - Examle Output:
 
-- Register jdbc Postgres Source Connector by:
+     ```json
+     [
+       {
+         "class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+         "type": "sink",
+         "version": "10.7.6"
+       },
+       {
+         "class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+         "type": "source",
+         "version": "10.7.6"
+       },
+       {
+         "class": "org.apache.kafka.connect.mirror.MirrorCheckpointConnector",
+         "type": "source",
+         "version": "1"
+       },
+       {
+         "class": "org.apache.kafka.connect.mirror.MirrorHeartbeatConnector",
+         "type": "source",
+         "version": "1"
+       },
+       {
+         "class": "org.apache.kafka.connect.mirror.MirrorSourceConnector",
+         "type": "source",
+         "version": "1"
+       }
+     ]
+     ```
 
-  ```sh
-   curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @01-customers-postgresdb-using-json.json
-  ```
+2. **Command 2**: **Register Source Connector**
 
-- Example Output:
+   - Register jdbc Postgres Source Connector by:
 
-## Command 3. Get a List of all Connectors
+     ```sh
+      curl -X POST --location "http://localhost:8083/connectors" -H "Content-Type: application/json" -H "Accept: application/json" -d @01-customers-postgresdb-using-json.json
+     ```
 
-- To get a list of connectors for your Apache Kafka® cluster:
+   - Example Output:
 
-  ```sh
-    curl --location --request GET 'http://localhost:8083/connectors'
-  ```
+3. **Command 3**: **Get a List of all Connectors**
 
-- Example Output:
-  ```sh
-    ["jdbc-json-connector-for-customers-postgresdb"]
-  ```
+   - To get a list of connectors for your Apache Kafka® cluster:
 
-## Command 4. Check the Connector Status
+     ```sh
+       curl --location --request GET 'http://localhost:8083/connectors'
+     ```
 
-- Use the following command to check the status of your Kafka Connect connector
-  ```sh
-    curl -X GET http://localhost:8083/connectors/jdbc-json-connector-for-customers-postgresdb/status
-  ```
-- Example Output:
+   - Example Output:
+     ```sh
+       ["jdbc-json-connector-for-customers-postgresdb"]
+     ```
 
-## Command 5. Pause a Connector
+4. **Command 4**: **Check the Connector Status**
+
+   - Use the following command to check the status of your Kafka Connect connector
+
+     ```sh
+       curl -X GET http://localhost:8083/connectors/jdbc-json-connector-for-customers-postgresdb/status
+     ```
+
+   - Example Output:
+
+5. **Command 5**: **Pause a Connector**
 
 - Command:
 - Examle:
@@ -85,12 +91,14 @@
     curl -X PUT http://localhost:8083/connectors/jdbc-json-connector-for-customers-postgresdb/pause
   ```
 
-## Command 6. Delete a Connector
+6. **Command 6**: **Delete a Connector**
 
-- Remove the **connectors** by:
-  ```sh
-    curl -X DELETE http://localhost:8083/connectors/jdbc-json-connector-for-customers-postgresdb
-  ```
-- Example Output:
+   - Remove the **connectors** by:
+
+     ```sh
+       curl -X DELETE http://localhost:8083/connectors/jdbc-json-connector-for-customers-postgresdb
+     ```
+
+   - Example Output:
 
 # Resources and Further Reading
