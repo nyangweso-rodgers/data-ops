@@ -1,0 +1,4 @@
+// This is your Prisma schema file,
+model Role {
+  id    Int     @id @default(autoincrement())
+}
