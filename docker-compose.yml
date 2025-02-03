@@ -129,7 +129,7 @@ services:
   #
   kafka:
     build:
-      context: ./03-message-broker/01-apache-kafka
+      context: ./03-messaging/01-apache-kafka
       dockerfile: Dockerfile
     hostname: kafka
     container_name: kafka
