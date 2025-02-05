@@ -71,7 +71,68 @@
 5. **Step**: **Install Libraries**
    - Install the libraries by:
      ```sh
-        ip install apache-superset
+        pip install Pillow apache-superset
      ```
+6. **Step**: **Set Environment Variables** (`FLASK_APP` & `SUPERSET_SECRET_KEY`)
+   - **Options**:
+     1. **Option 1**: Use a `.env` File (Recommended for Docker & Deployment)
+        - Create a `.env` file in your Superset directory
+          ```sh
+            nano .env
+          ```
+        - Add the following:
+          ```env
+            export FLASK_APP=superset
+            export SUPERSET_SECRET_KEY="your-secret-key"
+          ```
+   - You can generate a `SUPERSET_SECRET_KEY` in the termianl by running:
+     ```sh
+      openssl rand -base64 42
+     ```
+7. **Step** : **Initialize the Superset Database**
+
+   - Superset needs an internal database to store configurations, dashboards, and user data.
+   - Run these commands inside your virtual environment:
+     ```sh
+      superset db upgrade
+     ```
+   - This applies database migrations.
+
+8. **Step**: **Create an Admin User**
+
+   - Superset needs an admin user for the first-time login.
+   - Run:
+     ```sh
+      superset fab create-admin
+     ```
+   - You'll be asked to enter: Username, User email, and Password
+
+9. **Step** : **Load Examples** (Optional)
+
+   - If you want sample dashboards and charts to test Superset, run:
+     ```sh
+      superset load_examples
+     ```
+
+10. **Step**: **Initialize Superset**
+
+    - Run:
+      ```sh
+        superset init
+      ```
+
+11. **Step**: **Start Superset**
+    - Launch superset by running:
+      ```sh
+        superset run -p 8088 --with-threads --reload --debugger
+      ```
+    - Then, open http://localhost:8088 in your browser and log in with the admin credentials you created.
+    - Access the Superset dashboard with admin credentials:
+      ```sh
+        http://<PUBLICIP>:<PORT>
+      ``` 
+
+- **Remarks**:
+  - For production use, configure a web server like Gunicorn, Nginx, or Apache. Follow the guidelines on [running Superset on a WSGI HTTP Server](https://superset.apache.org/docs/configuration/configuring-superset/#running-on-a-wsgi-http-server).
 
 # Resources and Further Reading
