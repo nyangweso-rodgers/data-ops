@@ -86,6 +86,7 @@ pandas==2.0.3
 paramiko==3.5.1
 parsedatetime==2.6
 pgsanity==0.2.9
+pillow==11.1.0
 platformdirs==4.3.6
 ply==3.11
 polyline==2.0.2

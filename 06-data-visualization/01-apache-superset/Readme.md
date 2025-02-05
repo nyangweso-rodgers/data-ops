@@ -136,3 +136,4 @@
   - For production use, configure a web server like Gunicorn, Nginx, or Apache. Follow the guidelines on [running Superset on a WSGI HTTP Server](https://superset.apache.org/docs/configuration/configuring-superset/#running-on-a-wsgi-http-server).
 
 # Resources and Further Reading
+1. [Medium - Data Visualization in PostgreSQL With Apache Superset](https://medium.com/timescale/data-visualization-in-postgresql-with-apache-superset-aca3c56083b9)
