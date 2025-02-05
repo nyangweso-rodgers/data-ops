@@ -29,6 +29,8 @@ next-env.d.ts
 # python
 venv/
 airflow-linux-venv/
+superset-linux-venv/
+
 
 # apache airflow
 airflow_home/
