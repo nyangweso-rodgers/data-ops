@@ -4,16 +4,16 @@
     "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
     "tasks.max": "1",
 
-    "connection.url": "jdbc:postgresql://postgres:5432/customers",
+    "connection.url": "jdbc:postgresql://postgres:5432/users",
     "connection.user": "postgres",
-    "connection.password": "<spevify password>",
+    "connection.password": "mypassword",
 
    "mode": "timestamp",
-    "timestamp.column.name": "updated_at",
+   "timestamp.column.name": "updated_at",
 
     "table.whitelist": "customers",
 
-    "topic.prefix": "customers.",
+    "topic.prefix": "users.",
     "topic.creation.default.replication.factor": "1",
     "topic.creation.default.partitions": "1",
 

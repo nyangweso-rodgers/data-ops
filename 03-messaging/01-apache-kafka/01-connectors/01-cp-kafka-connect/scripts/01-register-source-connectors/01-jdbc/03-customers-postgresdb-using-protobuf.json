@@ -18,7 +18,7 @@
     "mode": "timestamp",
     "timestamp.column.name": "updated_at",
 
-    "table.whitelist": "customers",
+    "table.whitelist": "users",
 
     "topic.prefix": "surveys.protobuf.v1.",
     "topic.creation.default.cleanup.policy": "compact",
