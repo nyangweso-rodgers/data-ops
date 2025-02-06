@@ -7,8 +7,9 @@ ENV POSTGRES_USER=postgres
 ENV POSTGRES_PASSWORD=mypassword
 #ENV POSTGRES_DB=users
 
-# Add custom initialization script to create multiple databases
-COPY ./init-scripts/init-databases-and-tables.sql /docker-entrypoint-initdb.d/
+# Add custom initialization scripts to create multiple databases
+COPY ./init-scripts/init-sales-database.sql /docker-entrypoint-initdb.d/
+COPY ./init-scripts/init-users-database.sql /docker-entrypoint-initdb.d/
 
 # Set PostgreSQL configuration options
 CMD ["postgres", "-c", "max_replication_slots=10", "-c", "wal_level=logical", "-c", "max_wal_senders=10"]
