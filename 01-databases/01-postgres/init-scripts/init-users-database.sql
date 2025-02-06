@@ -18,8 +18,8 @@ CREATE TABLE customers (
     alt_email VARCHAR(100),
     phone_number VARCHAR(18) NOT NULL,
     alt_phone_number VARCHAR(18),
-    created_at TIMESTAMP DEFAULT now(),
-    updated_at TIMESTAMP DEFAULT now(),
+    created_at TIMESTAMP DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP DEFAULT now() NOT NULL,
     created_by VARCHAR(255) DEFAULT 'default@admin.com',
     updated_by VARCHAR(255) DEFAULT 'default@admin.com'
 );

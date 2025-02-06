@@ -12,8 +12,8 @@ CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     order_date TIMESTAMP DEFAULT now(),
     amount NUMERIC(10, 2) NOT NULL,
-    created_at TIMESTAMP DEFAULT now(),
-    updated_at TIMESTAMP DEFAULT now(),
+    created_at TIMESTAMP DEFAULT now() NOT NULL,
+    updated_at TIMESTAMP DEFAULT now() NOT NULL,
     created_by VARCHAR(255) DEFAULT 'default@admin.com',
     updated_by VARCHAR(255) DEFAULT 'default@admin.com'
 );
