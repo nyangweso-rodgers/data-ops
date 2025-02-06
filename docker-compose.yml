@@ -334,7 +334,7 @@ services:
   ############################################################################
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
     #image: confluentinc/cp-kafka-connect:7.7.0
-    build: ./03-message-broker/01-apache-kafka/01-connectors/01-cp-kafka-connect
+    build: ./03-messaging/01-apache-kafka/01-connectors/01-cp-kafka-connect
     container_name: cp-kafka-connect
     hostname: cp-kafka-connect
     restart: always
