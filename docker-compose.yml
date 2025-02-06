@@ -29,7 +29,7 @@ services:
       dockerfile: Dockerfile
     container_name: postgres-db
     hostname: postgres
-    #restart: always
+    restart: always
     ports:
       - "5432:5432"
     env_file:
@@ -39,7 +39,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
     #command: ["postgres", "-c", "wal_level=logical"]
-    ######### Volumes ##########
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./01-databases/01-postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
@@ -482,14 +481,19 @@ services:
     container_name: grafana
     hostname: grafana
     #restart: always
+    restart: unless-stopped
     ports:
       - "3006:3006"
       #- "127.0.0.1:3000:3000"
     volumes:
       - grafana-volume:/var/lib/grafana
+    user: "0:0"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=mypassword
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
       #- GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+      - GF_DATABASE_TYPE=postgres
+    depends_on:
+      - postgres-db
     networks:
       - data-ops-network
   ############################################################################
@@ -510,6 +514,7 @@ services:
   #
   loki:
     image: grafana/loki
+    container_name: loki
     ports:
       - "3100:3100"
   ############################################################################

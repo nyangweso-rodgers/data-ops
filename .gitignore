@@ -30,6 +30,7 @@ next-env.d.ts
 venv/
 airflow-linux-venv/
 superset-linux-venv/
+superset-windows-venv/
 
 
 # apache airflow
