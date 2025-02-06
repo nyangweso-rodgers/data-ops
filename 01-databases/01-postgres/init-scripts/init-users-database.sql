@@ -1,8 +1,8 @@
 -- Create the `users` database
 CREATE DATABASE users;
 
--- Create default tables in `users` database
-\c customers
+-- Switch to the `users` database
+\c users
 
 -- Install the pgcrypto extension to enable gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -14,13 +14,10 @@ CREATE TABLE customers (
     last_name VARCHAR(100) NOT NULL,
     country_code VARCHAR(18) NOT NULL,
     status BOOLEAN DEFAULT TRUE,
-    
     email VARCHAR(100) NOT NULL,
     alt_email VARCHAR(100),
-
     phone_number VARCHAR(18) NOT NULL,
     alt_phone_number VARCHAR(18),
-
     created_at TIMESTAMP DEFAULT now(),
     updated_at TIMESTAMP DEFAULT now(),
     created_by VARCHAR(255) DEFAULT 'default@admin.com',
