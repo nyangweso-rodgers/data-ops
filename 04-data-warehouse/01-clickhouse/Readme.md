@@ -213,6 +213,67 @@
       ./clickhouse client --user transaction_user --password password
     ```
 
+# Connect to clickhouse
+
+## 1. ClickHouse Native CLI (Command Line)
+
+- If you have a **ClickHouse container** running, you can connect using the built-in CLI:
+  ```sh
+    docker exec -it <container_name> clickhouse-client --host localhost
+  ```
+- Example:
+  ```bash
+    docker exec -it clickhouse-server clickhouse-client --host localhost
+  ```
+- You can also connect from outside the container:
+  ```sh
+    clickhouse-client --host 127.0.0.1 --port 9000
+  ```
+
+## 2. ClickHouse Web UI (Built-in)
+
+- ClickHouse has a built-in web UI!. You can access it if your container exposes port 8123.
+- Open a browser and go to: http://localhost:8123/play
+- It’s a simple query interface but works fine for basic interactions.
+
+## 3. Open Source ClickHouse GUI Clients
+
+- If you want a better UI for ClickHouse, you can use these:
+
+  1. **Tabix** (**ClickHouse Web UI**)
+
+     - Docker Setup (to run it alongside ClickHouse)
+
+       ```sh
+        docker run -d --name tabix -p 8080:80 spoonest/clickhouse-tabix-web-client
+       ```
+
+     - Access it on: http://localhost:8080
+
+  2. **ClickHouse Local** (**Tabular UI**)
+
+     - It’s a simple UI for running ClickHouse queries with formatting.
+     - Install:
+       ```sh
+        pip install clickhouse-cli
+       ```
+     - Run:
+       ```sh
+        clickhouse-cli
+       ```
+
+  3. **DBeaver** (**Database GUI**)
+
+     - Supports ClickHouse via JDBC.
+     - Steps:
+       1. Install DBeaver.
+       2. Add a **new connection** → **Select ClickHouse**.
+       3. Use JDBC URL: jdbc:clickhouse://localhost:8123/default
+       4. Set user: default, Password: (empty or set in env).
+
+  4. **ClickHouse Cloud Web UI** (**for ClickHouse Cloud Users**)
+     - If using ClickHouse Cloud, they provide a built-in UI at: https://play.clickhouse.com
+
 # docker-compose.yml File
 
 - Here, we defined the services that we need to run our **Clickhouse** cluster.
@@ -262,6 +323,22 @@
        ```
 
 # How to deploy ClickHouse
+
+# ETL Tools for ClickHouse
+
+1. Airbyte
+2. Apache NiFi
+3. Debezium
+4. dbt (Data Build Tool)
+5. Custom Python Scripts
+6. Kafka Connect with ClickHouse Sink
+7. pg2ch
+8. Flink
+9. ClickHouse’s Built-in MySQL and PostgreSQL Engines
+10. Logstash
+11. Metabase (for Ad-hoc ETL)
+12. Custom Shell Scripts
+    - You can use shell scripts with tools like `mysqldump`, `pg_dump`, and `curl` to extract data and load it into ClickHouse.
 
 # Resources and Further Reading
 
