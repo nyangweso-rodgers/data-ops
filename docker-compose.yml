@@ -28,7 +28,6 @@ services:
       context: ./01-databases/01-postgres
       dockerfile: Dockerfile
     container_name: postgres-db
-    hostname: postgres
     restart: always
     ports:
       - "5432:5432"
@@ -43,7 +42,7 @@ services:
       - postgres-db-volume:/var/lib/postgresql/data
       - ./01-databases/01-postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
     healthcheck:
-      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"] 
+      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
       # or
       #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
       test: [
@@ -95,12 +94,12 @@ services:
       - "3306:3306" # Map container port 3306 to host port 3306
     volumes: # Attach volumes
       - ./mysql-db-volume:/var/lib/mysql # Attach volume to persist MySQL data in the same directory
-  ############################################################################
-  # zookeeper
+  ################################ 03. Messaging ############################################
+  # kafka-zookeeper
   #
-  zookeeper:
+  kafka-zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
-    container_name: zookeeper
+    container_name: kafka-zookeeper
     restart: always
     #restart: on-failure
     ports:
@@ -111,29 +110,26 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     volumes:
-      - zookeeper-volume:/var/lib/zookeeper/data
+      - kafka-zookeeper-volume:/var/lib/zookeeper/data
     healthcheck:
-      test: echo srvr | nc zookeeper 2181 || exit 1
+      test: echo srvr | nc kafka-zookeeper 2181 || exit 1
       #test: curl -s localhost:2181 || exit 1 # using curl to query the Zookeeper server status:
       start_period: 10s
       retries: 20
       interval: 10s
     networks:
       - data-ops-network
-  ############################################################################
-  # clickhouse-zookeeper
-  #
-  ############################################################################
+
   # kafka
   #
   kafka:
     build:
       context: ./03-messaging/01-apache-kafka
       dockerfile: Dockerfile
-    hostname: kafka
+    #hostname: kafka
     container_name: kafka
     depends_on:
-      zookeeper:
+      kafka-zookeeper:
         condition: service_healthy
     restart: always
     #restart: on-failure
@@ -160,7 +156,7 @@ services:
       #- "9101:9101"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
       KAFKA_DEFAULT_REPLICATION_FACTOR: "2"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
@@ -198,7 +194,7 @@ services:
       #KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:29092
-      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: zookeeper:2181
+      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
       CONFLUENT_METRICS_ENABLE: "true"
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
@@ -212,7 +208,6 @@ services:
       retries: 10
     networks:
       - data-ops-network
-  ############################################################################
   # kafka-ui
   #
   kafka-ui:
@@ -227,31 +222,30 @@ services:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://schema-registry:8081
-      KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper: 2181
+      KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://kafka-schema-registry:8081
+      KAFKA_CLUSTERS_0_ZOOKEEPER: kafka-zookeeper:2181
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
     networks:
       - data-ops-network
-  ############################################################################
   # schema-registry
   #
-  schema-registry:
+  kafka-schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
-    container_name: schema-registry
-    hostname: schema-registry
+    container_name: kafka-schema-registry
+    #hostname: kafka-schema-registry
     #restart: unless-stopped
     restart: always
     depends_on:
       kafka:
         condition: service_healthy
-      zookeeper:
+      kafka-zookeeper:
         condition: service_started
     ports:
       - "8081:8081"
     environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+      SCHEMA_REGISTRY_HOST_NAME: kafka-schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: kafka-zookeeper:2181
 
       #SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
@@ -270,8 +264,7 @@ services:
       test: curl --user superUser:superUser --fail --silent --insecure http://localhost:8081/subjects --output /dev/null || exit 1
     networks:
       - data-ops-network
-  ############################################################################
-  # debezium
+  # debezium-connect
   #
   debezium-connect:
     image: debezium/connect:latest #https://hub.docker.com/r/debezium/connect
@@ -287,7 +280,6 @@ services:
       - "8084:8084"
     environment:
       GROUP_ID: 1
-      # Kafka config
       CONFIG_STORAGE_TOPIC: debezium-connect-config-storage
       STATUS_STORAGE_TOPIC: debezium-connect-status-storage
       OFFSET_STORAGE_TOPIC: debezium-connect-offset-storage
@@ -306,9 +298,7 @@ services:
       #CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
       #VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
       #CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
-
       ENABLE_DEBEZIUM_SCRIPTING: "true"
-
       PLUGIN_PATH: /kafka/connect/plugins #added as part of the sink connector configuration
       GOOGLE_APPLICATION_CREDENTIALS: /etc/debezium/bigquery-keyfile.json # Specify the path inside the container
       #KAFKA_CONNECT_PLUGINS_DIR: /kafka/connect
@@ -331,7 +321,8 @@ services:
     #- ./jar_files:/kafka/connect/avro_jar_files
     networks:
       - data-ops-network
-  ############################################################################
+  # cp-kafka-connect
+  #
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
     #image: confluentinc/cp-kafka-connect:7.7.0
     build: ./03-messaging/01-apache-kafka/01-connectors/01-cp-kafka-connect
@@ -342,8 +333,8 @@ services:
       - "8083:8083"
     depends_on:
       - kafka
-      - schema-registry
-      - zookeeper
+      - kafka-schema-registry
+      - kafka-zookeeper
       - postgres-db
     environment:
       # About CONNECT_BOOTSTRAP_SERVERS
@@ -353,7 +344,7 @@ services:
       CONNECT_REST_ADVERTISED_HOST_NAME: "cp-kafka-connect"
       CONNECT_GROUP_ID: "cp-kafka-connect-group"
       CONNECT_OFFSET_FLUSH_INTERVAL_MS: 10000
-      ########## Storage Topics ##########
+
       # config.storage.topic
       #   The name of the Kafka topic where connector configurations are stored
       CONNECT_CONFIG_STORAGE_TOPIC: _cp-kafka-connect-config-storage
@@ -364,7 +355,6 @@ services:
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
 
-      ########## Key Converters ##########
       #CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
       CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8085"
@@ -387,17 +377,13 @@ services:
       ########## SSL Configurations ##########
       ########## Additional Configurations ##########
       ########## Metric Reporter Configurations ##########
-
-    ######### Volumes ##########
     volumes:
       - ./cp-kafka-connect/plugins/bigquery-keyfile.json:/etc/plugins/bigquery-keyfile.json
-    #- ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
-    #- ./cp-kafka-connect/config:/etc/kafka-connect
-    #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
-    #command:
+      #- ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
+      #- ./cp-kafka-connect/config:/etc/kafka-connect
+      #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
     networks:
       - data-ops-network
-  ############################################################################
   # ksqldb-server
   #
   #ksqldb-server:
@@ -436,7 +422,6 @@ services:
   #tty: true
   #networks:
   #- data-ops-network
-  ############################################################################
   # debezium-ui
   #
   debezium-ui:
@@ -454,7 +439,84 @@ services:
       KAFKA_CONNECT_URIS: http://debezium:8084
     networks:
       - data-ops-network
-  ############################################################################
+  ############################### 5. Data Pipeline ############################
+  # airbyte-temporal
+  #
+  airbyte-temporal:
+    #image: airbyte/temporal:1.4.1
+    image: airbyte/temporal-auto-setup:1.13.0 # https://hub.docker.com/r/airbyte/temporal-auto-setup/tags # Use the official Temporal Auto-Setup image
+    container_name: airbyte-temporal
+    #restart: always
+    restart: unless-stopped
+    depends_on:
+      postgres-db:
+        condition: service_healthy # Ensure it waits for PostgreSQL
+    ports:
+      - "7233:7233"
+    environment:
+      DB: postgresql
+      POSTGRES_DB: ${POSTGRES_USERS_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      POSTGRES_SEEDS: postgres-db # Use the correct hostname
+      DB_HOST: postgres-db # Use the correct hostname
+      POSTGRES_PORT: 5432 # Ensure this is explicitly set to PostgreSQL's default port
+      TEMPORAL_CLI_ADDRESS: "airbyte-temporal:7233"
+    networks:
+      - data-ops-network
+  # airbyte
+  #
+  airbyte-server:
+    image: airbyte/server:1.4.1 # https://hub.docker.com/layers/airbyte/server/1.4.1/images/sha256-0c9a18fee1018fec92aec0e86c74d48c86fc7e7ea20598c10f5a7da02c2e07e4
+    container_name: airbyte-server
+    depends_on:
+      - postgres-db
+      - airbyte-temporal
+    ports:
+      # - "8081:8081" # defaukt airbyte-server port
+      - "8002:8002"
+    environment:
+      #DATABASE_URL: ${POSTGRES_USERS_DATABASE_URL}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/users
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      TEMPORAL_CLI_ADDRESS: "airbyte-temporal:7233"
+      WORKSPACE_ROOT: /workspace
+      TEMPORAL_HOST: airbyte-temporal
+      TEMPORAL_PORT: 7233
+    networks:
+      - data-ops-network
+  # airbyte-webapp
+  #
+  airbyte-webapp:
+    image: airbyte/webapp:1.4.1 # https://hub.docker.com/layers/airbyte/webapp/1.4.1/images/sha256-ee0e16eb85eeaf95fc05222a3129cb16911de13ec4773ccb8a64189712b7c9f3
+    container_name: airbyte-webapp
+    restart: always
+    depends_on:
+      - airbyte-server
+    ports:
+      - "8000:80"
+    environment:
+      INTERNAL_API_HOST: http://airbyte-server:8001
+    networks:
+      - data-ops-network
+  airbyte-worker:
+    image: airbyte/worker:1.4.1 # https://hub.docker.com/layers/airbyte/worker/1.4.1/images/sha256-89153286a7a23f4e28980b52e750b455a40f1bc439ecdbf0dc1363610725fbcc
+    container_name: airbyte-worker
+    restart: always
+    depends_on:
+      - airbyte-server
+    environment:
+      #CONFIG_DATABASE_URL: ${POSTGRES_USERS_DATABASE_URL}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/users
+      CONFIG_DATABASE_USER: ${POSTGRES_USER}
+      CONFIG_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      STORAGE_TYPE: local
+      # STORAGE_TYPE: "gcs"  # or "s3" # if you're using Google Cloud Storage (GCS) or Amazon S3, set:
+      WORKSPACE_ROOT: /workspace
+    networks:
+      - data-ops-network
+
   # apache-airflow
   #
   apache-airflow:
@@ -473,7 +535,8 @@ services:
       - ./05-pipeline/01-apache-airflow/airflow_home/logs:/opt/airflow/logs
       - ./05-pipeline/01-apache-airflow/airflow_home/plugins:/opt/airflow/plugins
       - ./05-pipeline/01-apache-airflow/dags:/opt/airflow/dags
-  ############################################################################
+
+  ################################# 6. Data Visualization ###########################################
   # grafana
   #
   grafana:
@@ -496,7 +559,31 @@ services:
       - postgres-db
     networks:
       - data-ops-network
-  ############################################################################
+
+  # metabase
+  #
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    depends_on:
+      - postgres-db
+      - pgadmin
+    ports:
+      - 3000:3000
+    environment:
+      #MB_DB_TYPE: ${MB_DB_TYPE}
+      MB_DB_DBNAME: metabaseappdb
+      MB_DB_PORT: 5432
+      MB_DB_USER: metabase
+      MB_DB_PASS: mypassword
+      MB_DB_HOST: postgres
+    healthcheck:
+      test: curl --fail -I http://localhost:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - data-ops-network
   # prometheus
   #
   prometheus:
@@ -509,7 +596,6 @@ services:
       - "9090:9090"
     networks:
       - data-ops-network
-  ############################################################################
   # loki
   #
   loki:
@@ -517,23 +603,7 @@ services:
     container_name: loki
     ports:
       - "3100:3100"
-  ############################################################################
-  # spring-boot-data-pipeline
-  #
-  #spring-boot-data-pipeline:
-  #build:
-  #context: ./spring-boot-data-pipeline
-  #dockerfile: Dockerfile
-  #image: spring-boot-data-pipeline
-  #container_name: spring-boot-data-pipeline
-  #ports:
-  #- "9093:9093"
-  #depends_on:
-  #- kafka
-  #environment:
-  #SPRING_PROFILES_ACTIVE: dev
-  #networks:
-  #- data-ops-network
+
   ############################################################################
   # Node.js Kafka Client - Consumer & Producer
   #
@@ -564,17 +634,12 @@ services:
   #- kafka
   #networks:
   #- data-ops-network
-  ############################################################################
-  # clickhouse-node-1
+  ############################## 4. Data Warehouse ##############################################
+  # clickhouse-server
   #
-  clickhouse-node-1:
-    #image: clickhouse/clickhouse-server:latest
+  clickhouse-server:
     image: clickhouse/clickhouse-server:24.8.7.41
-    container_name: clickhouse-node-1
-    depends_on:
-      - zookeeper
-      - postgres-db
-      #- pgadmin
+    container_name: clickhouse-server
     ports:
       - "9000:9000"
       #-'127.0.0.1:9000:9000'
@@ -582,49 +647,27 @@ services:
       #- '127.0.0.1:8123:8123'
       #-- '127.0.0.1:9004:9004'
       - "9009:9009"
+      - "9181:9181"
     restart: always
-    ulimits:
-      nproc: 65535
-      nofile:
-        soft: 262144
-        hard: 262144
-    links:
-      - zookeeper
     volumes:
       - ./04-data-warehouse/01-clickhouse/config/config.xml:/etc/clickhouse-server/config.d/config.xml
-      - ./04-data-warehouse/01-clickhouse/config/zookeeper.xml:/etc/clickhouse-server/config.d/zookeeper.xml
-      - ./04-data-warehouse/01-clickhouse/config/access_management.xml:/etc/clickhouse-server/users.d/access_management.xml
-      - ./04-data-warehouse/01-clickhouse/config/default-password.xml:/etc/clickhouse-server/users.d/default-password.xml
-      - ./04-data-warehouse/01-clickhouse/config/storage.xml:/etc/clickhouse-server/config.d/storage.xml
-      - ./04-data-warehouse/01-clickhouse/config/cluster.xml:/etc/clickhouse-server/config.d/cluster.xml
-      - ./04-data-warehouse/01-clickhouse/config/macros1.xml:/etc/clickhouse-server/config.d/macros.xml
-      - clickhouse-node-1-volume:/var/lib/clickhouse/
-      #- clickhouse-logs:/var/log/clickhouse-server/
+      - ./04-data-warehouse/01-clickhouse/config/users.xml:/etc/clickhouse-server/users.d/users.xml
+      - clickhouse-server-volume:/var/lib/clickhouse/
+      - ./04-data-warehouse/01-clickhouse/clickhouse-logs:/var/log/clickhouse-server/
     networks:
       - data-ops-network
-  ############################################################################
-  # metabase
+  # tabix
   #
-  metabase:
-    image: metabase/metabase:latest
-    container_name: metabase
-    depends_on:
-      - postgres-db
-      - pgadmin
+  tabix:
+    image: spoonest/clickhouse-tabix-web-client:latest
+    container_name: clickhouse-tabix-web-client
     ports:
-      - 3000:3000
+      - "8090:80"
+    depends_on:
+      - clickhouse-server
     environment:
-      #MB_DB_TYPE: ${MB_DB_TYPE}
-      MB_DB_DBNAME: metabaseappdb
-      MB_DB_PORT: 5432
-      MB_DB_USER: metabase
-      MB_DB_PASS: mypassword
-      MB_DB_HOST: postgres
-    healthcheck:
-      test: curl --fail -I http://localhost:3000/api/health || exit 1
-      interval: 15s
-      timeout: 5s
-      retries: 5
+      - CH_HOST=clickhouse-server
+      - CH_PORT=8123
     networks:
       - data-ops-network
   ############################################################################
@@ -681,7 +724,7 @@ services:
   #entrypoint: ["sh", "/migrate.sh"]  # Execute migrate.sh script first
   #networks:
   #- data-ops-network
-  ############################################################################
+  ################################ 2. APIs ############################################
   # customers api with Express.js and postgres
   #
   customers-api:
@@ -700,7 +743,7 @@ services:
       #- pgadmin
     networks:
       - data-ops-network
-  ############################################################################
+
   # users api with Express.js and MongoDB
   #
   users-api:
@@ -743,25 +786,16 @@ networks:
 volumes:
   mongo-db-community-server-volume:
     name: mongodb-community-server-volume
-    #driver: local
   data-ops-mongodb-volume:
     name: data-ops-mongodb-volume
-    #driver: local
   postgres-db-volume:
     name: postgres-db-volume
-    #driver: local
-    #driver_opts:
-    #type: none
-    #o: bind
-    #device: ./data
-  clickhouse-node-1-volume:
-    name: clickhouse-node-1-volume
-    #driver: local
+  clickhouse-server-volume:
+    name: clickhouse-server-volume
   pgadmin-volume:
     name: pgadmin-volume
-    #driver: local
-  zookeeper-volume:
-    name: zookeeper-volume
+  kafka-zookeeper-volume:
+    name: kafka-zookeeper-volume
   kafka-volume:
     name: kafka-volume
   grafana-volume:
@@ -770,4 +804,3 @@ volumes:
     name: prometheus-data
   apache-airflow-volume:
     name: apache-airflow-volume
-    #driver: local  # Uncomment if necessary, depending on your setup
