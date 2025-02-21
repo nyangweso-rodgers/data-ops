@@ -44,3 +44,29 @@
   ```sh
     docker compose up -d
   ```
+
+# Database Initialization
+
+- Connect to MySQL Server via MySQLWorkbench, and Execute the following ddl :
+
+  ```sql
+    -- Use the schema
+    USE transactions;
+
+    -- Create the transactions table
+    CREATE TABLE IF NOT EXISTS transactions (
+        id VARCHAR(36) PRIMARY KEY,
+        amount DECIMAL(18, 2) NOT NULL,
+        currency VARCHAR(10) NOT NULL,
+        status ENUM('pending', 'completed', 'failed') NOT NULL,
+        user_id VARCHAR(36) NOT NULL,
+        merchant_id VARCHAR(36) NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Create the index for user_id
+    CREATE INDEX idx_user_id ON transactions(user_id);
+  ```
+
+# Resources and Further Reading
