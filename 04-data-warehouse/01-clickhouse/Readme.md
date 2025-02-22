@@ -17,22 +17,22 @@
 
 # Architecture Of ClickHouse
 
-1. Columnar Storage Format
+1. **Columnar Storage Format**
 
    - Unlike traditional row-oriented databases, **ClickHouse** stores data by **columns** rather than **rows**. This approach offers several advantages:
      - Reduced I/O: Only the necessary columns for a query are read from storage, minimizing disk operations.
      - Improved Compression: Column-wise storage allows for better data compression, as similar data types are grouped together
      - Efficient Analytical Queries: Columnar format is optimized for aggregations and scans over large datasets.
 
-2. Vectorized Query Execution
+2. **Vectorized Query Execution**
 
    - ClickHouse employs vectorized query execution, processing data in batches or chunks:
      - Multiple rows are processed simultaneously, leveraging modern CPU capabilities
      - This approach minimizes the overhead of handling individual values and maximizes CPU efficiency through SIMD (Single Instruction, Multiple Data) operations.
 
-3. Distributed Query Processing
+3. **Distributed Query Processing**
 
-   - ClickHouse’s architecture supports distributed query execution:
+   - **ClickHouse’s** architecture supports distributed query execution:
 
      1. Query Analysis: The system analyzes the query structure and identifies relevant tables and sections.
      2. Query Parsing: The query is divided into optimal fragments.
@@ -76,207 +76,243 @@
 
 # Technical Setup
 
-- **Prerequisites**
+## 1. Prerequisites
 
-  1. Docker (https://www.docker.com/)
-  2. Docker Compose (https://docs.docker.com/compose/)
-  3. **ZooKeeper**: **Zookeeper** is the preliminary service that **Clickhouse** uses for storing replicas’ meta information. This is needed for the replication mechanism that **Clickhouse** cluster offers.
+1. Docker (https://www.docker.com/)
+2. Docker Compose (https://docs.docker.com/compose/)
+3. **ZooKeeper**: **Zookeeper** is the preliminary service that **Clickhouse** uses for storing replicas’ meta information. This is needed for the replication mechanism that **Clickhouse** cluster offers.
 
-- **Step 1**: Create `docker-compose.yml` to define ClickHouse service:
+4. **ClickHouse Keeper** (**clickhouse-keeper**)
+   - **ClickHouse Keeper** provides the coordination system for **data replication** and **distributed DDL queries** execution. **ClickHouse Keeper** is compatible with **ZooKeeper**.
+   - **ZooKeeper** is one of the first well-known open-source coordination systems. It's implemented in **Java**, and has quite a simple and powerful data model. ZooKeeper's coordination algorithm, **ZooKeeper Atomic Broadcast** (**ZAB**), doesn't provide linearizability guarantees for reads, because each ZooKeeper node serves reads locally. Unlike **ZooKeeper**, **ClickHouse Keeper** is written in **C++** and uses the **RAFT algorithm** implementation. This algorithm allows linearizability for reads and writes, and has several open-source implementations in different languages.
+   - By default, **ClickHouse Keeper** provides the same guarantees as **ZooKeeper**: linearizable writes and non-linearizable reads. It has a compatible client-server protocol, so any standard ZooKeeper client can be used to interact with **ClickHouse Keeper**. Snapshots and logs have an incompatible format with **ZooKeeper**, but the `clickhouse-keeper-converter` tool enables the conversion of **ZooKeeper** data to **ClickHouse Keeper** snapshots. The interserver protocol in ClickHouse Keeper is also incompatible with ZooKeeper so a mixed ZooKeeper / ClickHouse Keeper cluster is impossible.
+   - Configuration:
+     - **ClickHouse Keeper** can be used as a standalone replacement for **ZooKeeper** or as an internal part of the ClickHouse server. In both cases the configuration is almost the same `.xml` file.
 
-- **Step 2**: **Create Directories and Files**
+## 2. File configuration for Clickhouse
 
-  - Create a directory structure and add the above configuration files:
-    ```sh
-      mkdir -p clickhouse_cluster/config
-      cd clickhouse_cluster/config
-      touch zookeeper.xml cluster.xml macros1.xml macros2.xml config.xml config2.xml default-password.xml
-    ```
-  - Add the corresponding configurations to these files.
+1.  **Clickhouse server configuration** (`config.d/config.xml`):
 
-  - 1. `config.xml`: This file defines the core ClickHouse configuration. It includes paths for storing data and logs and general settings for the ClickHouse server.
-
-    ```xml
-      <yandex>
-        <listen_host>127.0.0.1</listen_host>
-        <listen_host>clickhouse-node-1</listen_host>
-    </yandex>
-    ```
-
-  - 2. `zookeeper.xml`: This file contains the ZooKeeper configuration for distributed coordination.
+    - `config.xml`: Defines ClickHouse server settings, including ZooKeeper/Keeper integration pointing to `clickhouse-keeper:9181`.
 
     ```xml
-      <clickhouse>
-        <zookeeper>
-          <node index="1">
-            <host>zookeeper</host>
-            <port>2181</port>
+      <clickhouse replace="true">
+      <!-- Logger Configuration -->
+      <logger>
+          <level>debug</level> <!-- Sets logging verbosity to debug level -->
+          <log>/var/log/clickhouse-server/clickhouse-server.log</log>  <!-- Specifies main log file path at /var/log/clickhouse-server/clickhouse-server.log -->
+          <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>  <!-- Defines error log file location at /var/log/clickhouse-server/clickhouse-server.err.log -->
+          <size>1000M</size> <!-- Limits each log file to 1000 megabytes -->
+          <count>3</count> <!-- Keeps 3 rotated log files -->
+      </logger>
+
+      <display_name>ch-1S_1K</display_name> <!-- Sets the server’s display name -->
+
+      <!-- Network Configuration -->
+      <listen_host>0.0.0.0</listen_host> <!-- Listens on all network interfaces -->
+      <http_port>8123</http_port> <!-- HTTP interface port -->
+      <tcp_port>9000</tcp_port> <!-- Native protocol port -->
+      <mysql_port>9004</mysql_port> <!-- MySQL protocol port-->
+
+      <!-- Specifies user configuration locations -->
+      <user_directories>
+          <users_xml>
+              <path>users.xml</path>
+          </users_xml>
+          <local_directory>
+              <path>/var/lib/clickhouse/access/</path>
+          </local_directory>
+      </user_directories>
+      <distributed_ddl> <!--Configuration for distributed DDL operations-->
+          <path>/clickhouse/task_queue/ddl</path>
+      </distributed_ddl>
+
+      <!--ZooKeeper Integration-->
+      <zookeeper>
+          <node>
+              <host>clickhouse-keeper</host> <!--Points to clickhouse-keeper service-->
+              <port>9181</port> <!--Uses port 9181 for keeper communication-->
           </node>
-        </zookeeper>
+      </zookeeper>
+    </clickhouse>
+    ```
+
+    - Where:
+
+      1. `<level>debug</level>` : Sets logging verbosity to debug level
+      2. `<log>`: Specifies main log file path at `/var/log/clickhouse-server/clickhouse-server.log`
+      3. `<errorlog>`: Defines error log file location at `/var/log/clickhouse-server/clickhouse-server.err.log`
+      4. `<size>1000M</size>`: Limits each log file to 1000 megabytes
+      5. `<count>3</count>`: Keeps 3 rotated log files
+      6. `<display_name>ch-1S_1K</display_name>`: Sets the server’s display name Network Settings
+      7. `<listen_host>0.0.0.0</listen_host>`: Listens on all network interfaces
+      8. `<http_port>8123</http_port>`: Port for HTTP interface
+      9. `<tcp_port>9000</tcp_port>`: Port for native ClickHouse protocol
+      10. `<user_directories>`: Specifies user configuration locations
+      11. `users_xml`: Points to users.xml for user settings
+      12. `local_directory`: Local path for access control files
+      13. `<distributed_ddl>`: Configuration for distributed DDL operations
+      14. `path`: ZooKeeper path for DDL task queue
+
+2.  **Clickhouse server configuration for users** (`users.d/users.xml`) :
+
+    - `users.d/users.xml`
+
+    ```xml
+      <?xml version="1.0"?>
+      <clickhouse replace="true">
+          <profiles>
+              <default>
+                  <max_memory_usage>10000000000</max_memory_usage> <!--max_memory_usage: 10GB (10000000000 bytes) maximum memory usage per query-->
+                  <use_uncompressed_cache>0</use_uncompressed_cache>
+                  <load_balancing>in_order</load_balancing> <!--load_balancing: Set to “in_order” for distributed queries-->
+                  <log_queries>1</log_queries><!--log_queries: Enabled (1) to log all queries-->
+              </default>
+          </profiles>
+          <users>
+              <default>
+                  <access_management>1</access_management> <!-- allowing the user to manage access rights -->
+                  <profile>default</profile><!--Set to use the “default” profile defined above-->
+                  <networks>
+                      <ip>::/0</ip><!--Allows connections from any IP (::/0)-->
+                  </networks>
+                  <quota>default</quota><!--Uses the “default” quota below-->
+                  <access_management>1</access_management>
+                  <named_collection_control>1</named_collection_control>
+                  <show_named_collections>1</show_named_collections>
+                  <show_named_collections_secrets>1</show_named_collections_secrets>
+              </default>
+              <!-- Transaction service user -->
+              <transaction_user>
+                  <password>secure_password</password>
+                  <profile>default</profile>
+                  <networks>
+                      <ip>::/0</ip>
+                  </networks>
+                  <quota>default</quota>
+                  <access_management>1</access_management>
+              </transaction_user>
+          </users>
+          <quotas>
+              <default>
+                  <interval><!-- default quota is defined with an interval of 1 hour (3600 seconds)-->
+                      <duration>3600</duration>
+                      <!--All quota limits (queries, errors, result_rows, read_rows, execution_time) are set to 0, which means no limits are imposed-->
+                      <queries>0</queries>
+                      <errors>0</errors>
+                      <result_rows>0</result_rows>
+                      <read_rows>0</read_rows>
+                      <execution_time>0</execution_time>
+                  </interval>
+              </default>
+          </quotas>
       </clickhouse>
     ```
 
-  - 3. `cluster.xml`: Defines the cluster configuration, detailing the nodes and shards in the cluster. Each node should have an identical `cluster.xml`.
+    - Where:
 
-    ```xml
-      <yandex>
-        <remote_servers>
-            <local_cluster>
-                <secret>local</secret>
-                <shard>
-                    <internal_replication>true</internal_replication>
-                    <replica>
-                        <host>clickhouse-node-1</host>
-                        <port>9000</port>
-                    </replica>
-                    <replica>
-                        <host>clickhouse-node-2</host>
-                        <port>9000</port>
-                    </replica>
-                </shard>
-            </local_cluster>
-        </remote_servers>
-    </yandex>
-    ```
+          1. Profiles
 
-  - 4. `default-password.xml`: We need this file to set the password for default user(the value of hex is `password`)
+             - Maximum memory usage per query: 10GB
+             - Uncompressed cache usage: Disabled
+             - Load balancing for distributed queries: Set to “in_order”
+             - Query logging: Enabled
 
-    ```xml
-      <yandex>
-        <users>
-            <default>
-                <password remove='1' />
-                <password_sha256_hex>5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8</password_sha256_hex>
-            </default>
-        </users>
-    </yandex>
-    ```
+          2. Users
+             - Two users are defined: `“default”` and `“transaction_user”`
+             - Both users have:
+               - Access management enabled
+               - Use the default profile
+               - Can connect from any IP address
+               - Use the default quota
+               - The default user has additional permissions for named collections
+               - The `transaction_user` has a specific password set
 
-  - 5. `acess_management.xml`
+          3. Quotas
+             - An interval duration of 1 hour (3600 seconds)
+             - No limits set for queries, errors, result rows, read rows, or execution time (all set to 0)
 
-    ```xml
-      <yandex>
-        <users>
-            <default>
-                <!-- access management -->
-                <access_management>1</access_management>
-            </default>
-        </users>
-    </yandex>
-    ```
+## 3. Install Clickhouse Client
 
-  - 6. `macros.xml`: Specifies macros for each node to identify its **shard** and **replica**.
-    ```xml
-      <yandex>
-        <!--
-            That macros are defined per server,
-            and they can be used in DDL, to make the DB schema cluster/server neutral
-        -->
-        <macros>
-            <cluster>local</cluster>
-            <shard>01</shard>
-            <replica>clickhouse-node-1</replica> <!-- better - use the same as hostname  -->
-        </macros>
-    </yandex>
-    ```
+- Install clickhouse-client (https://clickhouse.com/docs/en/install)
 
-- **Step 3**: Start the Cluster
+  ```sh
+    curl https://clickhouse.com/ | sh
+  ```
 
-  - Run the following command:
-    ```sh
-      docker-compose up -d
-    ```
+- Connect to clickhouse:
 
-- **Step 4**: **Verify the Setup**
+  ```sh
+    ./clickhouse client --user transaction_user --password secure_password
+  ```
 
-  - Access the ClickHouse web interface on http://localhost:8123 for Node 1
-  - login to clickhouse any one docker pod. It will show image name as clickhouse/clickhouse-server:24.8.7.41, use any one container ID to login
-    ```sh
-      docker exec -it <CONTAINER_ID> sh
-    ```
-  - login to clickhouse using below command (login to clickhouse container in docker for running this)
-    ```sh
-      clickhouse-client --password password
-    ```
-  - Run a query to check cluster status:
-    ```sh
-      SELECT * FROM system.clusters;
-    ```
+- Execute the following DDL in the CLI :
 
-- **Step** : **Install ClickHouse Client**
-  - Install clickhouse-client (https://clickhouse.com/docs/en/install)
-    ```sh
-      curl https://clickhouse.com/ | sh
-    ```
-  - Connect to clickhouse :
-    ```sh
-      ./clickhouse client --user transaction_user --password password
-    ```
+  ```sh
+    CREATE DATABASE IF NOT EXISTS transactions;
+    USE transactions;
+  ```
+
+- Execute the following DDL in the CLI to create the table :
+  ```sh
+    CREATE TABLE IF NOT EXISTS transactions (
+        id String ,
+        amount Decimal(18, 2),
+        currency String,
+        status Enum('pending' = 1, 'completed' = 2, 'failed' = 3),
+        user_id String,
+        merchant_id String,
+        payment_method String,
+        created_at DateTime DEFAULT now()
+    ) ENGINE = MergeTree()
+    ORDER BY user_id
+    SETTINGS index_granularity=8192;
+  ```
+- **Remarks**:
+  1. Starting with `ClickHouse 22.6`, **Keeper** is bundled into the server image, so you could run **Keeper** within the same container as the server instead of using a separate `clickhouse-keeper:<>` image. This might simplify your setup
+  2. We don't need to run a standalone `clickhouse-keeper` service as we can integrate **ClickHouse Keeper** into the `clickhouse-server` container using the bundled **Keeper** functionality in version `24.8.7.41`
+
+## 5. Running and Testing
+
+1. Start the Services
+
+   - `docker-compose up -d`
+   - Check logs: `docker logs clickhouse-server` (look for Keeper starting on `9181` and no errors).
+
+2. Test ClickHouse
+
+   - `docker exec -it clickhouse-server clickhouse-client`
+   - Run: `SELECT * FROM system.zookeeper WHERE path = '/'` (will be empty until you create replicated tables).
+
+3. Test Keeper:
+
+   - `docker exec -it clickhouse-server clickhouse-keeper-client --host localhost --port 9181`
+   - Run: `ls` (should return an empty response if no data yet).
+
+4. Test Tabix
+
+   - Open http://localhost:8090 in your browser.
+   - Enter `http://localhost:8123` in a single `http://host:port` field if that’s how your Tabix UI is structured.
+   - Use the `default` user (no password) or `transaction_user` with `secure_password` to connect to clickhouse-server:8123.
+
+5. Create a Replicated Table (to verify Keeper):
+
+   - In `clickhouse-client`
+
+     ```sql
+      CREATE TABLE test_replicated
+        (
+            id UInt32,
+            value String
+        )
+        ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/test_replicated', '{replica}')
+        ORDER BY id;
+     ```
+
+   - Insert data: `INSERT INTO test_replicated VALUES (1, 'test');`
+   - Check `system.zookeeper` again to see replication metadata.
 
 # Connect to clickhouse
-
-## 1. ClickHouse Native CLI (Command Line)
-
-- If you have a **ClickHouse container** running, you can connect using the built-in CLI:
-  ```sh
-    docker exec -it <container_name> clickhouse-client --host localhost
-  ```
-- Example:
-  ```bash
-    docker exec -it clickhouse-server clickhouse-client --host localhost
-  ```
-- You can also connect from outside the container:
-  ```sh
-    clickhouse-client --host 127.0.0.1 --port 9000
-  ```
-
-## 2. ClickHouse Web UI (Built-in)
-
-- ClickHouse has a built-in web UI!. You can access it if your container exposes port 8123.
-- Open a browser and go to: http://localhost:8123/play
-- It’s a simple query interface but works fine for basic interactions.
-
-## 3. Open Source ClickHouse GUI Clients
-
-- If you want a better UI for ClickHouse, you can use these:
-
-  1. **Tabix** (**ClickHouse Web UI**)
-
-     - Docker Setup (to run it alongside ClickHouse)
-
-       ```sh
-        docker run -d --name tabix -p 8080:80 spoonest/clickhouse-tabix-web-client
-       ```
-
-     - Access it on: http://localhost:8080
-
-  2. **ClickHouse Local** (**Tabular UI**)
-
-     - It’s a simple UI for running ClickHouse queries with formatting.
-     - Install:
-       ```sh
-        pip install clickhouse-cli
-       ```
-     - Run:
-       ```sh
-        clickhouse-cli
-       ```
-
-  3. **DBeaver** (**Database GUI**)
-
-     - Supports ClickHouse via JDBC.
-     - Steps:
-       1. Install DBeaver.
-       2. Add a **new connection** → **Select ClickHouse**.
-       3. Use JDBC URL: jdbc:clickhouse://localhost:8123/default
-       4. Set user: default, Password: (empty or set in env).
-
-  4. **ClickHouse Cloud Web UI** (**for ClickHouse Cloud Users**)
-     - If using ClickHouse Cloud, they provide a built-in UI at: https://play.clickhouse.com
-
-# docker-compose.yml File
-
-- Here, we defined the services that we need to run our **Clickhouse** cluster.
 
 ## 2. ClickHouse Server
 
@@ -340,7 +376,115 @@
 12. Custom Shell Scripts
     - You can use shell scripts with tools like `mysqldump`, `pg_dump`, and `curl` to extract data and load it into ClickHouse.
 
+# ClickHouse Concepts
+
+## 1. Primary Key
+
+- **ClickHouse** indexes are based on **Sparse Indexing**, an alternative to the **B-Tree index** utilized by traditional **DBMSs**. In **B-tree**, every row is indexed, which is suitable for locating and updating a single row, also known as **pointy-queries** common in OLTP tasks. This comes with the cost of poor performance on high-volume insert speed and high memory and storage consumption. On the contrary, the **sparse index** splits data into multiple parts, each group by a fixed portion called **granules**. **ClickHouse** considers an index for every **granule** (**group of data**) instead of every row, and that’s where the **sparse index** term comes from. Having a query filtered on the primary keys, **ClickHouse** looks for those **granules** and loads the matched **granules** in parallel to the memory. That brings a notable performance on range queries common in OLAP tasks. Additionally, as data is stored in **columns** in multiple files, it can be compressed, resulting in much less storage consumption.
+- The nature of the **spars-index** is based on **LSM trees** allowing you to insert high-volume data per second. All these come with the cost of not being suitable for pointy queries, which is not the purpose of the **ClickHouse**.
+
+# System Tables
+
+- **ClickHouse** has a lot of tables with internal information or meta data.
+- Show all **system tables** by:
+  ```sql
+    SHOW TABLES FROM system
+  ```
+
+## 2. Partition Key
+
+- Create a table by specifying **partition key**:
+
+  ```sql
+    CREATE TABLE default.projects_partitioned
+    (
+
+        `project_id` UInt32,
+
+        `name` String,
+
+        `created_date` Date
+    )
+    ENGINE = MergeTree
+    PARTITION BY toYYYYMM(created_date)
+    PRIMARY KEY (created_date, project_id)
+    ORDER BY (created_date, project_id, name)
+  ```
+
+  - Here, **ClickHouse** partitions data based on the **month** of the `created_date`:
+
+## 3. Materialized View in Clickhouse
+
+- **Definitions and purpose**:
+
+  - **Materialized views** in **ClickHouse** are a powerful feature that can significantly enhance query performance and data processing efficiency.
+  - A **materialized view** in **ClickHouse** is essentially a trigger that runs a query on blocks of data as they are inserted into a source table.
+  - The results of this query are then stored in a separate “target” table.
+  - This allows for precomputation of aggregations, transformations, or complex calculations, shifting the computational burden from query time to insert time.
+
+- **Features**:
+
+  - Unlike traditional **materialized views** in some databases, **ClickHouse materialized views** are updated in real-time as data flows into the source table.
+  - By querying **materialized views** instead of raw data, resource-intensive calculations are offloaded to the initial view creation process.
+  - This can drastically reduce query execution time, especially for complex analytical queries.
+
+- **Use Cases**:
+
+  1. Materialized views are particularly useful for real-time analytics dashboards, where instant insights from large volumes of data are required.
+  2. They can precompute aggregations, perform data transformations, or filter data for specific use cases.
+
+- **Considerations**:
+
+  - While **materialized views** offer significant performance benefits, they do consume additional CPU, memory, and disk resources as data is processed and written into the new form.
+
+- **Types of Materialized Views in ClickHouse**: ClickHouse offers several types of materialized views based on different storage engines:
+
+  1. **AggregatingMergeTree**
+
+     - Best for aggregation operations
+     - Maintains running totals and counts
+     - Example:
+       ```sql
+        CREATE MATERIALIZED VIEW view_name
+        ENGINE = AggregatingMergeTree()
+        ORDER BY key_column
+        AS SELECT
+            key_column,
+            aggregateFunction(value_column)
+        FROM source_table
+        GROUP BY key_column;
+       ```
+
+  2. **SummingMergeTree**:
+
+     - Optimized for summing operations
+     - Automatically combines rows with the same primary key
+     - Example:
+       ```sql
+        CREATE MATERIALIZED VIEW view_name
+        ENGINE = SummingMergeTree()
+        ORDER BY key_column
+        AS SELECT
+            key_column,
+            sum(value_column) as total
+        FROM source_table
+        GROUP BY key_column;
+       ```
+
+  3. **ReplacingMergeTree**
+     - Keeps only the latest version of each row
+     - Useful for deduplication
+     - Example:
+       ```sql
+        CREATE MATERIALIZED VIEW view_name
+        ENGINE = ReplacingMergeTree(version_column)
+        ORDER BY key_column
+        AS SELECT * FROM source_table;
+       ```
+
 # Resources and Further Reading
 
 1. [clickhouse - Docker Image](https://hub.docker.com/_/clickhouse)
 2. [Medium - Running a Clickhouse Distributed Multi Node Cluster Locally Using Docker Compose](https://archive.ph/9ptU6#selection-313.0-313.80)
+3. [Medium - ClickHouse Basic Tutorial: Keys & Indexes](https://itnext.io/clickhouse-basic-tutorial-keys-indexes-ed72b0c0cc2f)
+4. [Medium - ClickHouse: A Deep Dive into Modern Real-Time Analytics](https://towardsdev.com/clickhouse-a-deep-dive-into-modern-real-time-analytics-32442257a5b8)

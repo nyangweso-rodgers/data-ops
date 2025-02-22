@@ -1,0 +1,59 @@
+<clickhouse replace="true">
+    <keeper_server>
+        <tcp_port>9181</tcp_port>
+        <server_id>1</server_id>
+        <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
+        <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
+        <raft_configuration>
+            <server>
+                <id>1</id>
+                <hostname>clickhouse-node-1</hostname>
+                <port>9234</port>
+            </server>
+        </raft_configuration>
+    </keeper_server>
+
+    <!-- Macros for replication -->
+    <macros>
+        <shard>shard1</shard>
+        <replica>replica1</replica>
+    </macros>
+    
+    <!-- Logger Configuration -->
+    <logger>
+        <level>debug</level> <!-- Sets logging verbosity to debug level -->
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>  <!-- Specifies main log file path at /var/log/clickhouse-server/clickhouse-server.log -->
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>  <!-- Defines error log file location at /var/log/clickhouse-server/clickhouse-server.err.log -->
+        <size>1000M</size> <!-- Limits each log file to 1000 megabytes -->
+        <count>3</count> <!-- Keeps 3 rotated log files -->
+    </logger>
+
+    <display_name>ch-1S_1K</display_name> <!-- Sets the server’s display name -->
+
+    <!-- Network Configuration -->
+    <listen_host>0.0.0.0</listen_host> <!-- Listens on all network interfaces -->
+    <http_port>8123</http_port> <!-- HTTP interface port -->
+    <tcp_port>9000</tcp_port> <!-- Native protocol port -->
+    <mysql_port>9004</mysql_port> <!-- MySQL protocol port-->
+
+    <!-- Specifies user configuration locations -->
+    <user_directories>
+        <users_xml>
+            <path>users.xml</path>
+        </users_xml>
+        <local_directory>
+            <path>/var/lib/clickhouse/access/</path>
+        </local_directory>
+    </user_directories>
+    <distributed_ddl> <!--Configuration for distributed DDL operations-->
+        <path>/clickhouse/task_queue/ddl</path>
+    </distributed_ddl>
+
+    <!--ZooKeeper Integration-->
+    <zookeeper>
+        <node>
+            <host>localhost</host>
+            <port>9181</port> <!--Uses port 9181 for keeper communication-->
+        </node>
+    </zookeeper>
+</clickhouse>
