@@ -360,22 +360,6 @@
 
 # How to deploy ClickHouse
 
-# ETL Tools for ClickHouse
-
-1. Airbyte
-2. Apache NiFi
-3. Debezium
-4. dbt (Data Build Tool)
-5. Custom Python Scripts
-6. Kafka Connect with ClickHouse Sink
-7. pg2ch
-8. Flink
-9. ClickHouse’s Built-in MySQL and PostgreSQL Engines
-10. Logstash
-11. Metabase (for Ad-hoc ETL)
-12. Custom Shell Scripts
-    - You can use shell scripts with tools like `mysqldump`, `pg_dump`, and `curl` to extract data and load it into ClickHouse.
-
 # ClickHouse Concepts
 
 ## 1. Primary Key
@@ -481,6 +465,83 @@
         ORDER BY key_column
         AS SELECT * FROM source_table;
        ```
+
+# ETL Tools for ClickHouse
+
+1. Airbyte
+2. Apache NiFi
+3. Debezium
+4. dbt (Data Build Tool)
+5. Custom Python Scripts
+6. Kafka Connect with ClickHouse Sink
+7. pg2ch
+8. Flink
+9. ClickHouse’s Built-in MySQL and PostgreSQL Engines
+10. Logstash
+11. Metabase (for Ad-hoc ETL)
+12. Custom Shell Scripts
+    - You can use shell scripts with tools like `mysqldump`, `pg_dump`, and `curl` to extract data and load it into ClickHouse.
+
+## 1. Moving data from a PostgreSQL table to ClickHouse
+
+- **ClickHouse** does not provide a built-in, out-of-the-box connection to **PostgreSQL** for direct data transfer in the way you might expect from an ETL tool. However, **ClickHouse** offers some native capabilities that can help you connect to **PostgreSQL**, depending on your needs:
+
+  1. **Table Functions and Engines**:
+
+     - **ClickHouse** has a `postgresql` table function and a `PostgreSQL` table engine that allow it to query data directly from PostgreSQL over a connection. These are useful for one-off imports or live queries but aren’t designed for automated, ongoing data pipelines.
+     - Example using the postgresql table function
+
+       ```sql
+        SELECT * FROM postgresql('postgres-db:5432', 'your_db', 'your_table', 'your_user', 'your_password');
+       ```
+
+     - **Query PostgreSQL from ClickHouse**:
+
+       - Access **ClickHouse** via **Tabix** (`http://localhost:8090`) or `clickhouse-client`
+         ```sh
+          docker exec -it clickhouse-server clickhouse-client
+         ```
+       - Run a query using the `postgresql` table function
+         ```sql
+          SELECT * FROM postgresql('postgres-db:5432', 'postgres', 'test_postgres', '${POSTGRES_USER}', '${POSTGRES_PASSWORD}');
+         ```
+       - Example:
+         ```sh
+           SELECT * FROM postgresql('postgres-db:5432', 'users', 'customers', 'postgres', 'mypassword');
+         ```
+
+     - **Move Data to ClickHouse**
+       - Create a ClickHouse table
+       ```sql
+         CREATE TABLE customers_clickhouse (
+             id UUID,
+             first_name String,
+             last_name String,
+             country_code String,
+             status UInt8,
+             email String,
+             alt_email Nullable(String),
+             phone_number String,
+             alt_phone_number Nullable(String),
+             created_at DateTime64(3),
+             updated_at DateTime64(3),
+             created_by String,
+             updated_by String
+         )
+         ENGINE = MergeTree()
+         ORDER BY (id);
+       ```
+       - Insert data from PostgreSQL:
+         ```sql
+          INSERT INTO customers_clickhouse
+          SELECT * FROM postgresql('postgres-db:5432', 'users', 'customers', 'postgres', 'mypassword');
+         ```
+       - Verify:
+         ```sql
+          SELECT * FROM customers_clickhouse;
+         ```
+
+## 2. Airbyte
 
 # Resources and Further Reading
 
