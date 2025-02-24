@@ -660,6 +660,7 @@ services:
     container_name: clickhouse-tabix-web-client
     ports:
       - "8090:80"
+    restart: always
     depends_on:
       - clickhouse-server
     environment:
