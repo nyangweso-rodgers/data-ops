@@ -28,6 +28,7 @@ next-env.d.ts
 
 # python
 venv/
+windows-python-venv
 airflow-linux-venv/
 superset-linux-venv/
 superset-windows-venv/
@@ -38,3 +39,6 @@ airflow_home/
 
 # clickhouse
 clickhouse-logs/
+
+# Dagster
+dagster-home/

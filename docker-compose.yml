@@ -574,7 +574,7 @@ services:
     container_name: grafana
     restart: always
     ports:
-      - "3006:3000"  # Map host port 3006 to container port 3000
+      - "3006:3000" # Map host port 3006 to container port 3000
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
@@ -615,36 +615,6 @@ services:
     ports:
       - "3100:3100"
 
-  ############################################################################
-  # Node.js Kafka Client - Consumer & Producer
-  #
-  #node.js-kafka-client:
-  #build:
-  #context: ./apache-kafka/kafka-clients/node.js-kafka-client
-  #dockerfile: Dockerfile
-  #image: node.js-kafka-client
-  #container_name: node.js-kafka-client
-  #ports:
-  #- "3004:3004"
-  #depends_on:
-  #- kafka
-  #networks:
-  #- data-ops-network
-  ############################################################################
-  # Python Kafka Client
-  #
-  #python-kafka-client:
-  #build:
-  #context: ./apache-kafka/kafka-clients/python-kafka-client
-  #dockerfile: Dockerfile
-  #image: python-kafka-client
-  #container_name: python-kafka-client
-  #ports:
-  #- "3005:3005"
-  #depends_on:
-  #- kafka
-  #networks:
-  #- data-ops-network
   ############################## 4. Data Warehouse ##############################################
   # clickhouse-server
   #
@@ -677,6 +647,26 @@ services:
     environment:
       - CH_HOST=clickhouse-server
       - CH_PORT=8123
+    networks:
+      - data-ops-network
+  ############################## Workflow Orchestration Tools ##############################################
+  # dagster
+  #
+  dagster:
+    build:
+      context: ./workflow-orchestration-tools/02-dagster/dagster-pipeline
+      dockerfile: Dockerfile
+    image: dagster
+    container_name: dagster
+    ports:
+      - "3004:3004"
+    depends_on:
+      - postgres-db
+      - clickhouse-server
+    environment:
+      - DAGSTER_HOME=/app/dagster_home  # Path inside the container
+    volumes:
+      - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home  # Host:Container mapping
     networks:
       - data-ops-network
   ############################################################################
