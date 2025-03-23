@@ -632,6 +632,11 @@ services:
       - ./04-data-warehouse/01-clickhouse/users/users.xml:/etc/clickhouse-server/users.d/users.xml
       - clickhouse-server-volume:/var/lib/clickhouse/
       - ./04-data-warehouse/01-clickhouse/clickhouse-logs:/var/log/clickhouse-server/
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]  # Simple query to check server responsiveness
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - data-ops-network
   # tabix
@@ -650,6 +655,40 @@ services:
     networks:
       - data-ops-network
   ############################## Workflow Orchestration Tools ##############################################
+  # dagster-webserver
+  #
+  dagster-webserver:
+    build:
+      context: ./workflow-orchestration-tools/02-dagster/dagster-pipeline
+      dockerfile: Dockerfile
+    image: dagster
+    container_name: dagster-webserver
+    #command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3004", "--code-server-host", "dagster", "--code-server-port", "4000"]
+    command: ["dagster-webserver", "-h", "0.0.0.0", "-p", "3004", "-w", "/app/dagster_home/workspace.yaml"]
+    ports:
+      - "3004:3004"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      clickhouse-server:
+        condition: service_healthy
+      dagster:
+        condition: service_healthy
+    environment:
+      - DAGSTER_HOME=/app/dagster_home
+      - DAGSTER_GRPC_SERVER_HOST=dagster  # Explicit gRPC host
+      - DAGSTER_GRPC_SERVER_PORT=4000    # Explicit gRPC port
+    volumes:
+      - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home
+      - ./workflow-orchestration-tools/02-dagster/dagster-pipeline:/app/dagster-pipeline
+    networks:
+      - data-ops-network
   # dagster
   #
   dagster:
@@ -658,15 +697,49 @@ services:
       dockerfile: Dockerfile
     image: dagster
     container_name: dagster
-    ports:
-      - "3004:3004"
+    #command: "dagster api grpc -h 0.0.0.0 -p 4000 -w /app/dagster_home/workspace.yaml"
+    command: "dagster api grpc -h 0.0.0.0 -p 4000 -f /app/dagster-pipeline/etl-pipeline.py"
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s = socket.socket(); s.connect(('localhost', 4000)); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     depends_on:
-      - postgres-db
-      - clickhouse-server
+      postgres-db:
+        condition: service_healthy
+      clickhouse-server:
+        condition: service_healthy
     environment:
-      - DAGSTER_HOME=/app/dagster_home  # Path inside the container
+      - DAGSTER_HOME=/app/dagster_home
     volumes:
-      - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home  # Host:Container mapping
+      - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home
+      - ./workflow-orchestration-tools/02-dagster/dagster-pipeline:/app/dagster-pipeline
+    networks:
+      - data-ops-network
+  # dagster-daemon
+  #
+  dagster-daemon:
+    build:
+      context: ./workflow-orchestration-tools/02-dagster/dagster-pipeline
+      dockerfile: Dockerfile
+    image: dagster
+    container_name: dagster-daemon
+    #command: "dagster-daemon run"
+    command: "dagster-daemon run -w /app/dagster_home/workspace.yaml"  # Shortened flag
+    restart: always
+    depends_on:
+      dagster:
+        condition: service_healthy
+      postgres-db:
+        condition: service_healthy
+      clickhouse-server:
+        condition: service_healthy
+    environment:
+      - DAGSTER_HOME=/app/dagster_home
+    volumes:
+      - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home
+      - ./workflow-orchestration-tools/02-dagster/dagster-pipeline:/app/dagster-pipeline
     networks:
       - data-ops-network
   ############################################################################
