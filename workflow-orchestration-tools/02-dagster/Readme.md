@@ -1,5 +1,36 @@
 # Dagster
 
+## Table Of Contents
+
+# Project Overview
+
+- Build a fullly operational dagster pipeline to:
+
+  1. Move data from PostgreSQL Database to ClickHouse Server
+
+- Setup:
+
+  - Define **Services**: `dagster`, `dagster-daemon`, and `dagster-webserver`
+  - Define a **pipeline**: `etl-pipeline.py` is pulling from **Postgres** and appending to **ClickHouse**.
+
+- Design Plan:
+
+  1. Postgres
+
+     - Use `created_at` to identify new records.
+     - Use `updated_at` to detect changes to existing records.
+
+  2. ClickHouse
+
+     - Switch to a `ReplacingMergeTree` table engine (replaces old rows by id on merge).
+     - Track the last run’s timestamp to filter incremental data.
+
+  3. Dagster
+     - Store the last run’s timestamp in Dagster’s instance (persistent storage).
+     - Split logic into **assets**: initial load, new records, and updates.
+
+# Introduction to Dagster
+
 - **Dagster** is an open-source data orchestrator designed for building, running, and observing data pipelines and workflows.
 
 - **Features**:
@@ -34,6 +65,31 @@
   4. **Community and Ecosystem**
      - **Dagster** is a newer entrant compared to **Airflow**, but it has been gaining traction, especially in organizations looking for a more structured approach to data engineering. It has a growing community and ecosystem of plugins and integrations.
      - **Airflow** has been around for longer and has a larger user base and ecosystem. It has extensive documentation, a rich set of integrations, and a vibrant community contributing plugins and extensions.
+
+# Dagster Components
+
+- **Dagster** has three main components that work together to schedule, execute, and monitor workflows:
+
+  1. **Dagster Core**
+
+     - This is the heart of **Dagster** that allows you to define and execute **DAGs** (**Directed Acyclic Graphs**), but with a more software engineering-friendly approach. Instead of defining tasks and dependencies manually (like in **Airflow**), **Dagster** uses solids (compute units) and graphs (workflow definitions).
+
+  2. **Dagster Webserver** (`dagster-webserver`): This is the **UI** (**Dagit**) that provides:
+
+     - A visualization of pipelines.
+     - The ability to trigger runs.
+     - Logs and monitoring.
+     - Debugging tools.
+
+  3. **Dagster Daemon** (`dagster-daemon`)
+     - This is the **background worker** responsible for running schedules and sensors.
+     - Unlike **Airflow**, where the **scheduler** is part of the main process, **Dagster** separates it.
+     - It polls for scheduled runs and kicks off executions.
+
+- **How they work together**:
+  1. You define **pipelines** (**jobs**) in **Dagster**.
+  2. The **webserver** (**Dagit**) lets you inspect and trigger jobs.
+  3. The **daemon** handles scheduled jobs in the background.
 
 # Setting Up Dagster
 
@@ -170,9 +226,46 @@
     name: docker_example_network
   ```
 
+- **Step** : **Setup Dagster Webserver** (`dagster`)
+
+  - Serves the Dagit UI and GraphQL API.
+  - Executes pipelines manually or when triggered externally.
+  - Communicates with the daemon via the shared `DAGSTER_HOME` storage (e.g., SQLite or Postgres) to see scheduled runs and their status.
+
+- **Step** : **Setup Dagster Daemon** (`dagster-daemon`)
+
+  - **Dagster Daemon** is a seperate process that manages:
+    - **Schedules**: Runs jobs at specified intervals (e.g., hourly).
+    - **Sensors**: Triggers runs based on external events (e.g., new data in Postgres).
+    - **Run Queue**: Coordinates execution if you have multiple runs or concurrency limits.
+  - Add the `dagster-daemon` service to the root `docker-compose.yml`. It needs to share `DAGSTER_HOME` with the `webserver` for coordination and access your pipeline code.
+    ```yml
+    dagster-daemon:
+      build:
+        context: ./workflow-orchestration-tools/02-dagster/dagster-pipeline
+        dockerfile: Dockerfile
+      image: dagster
+      container_name: dagster-daemon
+      entrypoint: ["dagster-daemon", "run"]
+      depends_on:
+        - postgres-db
+        - clickhouse-server
+        - dagster
+      environment:
+        - DAGSTER_HOME=/app/dagster_home
+      volumes:
+        - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home
+      networks:
+        - data-ops-network
+    ```
+  - Where:
+    - Set `entrypoint: ["dagster-daemon", "run"]` to start the daemon process instead of the webserver.
+    - Shared the same `DAGSTER_HOME` volume so both services use the same storage (e.g., run history, schedules).
+    - No ports exposed— the daemon doesn’t need a public interface; it communicates internally with the webserver.
+
 - **Step** : **Access Dagit**
 
-  - Open your browser and go to http://localhost:3004.
+  - Open your browser and go to `http://localhost:3004` or `http://127.0.0.1:3004`
   - You should see the **Dagit** interface. Look under the **“Definitions”** or **“Assets”** tab for:
     - The `postgres_to_clickhouse` job.
     - The `postgres_data` and `clickhouse_table` assets.
