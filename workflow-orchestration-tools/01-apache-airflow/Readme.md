@@ -101,154 +101,23 @@
     - Create Database and User:
       ```sh
         CREATE DATABASE apache-airflow;
-        CREATE USER airflow WITH PASSWORD 'airflow';
-        GRANT ALL PRIVILEGES ON DATABASE airflow TO airflow;
       ```
-- Note:
-  - The `./airflow` directory from the host (the directory where the docker-compose file is located, specifically the airflow subfolder) is mounted to `/opt/airflow` inside the container. This is typically done to ensure that data can persist even after the container stops, or to provide additional data to the container at runtime.
-  - Apache Airflow’s web interface, by default, runs on port `8080`, so this mapping allows you to access the Airflow web interface through the host machine’s IP address on port 8080.
-- Compose up the YAML file (right click, select the compose up command).
-- Check the status of the container in the Docker Desktop to see if it is running.
-- Go to http://localhost:8080/
-- On the first login; the username is `admin` and the password can be found in the `standalone_admin_password.txt` file.
 
-# Installing Apache Airflow with Pip
-
-- **Requirements**:
-
-  1. Python 3.8 or higher: You can download it from [Python’s official website](https://www.python.org/downloads/windows/).
-  2. **Pip**: Make sure you have pip, the Python package manager, installed.
-  3. Windows 10 or higher
-  4. **Windows Subsystem for Linux** (**WSL2**):
-     - Allows you to run Linux commands and programs on a Windows OS.
-     - It provides a Linux-compatible environment that runs natively on Windows, enabling users to use Linux command-line tools and utilities on a Windows machine.
+## Step 3: Start Docker Containers
 
 - **Remarks**:
 
-  - Why Installing **Apache Airflow** on a Windows Virtual Environment is Problematic: Apache Airflow isn't officially supported on Windows. Here's why:
-    1. **Compatibility Issues**:
-       - **Airflow** relies heavily on certain **POSIX-compliant** tools and libraries, which are native to Unix-like operating systems (Linux, macOS). Windows lacks some of these tools out of the box.
-       - Examples:
-         1. Airflow uses `fork()` in its process management, which doesn’t work natively on Windows.
-         2. Some of its dependencies (like `pycparser` or `cgroups`) are hard to compile or are incompatible with Windows.
-    2. **Dependency Management**:
-       - Airflow has many dependencies that rely on native **C extensions**.
-       - On Linux, these are compiled using tools like `gcc` (**GNU Compiler Collection**), which are readily available. Windows, however, needs something like **Microsoft Build Tools**, which can be challenging to set up correctly.
-    3. **Subprocess Management**: Airflow's scheduler and worker processes rely on Unix-like behavior for managing subprocesses and inter-process communication. These mechanisms are either non-existent or work differently on Windows.
-    4. **Windows-Specific Challenges**: Even if you manage to install **Airflow** using workarounds (e.g., Docker for Windows), running it natively is not ideal because of potential performance and stability issues.
+  - When you start **Airflow** containers, you will nptice that `__pycache__/01-dummy-dag.cpython-38.pyc` file is automatically created because Python compiles your **DAG** file (e.g., `01-dummy-dag.py`) into bytecode for faster execution.
 
-- **Installing Apache Airflow on Windows with WSL**:
+    - When Python imports a module (like your `DAG` file), it compiles the `.py` file into bytecode (`.pyc`) and caches it in `__pycache__/`.
+    - This makes subsequent imports faster since Python doesn't need to re-parse the source code.
+    - Add `__pycache__/ `to your `.gitignore`
 
-  1. **Step 1**: Activate Ubuntu or Other Linux System
+  - **Airflow's Behavior**
+    - Airflow scans and imports your DAG files every few seconds (default: 30s).
+    - Each scan triggers Python's import system, generating the .pyc file.
 
-     - If you haven’t already, make sure you’ve enabled **WSL** and installed a Linux distribution such as **Ubuntu** from the Microsoft Store.
-     - Launch the Linux terminal to proceed.
-
-  2. **Step 2**: Create a Virtual Environment and Activate It
-
-     - To create a virtual environment, you can use Python’s built-in `venv` module. Navigate to your desired project directory and execute these commands:
-
-       ```sh
-         #Create virtual environment
-         python3 -m venv airflow-env
-
-         #Activate the virtual environment
-         source airflow-env/bin/activate
-       ```
-
-  3. **Step 3**: Set the `$AIRFLOW_HOME` Parameter (Environment Variable)
-
-     - Set the `$AIRFLOW_HOME` environment variable to specify where **Airflow** will store its configuration and metadata files. Add this line to your shell profile file (e.g., `.bashrc` or `.zshrc`)
-
-       ```sh
-
-       ```
-
-     - Add it to your shell profile to make it persistent (e.g., `~/.bashrc`):
-
-       ```bash
-        echo "export AIRFLOW_HOME=/mnt/c/Users/hp/Downloads/working-env/data-ops/05-pipeline/01-apache-airflow/airflow_home" >> ~/.bashrc
-        source ~/.bashrc
-       ```
-
-     - Here:
-       - The first command appends the line that sets the `AIRFLOW_HOME` environment variable to your `~/.bashrc` file:
-       - The second command reloads the `~/.bashrc` file so that the new environment variable is available in your current session:
-     - Verify `$AIRFLOW_HOME`:
-       ```sh
-        echo $AIRFLOW_HOME
-       ```
-
-  4. **Step 4**: **Install Apache Airflow**
-
-     - Use `pip` to install Apache Airflow
-
-       ```sh
-         pip install apache-airflow
-       ```
-
-  5. **Step 5**: **Initialize the Database**
-
-     - Initialize the Airflow database, which is essential for storing metadata about your workflows:
-       ```sh
-        airflow db init
-        # or, for future improvements
-        airflow db migrate
-       ```
-     - This creates necessary files:
-       1. `airflow.cfg` (configuration file)
-       2. `airflow.db` (metadata database)
-       3. `logs/` (Airflow logs folder)
-       4. Other necessary directories (like `dags/` if you start adding **DAGs**).
-
-  6. **Step 6**: **Create an Admin User**
-
-     - To access the Airflow web interface, create an admin user with the following command:
-       ```sh
-        airflow users create --username admin --password admin  --firstname <YourFirstName> --lastname <YourLastName> --role Admin --email admin@example.com
-       ```
-     - Using **Docker Command** to create **user**:
-       ```sh
-        docker exec -it apache-airflow airflow users create --username admin --firstname Admin --lastname User --role Admin --email rodgerso65@gmail.com --password admin
-       ```
-
-  7. **Step 7**: **Run the Web Server and Scheduler**
-
-     - Start the Airflow web server and scheduler components in separate terminals:
-
-       ```sh
-        airflow webserver --port 8080
-        airflow scheduler
-       ```
-
-     - The Airflow web server will be accessible at http://localhost:8086 in your web browser and log in using the above-created User.
-     - Go to http://localhost:8086/
-     - On the first login; the **username** is `admin` and the **password** can be found in the `standalone_admin_password.txt` file.
-
-- **Additonal Tips**:
-
-  1. **Disable Example DAGs**:
-     - In the Airflow configuration file (`airflow.cfg`), set `load_examples = False` to prevent the automatic loading of example **DAGs** during initialization. This can help keep your Airflow environment clean and focused on your specific use cases.
-       ```sh
-        load_examples = False
-       ```
-  2. **Configure the DAGs Directory**
-     - In the Airflow configuration file (`airflow.cfg`), specify the location where your DAG files will reside. This allows you to organize your DAGs in a specific directory.
-       ```sh
-        dags_folder = ~/airflow/dags
-       ```
-  3. **Use a Reverse Proxy**:
-
-     - If you plan to deploy Airflow in a production environment, consider setting up a reverse proxy like Nginx or Apache in front of the Airflow web server. This adds an extra layer of security and can help with performance and scalability.
-
-  4. **Monitoring and Logging**
-
-     - Configure logging and monitoring solutions to keep an eye on your Airflow instance. Tools like **Prometheus**, **Grafana**, or third-party services can provide insights into your workflow performance.
-
-  5. **Backup and Recovery Plan**:
-     - Regularly backup your Airflow metadata database to prevent data loss in case of system failures. Implement a recovery plan to restore your Airflow instance quickly.
-
-# Creaing DAGs Uisng Python
+# Creating DAGs Uisng Python
 
 - Step 1: Create `dags/` directory inside the `project-folder/`
   - Create a `test.py` file with the following:
