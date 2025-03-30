@@ -58,7 +58,7 @@ services:
     #max-size: "2048m"
     networks:
       - data-ops-network
-  # postgres DB
+  # postgres-db-exporter
   #
   postgres-db-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -530,26 +530,6 @@ services:
       WORKSPACE_ROOT: /workspace
     networks:
       - data-ops-network
-
-  # apache-airflow
-  #
-  apache-airflow:
-    build:
-      context: ./05-pipeline/01-apache-airflow
-      dockerfile: Dockerfile
-    container_name: apache-airflow
-    #command: webserver
-    command: airflow standalone
-    ports:
-      #- "8080:8080"
-      - "${APACHE_AIRFLOW_PORT}:8080"
-    volumes:
-      - apache-airflow-volume:/opt/airflow
-      #- ./05-pipeline/01-apache-airflow/airflow_home:/opt/airflow_home # Mount the airflow_home directory, not the entire /opt/airflow
-      - ./05-pipeline/01-apache-airflow/airflow_home/logs:/opt/airflow/logs
-      - ./05-pipeline/01-apache-airflow/airflow_home/plugins:/opt/airflow/plugins
-      - ./05-pipeline/01-apache-airflow/dags:/opt/airflow/dags
-
   ################################# 6. Data Visualization ###########################################
   # prometheus
   #
@@ -654,7 +634,7 @@ services:
       - CH_PORT=8123
     networks:
       - data-ops-network
-  ############################## Workflow Orchestration Tools ##############################################
+  ############################## 1. Workflow Orchestrator - Dagster ##############################################
   # dagster-webserver
   #
   dagster-webserver:
@@ -740,6 +720,53 @@ services:
     volumes:
       - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home
       - ./workflow-orchestration-tools/02-dagster/dagster-pipeline:/app/dagster-pipeline
+    networks:
+      - data-ops-network
+   ############################## 1. Workflow Orchestrator - Apache Airflow ##############################################
+  # apache-airflow-webserver
+  #
+  apache-airflow-webserver:
+    build: 
+      context: ./workflow-orchestration-tools/01-apache-airflow
+      dockerfile: Dockerfile
+    image: apache-airflow-webserver
+    container_name: apache-airflow-webserver
+    #entrypoint: ["/opt/airflow/init-apache-airflow.sh"]
+    command: webserver
+    ports:
+      - "8086:8080"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/apache_airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./workflow-orchestration-tools/01-apache-airflow/dags:/opt/airflow/dags
+      - ./workflow-orchestration-tools/01-apache-airflow/logs:/opt/airflow/logs
+    networks:
+      - data-ops-network
+  # apache-airflow-scheduler
+  #
+  apache-airflow-scheduler:
+    build:
+      context: ./workflow-orchestration-tools/01-apache-airflow
+      dockerfile: Dockerfile
+    image: apache-airflow-scheduler
+    container_name: apache-airflow-scheduler
+    command: scheduler
+    depends_on:
+      - apache-airflow-webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/apache_airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./workflow-orchestration-tools/01-apache-airflow/dags:/opt/airflow/dags
+      - ./workflow-orchestration-tools/01-apache-airflow/logs:/opt/airflow/logs
     networks:
       - data-ops-network
   ############################################################################

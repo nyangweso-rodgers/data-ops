@@ -36,6 +36,7 @@ superset-windows-venv/
 
 # apache airflow
 airflow_home/
+logs/
 
 # clickhouse
 clickhouse-logs/
