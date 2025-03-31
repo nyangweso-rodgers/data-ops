@@ -1,12 +1,6 @@
-# Use the official MySQL image as the base image
-FROM mysql:latest
-LABEL authors="Rodgers Nyangweso"
+FROM mysql:9.2.0
 
-# Set the default environment variables (customize as needed)
-ENV MYSQL_ROOT_PASSWORD=root
-ENV MYSQL_DATABASE=my_database
-ENV MYSQL_USER=user
-ENV MYSQL_PASSWORD=password
+COPY ./init-scripts/init-open-metadata-db.sql /docker-entrypoint-initdb.d/
 
 # Expose the default MySQL port
 EXPOSE 3306

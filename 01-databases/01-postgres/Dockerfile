@@ -5,7 +5,6 @@ FROM postgres:latest
 # Set environment variables (optional, can also be passed via docker-compose.yml)
 ENV POSTGRES_USER=postgres
 ENV POSTGRES_PASSWORD=mypassword
-#ENV POSTGRES_DB=users
 
 # Add custom initialization scripts to create multiple databases
 COPY ./init-scripts/init-sales-database.sql /docker-entrypoint-initdb.d/

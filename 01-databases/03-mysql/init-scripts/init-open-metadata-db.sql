@@ -1,0 +1,1 @@
+CREATE DATABASE open_metadata;

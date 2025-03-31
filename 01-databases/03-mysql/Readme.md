@@ -1,3 +1,7 @@
+# MySQL
+
+## Table Of Contents
+
 # How To Run Mysql In Docker With Data Persistence
 
 ## Step 1. Create Dockerfile
@@ -7,13 +11,6 @@
   ```DockerFile
     # Use the official MySQL image as the base image
     FROM mysql:latest
-    LABEL authors="msamgan" # update with your name.
-
-    # Set the default environment variables (customize as needed)
-    ENV MYSQL_ROOT_PASSWORD=root
-    ENV MYSQL_DATABASE=my_database
-    ENV MYSQL_USER=user
-    ENV MYSQL_PASSWORD=password
 
     # Expose the default MySQL port
     EXPOSE 3306
@@ -23,19 +20,7 @@
 
 - Create a new file with the name `docker-compose.yml` and add the following content to the file.
   ```yml
-  services: # Define services
-    mysql: # Define MySQL service
-      build: . # Build MySQL image from Dockerfile in the same directory
-      container_name: mysql_service # Name the container
-      environment: # Set environment variables
-      MYSQL_ROOT_PASSWORD: root # Set MySQL root password
-      MYSQL_DATABASE: my_database # Create a database named my_database
-      MYSQL_USER: user # Create a user named user
-      MYSQL_PASSWORD: password # Set user password
-      ports: # Expose MySQL port
-        - "3306:3306" # Map container port 3306 to host port 3306
-      volumes: # Attach volumes
-        - ./mysql_data:/var/lib/mysql # Attach volume to persist MySQL data in the same directory
+  services:
   ```
 
 ## Step 3. Run Docker Container
@@ -68,5 +53,20 @@
     -- Create the index for user_id
     CREATE INDEX idx_user_id ON transactions(user_id);
   ```
+
+- Step : Access the MySQL Container via Terminal
+  - Access the Container: Run the following command from your host machine (where mysql-db is the container name from your docker-compose.yml):
+    ```sh
+      docker exec -it mysql-db mysql -u root -p
+    ```
+  - **Commands**:
+    1. **Create a New Database**: Once inside the MySQL prompt, you can create a new database:
+       ```sh
+        CREATE DATABASE new_database;
+       ```
+    2. **Show Databases**: Verify databases by:
+       ```sh
+        SHOW DATABASES;
+       ```
 
 # Resources and Further Reading
