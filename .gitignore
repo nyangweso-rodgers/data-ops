@@ -29,6 +29,7 @@ next-env.d.ts
 # python
 venv/
 windows-python-venv
+linux-py-venv
 airflow-linux-venv/
 superset-linux-venv/
 superset-windows-venv/
@@ -37,6 +38,7 @@ superset-windows-venv/
 # apache airflow
 airflow_home/
 logs/
+__pycache__/
 
 # clickhouse
 clickhouse-logs/
