@@ -1,0 +1,75 @@
+services:
+  ################################ 3.5 Debezium Connect ############################################
+  #
+  debezium-connect:
+    image: debezium/connect:latest #https://hub.docker.com/r/debezium/connect
+    restart: always
+    container_name: debezium-connect
+    hostname: debezium-connect
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    environment:
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: debezium-connect-config-storage
+      STATUS_STORAGE_TOPIC: debezium-connect-status-storage
+      OFFSET_STORAGE_TOPIC: debezium-connect-offset-storage
+      BOOTSTRAP_SERVERS: kafka:29092
+      CONFIG_STORAGE_REPLICATION_FACTOR: 2
+      OFFSET_STORAGE_REPLICATION_FACTOR: 2
+      STATUS_STORAGE_REPLICATION_FACTOR: 2
+      #CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      #KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
+
+      #CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      #CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      #VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
+      #CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
+      ENABLE_DEBEZIUM_SCRIPTING: "true"
+      PLUGIN_PATH: /kafka/connect/plugins #added as part of the sink connector configuration
+      GOOGLE_APPLICATION_CREDENTIALS: /etc/debezium/bigquery-keyfile.json # Specify the path inside the container
+      #KAFKA_CONNECT_PLUGINS_DIR: /kafka/connect
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--silent",
+          "--fail",
+          "-X",
+          "GET",
+          "http://localhost:8084/connectors",
+        ]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    #volumes:
+    #- ./jar_files:/kafka/connect/avro_jar_files
+    networks:
+      - data-ops-network
+  ################################ 3.5 Debezium UI ############################################
+  #
+  debezium-ui:
+    image: debezium/debezium-ui:latest
+    restart: always
+    container_name: debezium-ui
+    hostname: debezium-ui
+    depends_on:
+      debezium-connect:
+        condition: service_healthy
+    ports:
+      #- "8082:8080"
+      - "8082:8082"
+    environment:
+      KAFKA_CONNECT_URIS: http://debezium:8084
+    networks:
+      - data-ops-network
