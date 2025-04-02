@@ -9,10 +9,13 @@
 - **Features of Open Metadata**:
 
   1. Centralized Metadata Store: A single place to store and manage metadata from diverse systems.
-  2. Ingestion Framework: Connectors to pull metadata from 75+ sources (e.g., MySQL, Snowflake, Airflow, Tableau).
-  3. Collaboration Tools: Features like task creation, conversations, and documentation within the platform.
-  4. Data Lineage: Tracks how data flows and transforms across systems.
-  5. Data Quality and Observability: Monitors data health with profiling and quality checks.
+  2. **Add descriptions**: You can define the owner and add descriptions to the data which will help you identify the authenticity and thr owner details whenever needed.
+  3. Ingestion Framework: Connectors to pull metadata from 75+ sources (e.g., MySQL, Snowflake, Airflow, Tableau).
+  4. Collaboration Tools: Features like task creation, conversations, and documentation within the platform.
+  5. Data Lineage: Tracks how data flows and transforms across systems i.e., You can look for the data lineage and the source from where its been generated and all the way to where it is consumed.
+  6. **Data Quality and Observability**: Monitors data health with **profiling** and **quality checks**.
+  7. **Profiling the data**:
+     - You can view the details for each of the columns and the check null or non null value counts which can help you build your trust with the data.
 
 - **Use Cases of Open Metadata**
   1. Data Discovery: Helps users find relevant datasets by searching metadata, reducing time spent looking for data.
@@ -30,14 +33,25 @@
   1. OpenMetadata Server: The core application handling APIs and UI.
   2. Database: MySQL or PostgreSQL for storing metadata (default in the compose file is MySQL).
   3. Elasticsearch: For indexing and searching metadata.
-  4. Ingestion Service: Often powered by Apache Airflow to pull metadata from sources.
+
+  4. **Ingestion Service**
+     - The `open-metadata-ingestion` service is essentially an Airflow instance pre-configured with the `openmetadata-managed-apis` plugin, designed to handle ingestion workflows (e.g., metadata extraction, lineage, and test connections) triggered from the OpenMetadata UI.
+     - **Features** include:
+       - **Metadata Collection**: Automatically pulls metadata from data sources
+       - **Scheduled Pipelines**: Regular metadata updates without manual intervention
+       - **UI-Driven Configuration**: Set up connectors through the web interface
+       - **Workflow Management**: Handles dependencies between metadata jobs
+     - Without Ingestion Service
+       - You'd need to manually create and maintain **Airflow DAGs**
+       - No UI for configuring data source connections
+       - Limited automation capabilities
 
 - **Step 1**:
 
 - **Step 2**: Create `docker-compose.yml`
-  - Connect to Postgres
+  - Access the Container: Run the following command from your host machine (where mysql-db is the container name from your docker-compose.yml):
     ```sh
-      # create MySQL Database
+      docker exec -it mysql-db mysql -u root -p
     ```
   - Create Database and User:
     ```sh
@@ -46,7 +60,7 @@
     ```
 - Step : Build and Run
 
-- **Step** : **Log in to OpenMetadata**
+- **Step 3** : **Log in to OpenMetadata**
 
   - **OpenMetadata** provides a default admin account to login.
   - You can access **OpenMetadata** at `http://localhost:8585`. Use the following credentials to log in to **OpenMetadata**.
@@ -54,10 +68,63 @@
     - Password: `admin`
   - Once you log in, you can goto **Settings** -> **Users** to add another user and make them admin as well.
 
-- **Step** : **Log in to Airflow**
-  - **Apache Airflow** is utilized by **OpenMetadata** to orchestrate ingestion workflows.
-  - **OpenMetadata** ships with an **Airflow container** to run the ingestion workflows that have been deployed via the UI.
+- **Step 4** : **Adding the Database Service**
+  - Open the OpenMetadata UI: `http://localhost:8585`
+  - Login with `admin`:`admin`
+  - Go to **Settings** > **Services** > **Databases** > **Add New Service**.
+  - Configure:
+    - Service Name: `PostgresDB`
+    - Service Type: `Postgres`
+    - Host and Port: `postgres-db:5432`
+    - Username: `postgres`
+    - Password: `password`
+    - SSL Mode: `disable`
+  - Click **Test Connection**
+  - **Remarks**:
+    - The `open-metadata-ingestion` service (an Airflow instance with `openmetadata-managed-apis`):
+      1. **Received the Test Request**: When you clicked "**Test Connection**" in the UI, `open-metadata-server` sent a request to `open-metadata-ingestion` via `http://open-metadata-ingestion:8080`.
+      2. **Generated a DAG**: It created a temporary DAG (e.g., `test-connection-Postgres-<random-id>`) to verify connectivity to `postgres-db:5432`.
+      3. **Executed the DAG**: The Airflow scheduler ran the **DAG**, and the result was sent back to the UI, confirming success.
+
+## Step : Run the ingestion from your Airflow
+
+- **OpenMetadata** integrates with **Airflow** to orchestrate ingestion workflows. You can use **Airflow** to extract metadata and [deploy workflows] (/deployment/ingestion/openmetadata) directly. We can run ingestion workflows in Airflow using three different operators:
+
+  1. Python Operator
+  2. Docker Operator
+  3. Python Virtualenv Operator
+
+- Using the Docker Operator
+- **Ingestion Workflow classes**:
+
+  - We have different classes for different types of workflows.
+  - For example, for the `Metadata` workflow we'll use:
+
+    ```py
+      import yaml
+
+      from metadata.workflow.metadata import MetadataWorkflow
+
+      def run():
+          workflow_config = yaml.safe_load(CONFIG)
+          workflow = MetadataWorkflow.create(workflow_config)
+          workflow.execute()
+          workflow.raise_from_status()
+          workflow.print_status()
+          workflow.stop()
+    ```
+
+  - The classes for each workflow type are:
+    1. `Metadata`: `from metadata.workflow.metadata import MetadataWorkflow`
+    2. `Lineage`: `from metadata.workflow.metadata import MetadataWorkflow` (same as **metadata**)
+    3. `Usage`: `from metadata.workflow.usage import UsageWorkflow`
+    4. `dbt`: `from metadata.workflow.metadata import MetadataWorkflow`
+    5. `Profiler`: `from metadata.workflow.profiler import ProfilerWorkflow`
+    6. `Data Quality`: `from metadata.workflow.data_quality import TestSuiteWorkflow`
+    7. `Data Insights`: `from metadata.workflow.data_insight import DataInsightWorkflow`
+    8. `Elasticsearch Reindex`: `from metadata.workflow.metadata import MetadataWorkflow` (same as **metadata**)
 
 # Resources and Further Reading
 
 1. [Download the docker-compose.yml file from the release page](https://github.com/open-metadata/OpenMetadata/releases/tag/1.6.7-release)
+2. [github.com - openmetadata-retention](https://github.com/open-metadata/openmetadata-retention)
