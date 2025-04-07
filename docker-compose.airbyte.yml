@@ -1,0 +1,84 @@
+services:
+  # airbyte-temporal
+  #
+  airbyte-temporal:
+    #image: airbyte/temporal:1.4.1
+    image: airbyte/temporal-auto-setup:1.13.0 # https://hub.docker.com/r/airbyte/temporal-auto-setup/tags # Use the official Temporal Auto-Setup image
+    container_name: airbyte-temporal
+    #restart: always
+    restart: unless-stopped
+    depends_on:
+      postgres-db:
+        condition: service_healthy # Ensure it waits for PostgreSQL
+    ports:
+      - "7233:7233"
+    environment:
+      DB: postgresql
+      POSTGRES_DB: ${POSTGRES_USERS_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      POSTGRES_SEEDS: postgres-db # Use the correct hostname
+      DB_HOST: postgres-db # Use the correct hostname
+      POSTGRES_PORT: 5432 # Ensure this is explicitly set to PostgreSQL's default port
+      TEMPORAL_CLI_ADDRESS: "airbyte-temporal:7233"
+    networks:
+      - data-ops-network
+  # airbyte
+  #
+  airbyte-server:
+    image: airbyte/server:1.4.1 # https://hub.docker.com/layers/airbyte/server/1.4.1/images/sha256-0c9a18fee1018fec92aec0e86c74d48c86fc7e7ea20598c10f5a7da02c2e07e4
+    container_name: airbyte-server
+    depends_on:
+      - postgres-db
+      - airbyte-temporal
+    ports:
+      # - "8081:8081" # defaukt airbyte-server port
+      - "8002:8002"
+    environment:
+      #DATABASE_URL: ${POSTGRES_USERS_DATABASE_URL}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/users
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      TEMPORAL_CLI_ADDRESS: "airbyte-temporal:7233"
+      WORKSPACE_ROOT: /workspace
+      TEMPORAL_HOST: airbyte-temporal
+      TEMPORAL_PORT: 7233
+    networks:
+      - data-ops-network
+  # airbyte-webapp
+  #
+  airbyte-webapp:
+    image: airbyte/webapp:1.4.1 # https://hub.docker.com/layers/airbyte/webapp/1.4.1/images/sha256-ee0e16eb85eeaf95fc05222a3129cb16911de13ec4773ccb8a64189712b7c9f3
+    container_name: airbyte-webapp
+    restart: always
+    depends_on:
+      - airbyte-server
+    ports:
+      - "8000:80"
+    environment:
+      INTERNAL_API_HOST: http://airbyte-server:8001
+    networks:
+      - data-ops-network
+  airbyte-worker:
+    image: airbyte/worker:1.4.1 # https://hub.docker.com/layers/airbyte/worker/1.4.1/images/sha256-89153286a7a23f4e28980b52e750b455a40f1bc439ecdbf0dc1363610725fbcc
+    container_name: airbyte-worker
+    restart: always
+    depends_on:
+      - airbyte-server
+    environment:
+      #CONFIG_DATABASE_URL: ${POSTGRES_USERS_DATABASE_URL}
+      DATABASE_URL: jdbc:postgresql://postgres:5432/users
+      CONFIG_DATABASE_USER: ${POSTGRES_USER}
+      CONFIG_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      STORAGE_TYPE: local
+      # STORAGE_TYPE: "gcs"  # or "s3" # if you're using Google Cloud Storage (GCS) or Amazon S3, set:
+      WORKSPACE_ROOT: /workspace
+    networks:
+      - data-ops-network
+############################ Networks ################################################
+# networks
+#
+networks:
+  data-ops-network:
+    name: data-ops-network
+    driver: bridge

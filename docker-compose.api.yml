@@ -1,4 +1,22 @@
+################################ APIs ############################################
 services:
+  # customers api with Express.js and postgres
+
+  customers-api:
+    build:
+      context: ./02-apis/01-customers-with-express.js-and-postgres-db
+      dockerfile: Dockerfile
+    image: customers-api
+    container_name: customers-api
+    ports:
+      - "3001:3001"
+    env_file:
+      #- .env
+      - ./02-apis/01-customers-with-express.js-and-postgres-db/.env
+    depends_on:
+      - postgres-db
+    networks:
+      - data-ops-network
   # users api with Express.js and MongoDB
   #
   users-api:
