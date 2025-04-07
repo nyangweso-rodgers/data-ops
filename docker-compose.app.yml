@@ -1,0 +1,59 @@
+############################## Web Apps Services ##############################################
+services:
+  # next.js survey app
+  #
+  #next.js-survey-app:
+  #build:
+  #context: ./web-apps/next.js-survey-app
+  #dockerfile: Dockerfile
+  #image: next.js-survey-app
+  #container_name: next.js-survey-app
+  #ports:
+  #- "3002:3002"
+  #depends_on:
+  #- postgres-db
+  #environment:
+  #PGHOST: ${PGHOST}
+  #POSTGRES_USER: ${POSTGRES_USER}
+  #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #POSTGRES_SURVEY_DB: ${POSTGRES_SURVEY_DB}
+  #env_file:
+  #- ./web-apps/next.js-survey-app/.env
+  #networks:
+  #- data-ops-network
+  ############################################################################
+  # next.js app
+  #
+  #next.js-web-portal:
+  #build:
+  #context: ./next.js-web-portal
+  #dockerfile: Dockerfile
+  #image: next.js-web-portal
+  #container_name: next.js-web-portal
+  #ports:
+  #- "3003:3003"
+  #depends_on:
+  #- mongodb-community-server
+  #- postgres-db
+  #restart: always
+  #environment:
+  #- MONGODB_URI_FOR_SURVEY_SERVICE=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/survey-service?authSource=admin
+  #MONGO_URI: ${MONGODB_COMMUNITY_SERVER_URI_FOR_SURVEY_SERVICE}
+  #MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE: ${MONGODB_ATLAS_URI_FOR_SURVEY_SERVICE}
+  #PGHOST: ${PGHOST}
+  #POSTGRES_USER: ${POSTGRES_USER}
+  #POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #POSTGRES_TEST_DB: ${POSTGRES_TEST_DB}
+  #POSTGRES_TEST_DATABASE_URL: ${POSTGRES_TEST_DATABASE_URL}
+  #env_file:
+  #- ./next.js-web-portal/.env
+  #volumes:
+  #- /next.js-web-portal/src/app/prisma
+  #command: sh -c "npx prisma migrate deploy && npm run dev"
+  #entrypoint: ["sh", "/migrate.sh"]  # Execute migrate.sh script first
+  #networks:
+  #- data-ops-network
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true # Use the existing network from docker-compose.yml
