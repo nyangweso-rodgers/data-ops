@@ -1,7 +1,7 @@
 ################################ APIs ############################################
 services:
   # customers api with Express.js and postgres
-
+  #
   customers-api:
     build:
       context: ./02-apis/01-customers-with-express.js-and-postgres-db
@@ -42,3 +42,4 @@ networks:
   data-ops-network:
     name: data-ops-network
     driver: bridge
+################################ Volumes ############################################
