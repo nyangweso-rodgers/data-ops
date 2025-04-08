@@ -1,13 +1,15 @@
 import requests
-from datetime import datetime
-
-from airflow import DAG
-
-# allows you to execute a Python function as a task in the workflow.
-from airflow.operators.python_operator import PythonOperator
-
-# A utility for date manipulation
+from datetime import datetime, timedelta
+from airflow.utils.log.logging_mixin import LoggingMixin
+from airflow import DAG # allows you to execute a Python function as a task in the workflow.
+from airflow.operators.python_operator import PythonOperator# A utility for date manipulation
 from airflow.utils.dates import days_ago
+
+default_args = {
+    "owner": "airflow",
+    "retries": 1,  # number of retries before failing the task
+    "retry_delay": timedelta(seconds=5),
+}
 
 # Python functions that will do some job.
 def print_greeting():
@@ -17,9 +19,13 @@ def print_current_date():
     print("The time is now: {}".format(datetime.now()))
     
 def print_random_quote():
-    response = requests.get("https://api.quotable.io/random")
-    data = response.json()
-    print("Quote:",data["content"])
+    logger = LoggingMixin().log
+    try:
+        response = requests.get("http://api.quotable.io/random", timeout=5)
+        data = response.json()
+        logger.info(f"Quote: {data['content']}")  # Logs to Airflow UI
+    except Exception as e:
+        logger.error(f"Failed to fetch quote: {str(e)}")  # Error logs
     
 # The DAG object
 dag = DAG(
