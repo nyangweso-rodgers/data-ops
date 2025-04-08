@@ -1,5 +1,43 @@
+############################### Database Services #############################################
 services:
-  ############################################################################
+  ############################# 1.1 PostgreSQL Database ###############################################
+  #
+  postgres-db:
+    build:
+      context: ./01-databases/01-postgres
+      dockerfile: Dockerfile
+    container_name: postgres-db
+    restart: always
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    environment:
+      PGUSER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
+    #command: ["postgres", "-c", "wal_level=logical"]
+    command: -c 'shared_preload_libraries=pg_stat_statements'
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+      - ./01-databases/01-postgres/init-scripts:/docker-entrypoint-initdb.d/ # Mount init scripts directory
+    healthcheck:
+      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
+      # or
+      #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
+      test: [
+          "CMD-SHELL",
+          "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d postgres -c 'SELECT 1'",
+        ] # Use default database `postgres`
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    #logging:
+    #driver: "json-file"
+    #options:
+    #max-size: "2048m"
+    networks:
+      - data-ops-network
   # pgadmin
   #
   pgadmin:
@@ -18,6 +56,28 @@ services:
       - pgadmin-volume:/var/lib/pgadmin
     depends_on:
       - postgres-db
+    networks:
+      - data-ops-network
+  ############################## 1.2 MySQL Database #############################################
+  #
+  mysql-db:
+    build: ./01-databases/03-mysql
+    container_name: mysql-db
+    restart: always
+    ports: 
+      - "3306:3306"
+    environment: 
+      MYSQL_ROOT_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
+    #command: --bind-address=0.0.0.0  # Listen on all interfaces
+    command: --bind-address=0.0.0.0 --wait_timeout=28800 --interactive_timeout=28800
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes: 
+      - mysql-db-volume:/var/lib/mysql
+      - ./01-databases/03-mysql/init-scripts/:/docker-entrypoint-initdb.d
     networks:
       - data-ops-network
   ############################## 1.3 MongoDB Community Edition Database #############################################
@@ -39,7 +99,16 @@ services:
       - mongo-db-community-server-volume:/data/db
     networks:
       - data-ops-network
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true # Use the existing network from docker-compose.yml
+################################ Volumes ############################################
 volumes:
+  postgres-db-volume:
+    name: postgres-db-volume
+  mysql-db-volume:
+    name: mysql-db-volume
   pgadmin-volume:
     name: pgadmin-volume
   mongo-db-community-server-volume:
