@@ -1,0 +1,26 @@
+# Apache Superset
+services:
+  apache-superset:
+    build:
+      context: ./06-dashboards/01-superset
+      dockerfile: Dockerfile
+    container_name: apache-superset
+    ports:
+      - "${APACHE_SUPERSET_PORT}:${APACHE_SUPERSET_PORT}"
+    environment:
+      - SUPERSET_SECRET_KEY=${APACHE_SUPERSET_SECRET_KEY}
+      - APACHE_SUPERSET_ADMIN_USERNAME=${APACHE_SUPERSET_ADMIN_USERNAME}
+      - APACHE_SUPERSET_ADMIN_PASSWORD=${APACHE_SUPERSET_ADMIN_PASSWORD}
+      - APACHE_SUPERSET_PORT=${APACHE_SUPERSET_PORT}
+    volumes:
+      - apache-superset-volume:/app/superset_home
+    networks:
+      - data-ops-network
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true # Use the existing network from docker-compose.yml
+################################ Volumes ############################################
+volumes:
+  apache-superset-volume:
+    name: apache-superset-volume  
