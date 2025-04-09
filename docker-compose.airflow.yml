@@ -1,0 +1,70 @@
+services:
+  # apache-airflow-webserver
+  apache-airflow-webserver:
+    build:
+      context: ./workflow-orchestration-tools/01-airflow
+      dockerfile: Dockerfile
+    image: apache-airflow-webserver
+    container_name: apache-airflow-webserver
+    command: webserver
+    restart: always
+    ports:
+      - "${APACHE_AIRFLOW_PORT}:8080"  # Host:Container mapping
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${APACHE_AIRFLOW_POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
+      AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
+    volumes:
+      - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
+      - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
+      - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
+      #- .env:/opt/airflow/.env  # Mount the .env file for the init script
+    networks:
+      - data-ops-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # apache-airflow-scheduler
+  apache-airflow-scheduler:
+    build:
+      context: ./workflow-orchestration-tools/01-airflow
+      dockerfile: Dockerfile
+    image: apache-airflow-scheduler
+    container_name: apache-airflow-scheduler
+    command: scheduler
+    restart: always
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${APACHE_AIRFLOW_POSTGRES_DB}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
+      - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
+      - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
+      #- .env:/opt/airflow/.env  # Mount the .env file for the init script
+    networks:
+      - data-ops-network
+
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true # Use the existing network from docker-compose.yml
