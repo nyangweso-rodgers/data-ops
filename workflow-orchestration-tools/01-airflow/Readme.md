@@ -43,18 +43,36 @@
     4. **SequentialExecutor**: A simpler executor that runs one task at a time. Useful for development and testing.
   - **Workers**: These are the processes that actually execute the logic of tasks once they are scheduled. Their nature depends on the type of executor used.
 
-# Installation Using Docker
+# Setup Apache Airflow With Docker
 
 - **Key Components**:
+
   1. **Scheduler**: The brain of **Airflow**. It schedules tasks based on the **DAG** definitions and their schedules, ensuring dependencies are respected.
   2. **Web Server**: A user-friendly interface (built with **Flask**) to visualize **DAGs**, check task statuses, trigger runs, and view logs.
-  3. **Metadata Database**: Stores the state of tasks, DAGs, and configurations. Commonly uses **PostgreSQL**, **MySQL**, or **SQLite** (for testing).
-  4. **Executor**: Determines how tasks are executed. Examples include:
+  3. **Executor**: Determines how tasks are executed. Examples include:
      1. **SequentialExecutor**: Runs tasks one at a time (good for testing).
      2. **LocalExecutor**: Runs tasks in parallel on a single machine.
      3. **CeleryExecutor**: Distributes tasks across multiple worker nodes using Celery.
-  5. **Workers**: In distributed setups (e.g., with **CeleryExecutor**), workers execute the tasks assigned by the **scheduler**.
-  6. **DAGs**: The workflows themselves, written as Python scripts, defining tasks and their dependencies.
+  4. **Workers**: In distributed setups (e.g., with **CeleryExecutor**), workers execute the tasks assigned by the **scheduler**.
+  5. **DAGs**: The workflows themselves, written as Python scripts, defining tasks and their dependencies.
+
+- **Requirements**:
+
+  1. **Metadata Database**
+
+     - **Airflow** uses a **relational database** (referred to as the **metadata database**) to store information about:
+       1. **DAGs** (**Directed Acyclic Graphs**): **Definitions**, **schedules**, and **configurations** of your workflows.
+       2. **Task Instances**: Execution history, status (e.g., running, success, failed), and retry information for each task.
+       3. **Variables and Connections**: Key-value pairs and connection credentials (e.g., to databases, APIs) used in your workflows.
+       4. **Scheduler State**: Information about when tasks should run and their dependencies.
+       5. **User Data**: Details about **users** and **roles** (e.g., your admin user) if authentication is enabled.
+
+  2. **Dockerfile**
+
+     - Custom Airflow image with additional dependencies and an initialization script.
+
+  3. **Init Script** (`init-airflow.sh`)
+     - Handles **database creation**, **schema initialization**, and **admin** user setup.
 
 ## Step 1: Created `Dockerfile`
 
@@ -78,9 +96,9 @@
 
 - **Remarks**:
   - **Base Image**: `apache/airflow:2.8.1` is the latest stable version as of now (March 29, 2025).
-  - **Dependencies**: Add any Python packages your DAGs need (e.g., `pandas`, `sqlalchemy`).
-    - `sqlalchemy` is a python library (an ORM and SQL toolkit) that **Airflow** uses to interact with its **metadata database**. It abstracts database operations, allowing **Airflow** to work with various database backends (PostgreSQL, MySQL, SQLite, etc.) without changing its core code.
-  - **DAGs**: Optionally copy your DAG files into the container.
+  - **Dependencies**: Add any Python packages your **DAGs** need (e.g., `pandas`, `sqlalchemy`).
+    - `sqlalchemy` is a python library (an ORM and SQL toolkit) that **Airflow** uses to interact with its **metadata database**. It abstracts database operations, allowing **Airflow** to work with various database backends (**PostgreSQL**, **MySQL**, **SQLite**, etc.) without changing its core code.
+  - **DAGs**: Optionally copy your **DAG** files into the container.
 
 ## Step 2: Create a `docker-compose.yaml`
 
@@ -92,15 +110,22 @@
   services:
   ```
 
+- **Environment Variables**:
+
+  1. `AIRFLOW__DATABASE__SQL_ALCHEMY_CONN`: defines the connection string for Apache Airflow’s **metadata database**. This database stores all the essential data **Airflow** needs to manage workflows, **track task execution**, and **maintain its state**. This database is accessed via **SQLAlchemy**, a Python ORM (Object-Relational Mapping) library that **Airflow** uses to interact with the database in a database-agnostic way. The connection string tells **Airflow** how to connect to this database. Example:
+     ```sh
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/apache_airflow
+     ```
+
 - **Remarks**:
-  - `airflow` is the database name **Airflow** will use—create this in your Postgres instance if it doesn’t exist yet.
+  - `airflow` is the database name **Airflow** will use — create this in your Postgres instance if it doesn’t exist yet.
     - Connect to Postgres
       ```sh
         docker exec -it postgres-db psql -U ${POSTGRES_USER}
       ```
     - Create Database and User:
       ```sh
-        CREATE DATABASE apache-airflow;
+        CREATE DATABASE apache_airflow;
       ```
 
 ## Step 3: Start Docker Containers
@@ -114,13 +139,73 @@
     - Add `__pycache__/ `to your `.gitignore`
 
   - **Airflow's Behavior**
-    - Airflow scans and imports your DAG files every few seconds (default: 30s).
+    - **Airflow** scans and imports your DAG files every few seconds (default: 30s).
     - Each scan triggers Python's import system, generating the .pyc file.
+
+# Installing Apache Airflow on Linux
+
+1. **Step 1**: Setup Python Virtual Environment on **Linux**/**WSL**
+
+2. **Step 2**: Install Apache Airflow
+   ```sh
+    pip install apache-airflow
+   ```
+
+- **Remarks**:
+  - Installing **Apache Airflow** on a **Windows Virtual Environment** is Problematic because **Apache Airflow** isn't officially supported on **Windows**. Here's why:
+    - Compatibility Issues
+      - **Airflow** relies heavily on certain **POSIX-compliant** tools and libraries, which are native to Unix-like OS (Linux, macOS). Windows lacks some of these tools out of the box.
+      - Examples:
+        - Airflow uses `fork()` in its process management, which doesn’t work natively on Windows.
+        - Some of its dependencies (like `pycparser` or `cgroups`) are hard to compile or are incompatible with Windows.
+    - Dependency Management: Airflow has many dependencies that rely on native **C extensions**. On **Linux**, these are compiled using tools like **gcc** (**GNU Compiler Collection**), which are readily available. Windows, however, needs something like **Microsoft Build Tools**, which can be challenging to set up correctly.
+    - Subprocess Management: Airflow's scheduler and worker processes rely on Unix-like behavior for managing subprocesses and inter-process communication. These mechanisms are either non-existent or work differently on Windows.
+    - Windows-Specific Challenges: Even if you manage to install Airflow using workarounds (e.g., Docker for Windows), running it natively is not ideal because of potential performance and stability issues.
 
 # Creating DAGs Uisng Python
 
 - Step 1: Create `dags/` directory inside the `project-folder/`
+
   - Create a `test.py` file with the following:
+
+- **Components of DAG File**:
+
+  1. **Imports** (**The Building Blocks**)
+
+     - `DAG` is the core class that defines a workflow.
+     - `PythonOperator`: Executes Python functions as tasks.
+     - `LoggingMixin`: For proper Airflow logging (better than `print()`).
+
+  2. **Task Functions** (**The Workers**)
+
+     - Example:
+       ```py
+        def print_greeting():
+        print("Hello, Airflow enthusiasts!")
+       ```
+     - Each function represents a discrete unit of work.
+
+  3. **DAG Definition** (**The Blueprint**)
+
+     - Example:
+       ```py
+        dag = DAG(
+          'dummy_dag', # Unique DAG ID
+          default_args={'start_date': days_ago(1)},
+          schedule_interval='*/5 * * * *',
+          catchup=False
+       )
+       ```
+
+  4. **Tasks** (**The Steps**)
+     - Example:
+       ```py
+        print_greeting_task = PythonOperator(
+        task_id='print_greeting',
+        python_callable=print_greeting,
+        dag=dag
+       )
+       ```
 
 # Operators & Tasks
 
