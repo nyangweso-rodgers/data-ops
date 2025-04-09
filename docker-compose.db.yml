@@ -31,7 +31,7 @@ services:
         ] # Use default database `postgres`
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 10
     #logging:
     #driver: "json-file"
     #options:
@@ -40,33 +40,33 @@ services:
       - data-ops-network
   # pgadmin
   #
-  pgadmin:
-    #image: dpage/pgadmin4:8.7 # https://hub.docker.com/layers/dpage/pgadmin4/8.7/images/sha256-198236db5d90e491354c351ccd02a21ce736030b72cd0f8b05430bc48a59d86b?context=explore
-    image: dpage/pgadmin4:8.14.0 # https://hub.docker.com/r/dpage/pgadmin4/tags
-    container_name: pgadmin
-    restart: always
-    ports:
-      - "5050:80"
-    env_file:
-      - .env
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    volumes:
-      - pgadmin-volume:/var/lib/pgadmin
-    depends_on:
-      - postgres-db
-    networks:
-      - data-ops-network
+  #pgadmin:
+  #image: dpage/pgadmin4:8.7 # https://hub.docker.com/layers/dpage/pgadmin4/8.7/images/sha256-198236db5d90e491354c351ccd02a21ce736030b72cd0f8b05430bc48a59d86b?context=explore
+  #image: dpage/pgadmin4:8.14.0 # https://hub.docker.com/r/dpage/pgadmin4/tags
+  #container_name: pgadmin
+  #restart: always
+  #ports:
+  #- "5050:80"
+  #env_file:
+  #- .env
+  #environment:
+  #PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+  #PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+  #volumes:
+  #- pgadmin-volume:/var/lib/pgadmin
+  #depends_on:
+  #- postgres-db
+  #networks:
+  #- data-ops-network
   ############################## 1.2 MySQL Database #############################################
   #
   mysql-db:
     build: ./01-databases/03-mysql
     container_name: mysql-db
     restart: always
-    ports: 
+    ports:
       - "3306:3306"
-    environment: 
+    environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
     #command: --bind-address=0.0.0.0  # Listen on all interfaces
     command: --bind-address=0.0.0.0 --wait_timeout=28800 --interactive_timeout=28800
@@ -75,7 +75,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    volumes: 
+    volumes:
       - mysql-db-volume:/var/lib/mysql
       - ./01-databases/03-mysql/init-scripts/:/docker-entrypoint-initdb.d
     networks:
