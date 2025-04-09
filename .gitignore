@@ -12,6 +12,7 @@
 pgadmin-volume/
 mongodb-volume/
 pgadmin-volume/
+mysql-db-volume/
 
 # BigQuery Keyfile
 bigquery-keyfile.json
@@ -35,9 +36,10 @@ superset-linux-venv/
 superset-windows-venv/
 
 
-# apache airflow
+# Apache Airflow
 airflow_home/
 logs/
+data/
 __pycache__/
 
 # clickhouse
