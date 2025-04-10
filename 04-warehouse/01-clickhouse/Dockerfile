@@ -1,26 +1,14 @@
-FROM  clickhouse/clickhouse:24.9.3.128
-#FROM yandex/clickhouse-server:19.14.13.4
+FROM clickhouse/clickhouse-server:24.8.7.41
 
-#FROM clickhouse/clickhouse-server:23.8
+# Copy main config file to required location
+COPY ./config/config.xml /etc/clickhouse-server/config.xml
 
-# Copy custom configuration file (optional)
-#COPY ./config.xml /etc/clickhouse-server/config.xml
+# Copy users config to standard location
+COPY ./users/users.xml /etc/clickhouse-server/users.d/users.xml
 
-# Set environment variables (if needed)
-#ENV CLICKHOUSE_USER default
-#ENV CLICKHOUSE_PASSWORD ""
+# Create needed directories
+RUN mkdir -p /var/lib/clickhouse/{preprocessed_configs,tmp,user_files,format_schemas} \
+    && chown -R 101:101 /var/lib/clickhouse
 
-# Expose necessary ports
-#EXPOSE 9000 8123 9009
-
-# Start ClickHouse server
-#CMD ["clickhouse-server"]
-
-# Create the config directory and copy your config.xml file into the image
-#COPY ./clickhouse-config/config.xml /etc/clickhouse-server/config.xml
-
-# Expose necessary ports
 EXPOSE 8123 9000
-
-# Entrypoint is the ClickHouse server
 CMD ["clickhouse-server"]

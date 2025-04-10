@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+    <clickhouse replace="true">
+        <profiles>
+            <default>
+                <max_memory_usage>10000000000</max_memory_usage> <!--max_memory_usage: 10GB (10000000000 bytes) maximum memory usage per query-->
+                <use_uncompressed_cache>0</use_uncompressed_cache>
+                <load_balancing>in_order</load_balancing> <!--load_balancing: Set to “in_order” for distributed queries-->
+                <log_queries>1</log_queries><!--log_queries: Enabled (1) to log all queries-->
+            </default>
+        </profiles>
+        <users>
+            <default>
+                <password from_env="CLICKHOUSE_DEFAULT_USER_PASSWORD" /> <!-- References CLICKHOUSE_DEFAULT_USER_PASSWORD -->
+                <access_management>1</access_management> <!-- allowing the user to manage access rights -->
+                <profile>default</profile><!--Set to use the “default” profile defined above-->
+                <networks>
+                    <ip>::/0</ip><!--Allows connections from any IP (::/0)-->
+                </networks>
+                <quota>default</quota><!--Uses the “default” quota below-->
+                <access_management>1</access_management>
+                <named_collection_control>1</named_collection_control>
+                <show_named_collections>1</show_named_collections>
+                <show_named_collections_secrets>1</show_named_collections_secrets>
+            </default>
+            <!-- Transaction service user -->
+            <transaction_user>
+                <password from_env="CLICKHOUSE_TRANSACTION_USER_PASSWORD" /> <!-- References CLICKHOUSE_TRANSACTION_USER_PASSWORD -->
+                <profile>default</profile>
+                <networks>
+                    <ip>::/0</ip>
+                </networks>
+                <quota>default</quota>
+                <access_management>1</access_management>
+            </transaction_user>
+        </users>
+        <quotas>
+            <default>
+                <interval><!-- default quota is defined with an interval of 1 hour (3600 seconds)-->
+                    <duration>3600</duration>
+                    <!--All quota limits (queries, errors, result_rows, read_rows, execution_time) are set to 0, which means no limits are imposed-->
+                    <queries>0</queries>
+                    <errors>0</errors>
+                    <result_rows>0</result_rows>
+                    <read_rows>0</read_rows>
+                    <execution_time>0</execution_time>
+                </interval>
+            </default>
+        </quotas>
+    </clickhouse>
