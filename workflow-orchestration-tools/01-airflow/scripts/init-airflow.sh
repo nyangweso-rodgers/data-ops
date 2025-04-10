@@ -1,12 +1,11 @@
 #!/bin/bash
-set -euo pipefail  # Exit on error, unset variables, or pipeline failures
+set -euo pipefail
 
 export PGPASSWORD="${POSTGRES_PASSWORD}"
-DB_NAME="${APACHE_AIRFLOW_POSTGRES_DB:-apache_airflow}"  # Default if not set
+DB_NAME="${APACHE_AIRFLOW_POSTGRES_DB:-apache_airflow}"
 
 # Set Airflow database connection
 export AIRFLOW__CORE__SQL_ALCHEMY_CONN="postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db/${DB_NAME}"
-export AIRFLOW__CORE__FERNET_KEY="${AIRFLOW__CORE__FERNET_KEY:-$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")}"
 echo "Airflow SQL Alchemy connection set to: $AIRFLOW__CORE__SQL_ALCHEMY_CONN"
 
 # Wait for Postgres to be ready with retry logic
@@ -33,7 +32,7 @@ if ! psql -h postgres-db -U "${POSTGRES_USER}" -d "$DB_NAME" -c '\q' 2>/dev/null
 fi
 echo "Database $DB_NAME exists or was created."
 
-# Check if Airflow database is initialized by querying a core table
+# Check if Airflow database is initialized
 echo "Checking if Airflow database is initialized..."
 if ! psql -h postgres-db -U "${POSTGRES_USER}" -d "$DB_NAME" -c "SELECT 1 FROM ab_user LIMIT 1" 2>/dev/null; then
   echo "Airflow database not initialized or corrupted. Running 'airflow db init'..."
@@ -42,8 +41,6 @@ if ! psql -h postgres-db -U "${POSTGRES_USER}" -d "$DB_NAME" -c "SELECT 1 FROM a
     exit 1
   }
   echo "Airflow database initialized successfully."
-  
-  # Apply any additional migrations
   echo "Applying any additional migrations..."
   airflow db migrate || {
     echo "Error: Failed to apply migrations with 'airflow db migrate'."
@@ -79,4 +76,5 @@ else
 fi
 
 echo "Initialization complete. Starting Airflow..."
+echo "Using Fernet key: $AIRFLOW__CORE__FERNET_KEY"
 exec airflow "$@"

@@ -1,4 +1,3 @@
-import requests
 from datetime import datetime, timedelta
 from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow import DAG # allows you to execute a Python function as a task in the workflow.
@@ -18,14 +17,6 @@ def print_greeting():
 def print_current_date():
     print("The time is now: {}".format(datetime.now()))
     
-def print_random_quote():
-    logger = LoggingMixin().log
-    try:
-        response = requests.get("http://api.quotable.io/random", timeout=5)
-        data = response.json()
-        logger.info(f"Quote: {data['content']}")  # Logs to Airflow UI
-    except Exception as e:
-        logger.error(f"Failed to fetch quote: {str(e)}")  # Error logs
     
 # The DAG object
 dag = DAG(
@@ -49,11 +40,6 @@ print_current_date_task = PythonOperator(
     dag=dag
 )
 
-print_random_quote_task = PythonOperator(
-    task_id='print_random_quote',
-    python_callable=print_random_quote,
-    dag=dag
-)
 
 # Task Dependency: sets the execution order of the tasks
-print_greeting_task >> print_current_date_task >> print_random_quote_task
+print_greeting_task >> print_current_date_task

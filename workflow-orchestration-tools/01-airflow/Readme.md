@@ -43,6 +43,90 @@
     4. **SequentialExecutor**: A simpler executor that runs one task at a time. Useful for development and testing.
   - **Workers**: These are the processes that actually execute the logic of tasks once they are scheduled. Their nature depends on the type of executor used.
 
+# Apache Airflow Concepts
+
+## 1. Operators
+
+- **Operators** are the building blocks of a **DAG**; they represent a single, ideally idempotent, unit of work. Each **operator** in **Airflow** is designed to do one specific thing, and they can be extended to handle virtually any type of job, whether it involves running a **Python function**, **executing a SQL query**, **managing a Docker container**, **sending an email**, or more.
+
+- **Airflow** comes with many built-in **operators**, which can be categorized into different types such as:
+
+  1. **Action Operators**
+
+     - Perform a specific action, like the `PythonOperator` for executing Python code, `BashOperator` for running **Bash scripts**, or `EmailOperator` for sending emails.
+
+  2. **Transfer Operators**
+
+     - Move data from one system to another, such as `S3ToRedshiftOperator`, which copies data from **Amazon S3** to a **Redshift database**.
+
+  3. **Sensor Operators**
+     - Wait for a certain condition or event before proceeding, like the `HttpSensor` that waits for a specific **HTTP** endpoint to return a certain result before moving forward.
+
+## 2. Tasks
+
+- **Tasks** are instances of **operators**; they represent the application of an operator’s logic to a specific set of input parameters or configurations. When you define a task in a **DAG**, you’re specifying what **operator** to use and configuring it to perform its function in a particular way, tailored to your workflow.
+
+## 3. Connections
+
+- **Connections** are **Airflow’s** way of storing and managing credentials and configuration details for external systems in a centralized, reusable manner. Instead of hardcoding things like **database hostnames**, **usernames**, or **passwords** in your **DAGs**, you define them once as a **Connection** and reference them by a unique identifier (`conn_id`). This keeps your code clean, secure, and easy to update.
+- A **Connection** is a record with these key fields:
+
+  1. **Conn ID**: Unique name (e.g., `postgres_default`).
+  2. **Conn Type**: Type of system (e.g., `Postgres`, `HTTP`, `AWS`).
+  3. **Host**: Server address (e.g., `postgres-db`).
+  4. **Schema**: Database name (e.g., `apache_airflow`, `users`).
+  5. **Login**: Username (e.g., `postgres`).
+  6. **Password**: Password
+  7. **Port**: Port number (e.g., `5432`).
+  8. **Extra**: Optional JSON for additional settings (e.g., `{"sslmode": "require"}`).
+
+- **Managing Connections**
+
+  1. **Via UI**
+
+     - Go to `http://localhost:8086` > **Admin** > **Connections**.
+     - Click `+` to add or edit existing ones.
+
+  2. **Via CLI**
+
+     - Add a Connection:
+       ```sh
+        docker exec -it apache-airflow-webserver airflow connections add \
+          --conn-id postgres_users_db \
+          --conn-type postgres \
+          --conn-host postgres-db \
+          --conn-schema <database_name> \
+          --conn-login <user> \
+          --conn-password <password> \
+          --conn-port 5432
+       ```
+     - List Connections:
+       ```sh
+         docker exec -it apache-airflow-webserver airflow connections list
+       ```
+
+  3. **Via Environment Variables**
+     - Define a Connection as a JSON string in `.env`
+     ```env
+       AIRFLOW_CONN_POSTGRES_USERS_DB=postgresql://postgres:<password>@postgres-db:5432/<database_name>
+     ```
+     - **Airflow** loads it on startup. Useful for automation but less flexible than UI/CLI.
+
+- **How Airflow Uses Connections**
+
+  1. **Metadata Storage**: **Connections** are encrypted (using the `FERNET_KEY`) and stored in the `connection` table in `apache_airflow` db. Check it by:
+     ```sh
+      docker exec -it postgres-db psql -U postgres -d apache_airflow -c "SELECT * FROM connection;"
+     ```
+  2. **Hooks**: `PostgresHook` fetches the **Connection** by `conn_id`, decrypts it, and builds the connection string.
+  3. **Operators**: Some operators (e.g., `PostgresOperator`) also use Connections directly.
+
+- **Best Practices**
+  1. **Naming**: Use descriptive `conn_ids` (e.g., `postgres_users_db` > `my_db`).
+  2. **Separation**: Keep metadata (`postgres_default`) separate from app data (`postgres_users_db`).
+  3. **Secrets**: For production, use Airflow’s Secrets Backend (e.g., **HashiCorp Vault**) instead of storing passwords in **Connections**.
+  4. **Testing**: Always test Connections in the UI to catch typos early.
+
 # Setup Apache Airflow With Docker
 
 - **Key Components**:
@@ -164,10 +248,6 @@
 
 # Creating DAGs Uisng Python
 
-- Step 1: Create `dags/` directory inside the `project-folder/`
-
-  - Create a `test.py` file with the following:
-
 - **Components of DAG File**:
 
   1. **Imports** (**The Building Blocks**)
@@ -175,8 +255,27 @@
      - `DAG` is the core class that defines a workflow.
      - `PythonOperator`: Executes Python functions as tasks.
      - `LoggingMixin`: For proper Airflow logging (better than `print()`).
+     - `PostgresHook`
+     - `days_ago`
 
-  2. **Task Functions** (**The Workers**)
+  2. **Default Arguments**
+
+     - Defines task-level defaults:
+       ```py
+        default_args = {
+          'owner': 'airflow',
+          'depends_on_past': False,
+          'email_on_failure': False,
+          'email_on_retry': False,
+          'retries': 1,
+       }
+       ```
+     - `owner`: Labels tasks as owned by `airflow`.
+     - `depends_on_past`: Tasks don’t wait for prior runs to succeed.
+     - `email_on_failure/retry`: No emails (requires SMTP setup anyway).
+     - `retries`: Tasks retry once if they fail.
+
+  3. **Task Functions** (**The Workers**)
 
      - Example:
        ```py
@@ -185,7 +284,7 @@
        ```
      - Each function represents a discrete unit of work.
 
-  3. **DAG Definition** (**The Blueprint**)
+  4. **DAG Definition** (**The Blueprint**)
 
      - Example:
        ```py
@@ -197,7 +296,7 @@
        )
        ```
 
-  4. **Tasks** (**The Steps**)
+  5. **Tasks** (**The Steps**)
      - Example:
        ```py
         print_greeting_task = PythonOperator(
@@ -207,19 +306,14 @@
        )
        ```
 
-# Operators & Tasks
-
-- **Operators** are the building blocks of a **DAG**; they represent a single, ideally idempotent, unit of work. Each **operator** in **Airflow** is designed to do one specific thing, and they can be extended to handle virtually any type of job, whether it involves running a Python function, executing a SQL query, managing a Docker container, sending an email, or more.
-- **Tasks** are instances of **operators**; they represent the application of an operator’s logic to a specific set of input parameters or configurations. When you define a task in a **DAG**, you’re specifying what **operator** to use and configuring it to perform its function in a particular way, tailored to your workflow.
-- **Airflow** comes with many built-in **operators**, which can be categorized into different types such as:
-
-  1. **Action Operators**: Perform a specific action, like the `PythonOperator` for executing Python code, `BashOperator` for running **Bash scripts**, or `EmailOperator` for sending emails.
-
-  2. **Transfer Operators**: Move data from one system to another, such as:
-
-     1. `S3ToRedshiftOperator`, which copies data from **Amazon S3** to a **Redshift database**.
-
-  3. **Sensor Operators**: Wait for a certain condition or event before proceeding, like the `HttpSensor` that waits for a specific HTTP endpoint to return a certain result before moving forward.
+- **Examples DAGs For this Project**:
+  1. `dummy_dag`
+  2. `fetch-quote-and-sync-to-postgres-db`
+     - **Purpose**: The **DAG** checks for a quotes table in the `users` database (via `postgres_default`), creates it if missing, fetches a random quote from `api.quotable.io`, and inserts it into the table.
+     - **Schedule**: Runs daily (@daily).
+     - **Tasks**: Two sequential tasks:
+       1. `check_and_create_table`: Ensures the `quotes` table exists.
+       2. `fetch_and_insert_quote`: Fetches and stores a quote.
 
 # Resources and Further Reading
 
