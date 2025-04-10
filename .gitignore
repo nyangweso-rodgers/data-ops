@@ -34,6 +34,7 @@ linux-py-venv
 airflow-linux-venv/
 superset-linux-venv/
 superset-windows-venv/
+test.py
 
 
 # Apache Airflow
