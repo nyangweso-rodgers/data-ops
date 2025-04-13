@@ -79,7 +79,7 @@ with DAG(
     'quote_fetcher_dag',
     default_args=default_args,
     description='A DAG to check/create a table and insert random quotes',
-    schedule_interval='0 * * * *',  # Runs daily; adjust as needed
+    schedule_interval='*/30 5-22 * * *', # Every 30 mins from 5am to 10pm
     start_date=days_ago(1),
     catchup=False,
 ) as dag:

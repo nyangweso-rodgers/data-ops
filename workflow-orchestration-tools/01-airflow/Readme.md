@@ -122,10 +122,72 @@
   3. **Operators**: Some operators (e.g., `PostgresOperator`) also use Connections directly.
 
 - **Best Practices**
+
   1. **Naming**: Use descriptive `conn_ids` (e.g., `postgres_users_db` > `my_db`).
   2. **Separation**: Keep metadata (`postgres_default`) separate from app data (`postgres_users_db`).
   3. **Secrets**: For production, use Airflow’s Secrets Backend (e.g., **HashiCorp Vault**) instead of storing passwords in **Connections**.
   4. **Testing**: Always test Connections in the UI to catch typos early.
+
+- **Example Connections**
+  1. MySQL
+     - Step 1: Add MySQL Provider in Airflow
+       - Install `apache-airflow-providers-mysql` in Docker container.
+       - Verify in **Admin** > **Providers**.
+     - Step 2: Configure MySQL RDS Connection in Airflow
+       - Add a connection (mysql_rds_prod) via UI or CLI.
+       - Secure credentials
+
+## 4. Configurations
+
+- The **Configurations** page in the Airflow UI (under **Admin** > **Configurations**) is meant to display the contents of `airflow.cfg` (Airflow’s main configuration file) and environment variables used by Airflow. It allows admins to view settings like database connections, scheduler options, or SMTP details
+- `airflow.cfg` and environment variables may contain sensitive data, such as
+  1. Database credentials.
+  2. SMTP passwords
+  3. API keys, tokens, or other secrets.
+- Exposing these in the UI could allow anyone with admin access to view them, posing a security risk, especially in multi-user or public-facing setups.
+
+## 5. Providers
+
+- The **Providers** page in the Airflow UI (**Admin** > **Providers**) lists all installed **Airflow provider packages**, which are modular extensions that add functionality like **hooks**, **operators**, and **connections** for external systems (e.g., PostgreSQL, ClickHouse). Unlike the **Configurations** page, which is restricted by `expose_config`, the **Providers** page is always accessible to admin users because it doesn’t expose sensitive data—just metadata about installed packages. It shows the following:
+
+  1. **Package Name**
+
+     - The name of the provider package, e.g., `apache-airflow-providers-postgres`, `apache-airflow-providers-http`.
+     - Each package corresponds to a specific integration (e.g., `postgres` for your `postgres_users_db`, `http` for ClickHouse’s HTTP interface).
+
+  2. **Version**
+
+     - The installed version of the provider, e.g., `5.8.0` for `apache-airflow-providers-postgres`.
+     - Matches the version installed in the Docker container (via `pip` or Airflow’s constraints).
+
+  3. **Description**
+     - A brief summary of the provider’s purpose, e.g., “PostgreSQL provider for Apache Airflow” or “HTTP provider for Apache Airflow”.
+     - Helps identify what each package enables.
+
+- Examples
+
+  1. `apache-airflow-providers-postgres`: Enables `PostgresHook` for connecting to Postgres server
+     ```py
+      from airflow.providers.postgres.hooks.postgres import PostgresHook
+     ```
+  2. `apache-airflow-providers-http`
+
+     - Listed as `apache-airflow-providers-http`
+
+  3. `apache-airflow-providers-common-sql`
+     - Provides base SQL functionality for `PostgresHook`.
+     - Listed as `apache-airflow-providers-common-sql`.
+
+## 6. Pools
+
+- The **Pools** page in the Airflow UI (**Admin** > **Pools**) allows you to view and manage resource pools, which are used to limit the number of tasks that can run concurrently for specific resources or DAGs. **Pools** help control parallelism, preventing overloading of systems like databases or external services.
+- When you click **Admin** > **Pools**, you typically see a table with columns:
+  1. **Pool**: The name of the pool (e.g., `default_pool`).
+  2. **Slots**: The total number of slots (task instances) allowed to run concurrently.
+  3. **Used Slots**: How many slots are currently in use (running tasks).
+  4. **Queued Slots**: How many tasks are waiting for a slot.
+  5. **Open Slots**: Available slots (`Slots - Used Slots - Queued Slots`).
+  6. **Description** (optional): A note about the pool’s purpose.
 
 # Setup Apache Airflow With Docker
 
@@ -307,13 +369,41 @@
        ```
 
 - **Examples DAGs For this Project**:
+
   1. `dummy_dag`
   2. `fetch-quote-and-sync-to-postgres-db`
+
      - **Purpose**: The **DAG** checks for a quotes table in the `users` database (via `postgres_default`), creates it if missing, fetches a random quote from `api.quotable.io`, and inserts it into the table.
      - **Schedule**: Runs daily (@daily).
      - **Tasks**: Two sequential tasks:
        1. `check_and_create_table`: Ensures the `quotes` table exists.
        2. `fetch_and_insert_quote`: Fetches and stores a quote.
+
+## 3. Fetch and Sync Data From Postgres to ClickHouse
+
+- **Dependecies**:
+  1. `clickhouse_connect`
+     - Install to Airflow Comtainer by:
+       ```sh
+        docker exec -it apache-airflow-webserver pip install clickhouse-connect
+       ```
+     - Or, Update `Dockerfile`
+       ```Dockerfile
+        RUN pip install clickhouse-connect
+       ```
+- Create a ClickHouse Connection in Apache Airflow UI
+  - Access the Airflow Web UI on `http://localhost:8080`
+  - Navigate to **Admin** > **Connections** and Create a New Connection by clicking the `+` button
+  - Fill the connection details:
+    - **Connection Id**: `clickhouse_default`
+    - **Connection Type**: `HTTP` (Port `8123` is a ClickHouse’s HTTP interface. Airflow’s HTTP connection type aligns with this.Note that if we use the native TCP protocol, port `9000`, you could use `Generic` or a custom type)
+    - **Host**: `clickhouse-server`
+    - **Schema**: `default`
+    - **Login**: `<clickhouse-username>`
+    - **Password**: `<clickhouse-password>`
+    - **Port**: `8123`
+    - **Extra**: Leave blank (or optionally add `{"secure": false}`)
+    - Save the Connection
 
 # Resources and Further Reading
 
