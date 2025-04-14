@@ -1,14 +1,10 @@
-from datetime import datetime, timedelta
-from airflow.utils.log.logging_mixin import LoggingMixin
-from airflow import DAG # allows you to execute a Python function as a task in the workflow.
-from airflow.operators.python_operator import PythonOperator# A utility for date manipulation
-from airflow.utils.dates import days_ago
-
-default_args = {
-    "owner": "airflow",
-    "retries": 1,  # number of retries before failing the task
-    "retry_delay": timedelta(seconds=5),
-}
+# Python functions that will do some job.
+from plugins.utils import (
+    DAG, 
+    PythonOperator, 
+    days_ago, 
+    datetime
+    )
 
 # Python functions that will do some job.
 def print_greeting():
