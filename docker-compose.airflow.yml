@@ -25,11 +25,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
       AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
+      #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
+      PYTHONPATH: /opt/airflow/plugins:/opt/airflow
     volumes:
       - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
       - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
       - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
-      #- .env:/opt/airflow/.env  # Mount the .env file for the init script
+      - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
     networks:
       - data-ops-network
     healthcheck:
@@ -60,11 +62,13 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
+      PYTHONPATH: /opt/airflow/plugins:/opt/airflow
     volumes:
       - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
       - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
       - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
-      #- .env:/opt/airflow/.env  # Mount the .env file for the init script
+      - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
     networks:
       - data-ops-network
 

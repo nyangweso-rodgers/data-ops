@@ -129,7 +129,8 @@
   4. **Testing**: Always test Connections in the UI to catch typos early.
 
 - **Example Connections**
-  1. MySQL
+  1. Adding MySQL RDS Connection
+  2. MySQL
      - Step 1: Add MySQL Provider in Airflow
        - Install `apache-airflow-providers-mysql` in Docker container.
        - Verify in **Admin** > **Providers**.
