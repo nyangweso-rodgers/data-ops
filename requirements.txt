@@ -14,11 +14,14 @@ apache-airflow-providers-fab==1.5.3
 apache-airflow-providers-ftp==3.12.3
 apache-airflow-providers-http==5.2.1
 apache-airflow-providers-imap==3.8.3
+apache-airflow-providers-mysql==5.6.0
+apache-airflow-providers-postgres==6.1.2
 apache-airflow-providers-smtp==2.0.2
 apache-airflow-providers-sqlite==4.0.1
 apispec==6.8.1
 argcomplete==3.6.1
 asgiref==3.8.1
+asyncpg==0.30.0
 attrs==25.3.0
 babel==2.17.0
 backoff==2.2.1
@@ -102,6 +105,8 @@ mdurl==0.1.2
 methodtools==0.4.7
 more-itertools==10.6.0
 multidict==6.2.0
+mysql-connector-python==9.2.0
+mysqlclient==2.2.7
 openmetadata_managed_apis==1.6.7.0
 opentelemetry-api==1.31.1
 opentelemetry-exporter-otlp==1.31.1
@@ -121,6 +126,7 @@ propcache==0.3.0
 protobuf==5.29.4
 psutil==7.0.0
 psycopg2==2.9.10
+psycopg2-binary==2.9.10
 pycparser==2.22
 pydantic==2.10.6
 pydantic_core==2.27.2
