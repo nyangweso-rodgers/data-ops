@@ -130,7 +130,7 @@
 
 - **Example Connections**
   1. Adding MySQL RDS Connection
-  2. MySQL
+  2. Setting Up MySQL Connection in AirFlow
      - Step 1: Add MySQL Provider in Airflow
        - Install `apache-airflow-providers-mysql` in Docker container.
        - Verify in **Admin** > **Providers**.
@@ -289,25 +289,16 @@
     - **Airflow** scans and imports your DAG files every few seconds (default: 30s).
     - Each scan triggers Python's import system, generating the .pyc file.
 
-# Installing Apache Airflow on Linux
+## Step : Testing
 
-1. **Step 1**: Setup Python Virtual Environment on **Linux**/**WSL**
+- List DAGS:
+  ```sh
+    docker exec apache-airflow-webserver airflow dags list
+  ```
 
-2. **Step 2**: Install Apache Airflow
-   ```sh
-    pip install apache-airflow
-   ```
+# Integrating dbt with Airflow
 
-- **Remarks**:
-  - Installing **Apache Airflow** on a **Windows Virtual Environment** is Problematic because **Apache Airflow** isn't officially supported on **Windows**. Here's why:
-    - Compatibility Issues
-      - **Airflow** relies heavily on certain **POSIX-compliant** tools and libraries, which are native to Unix-like OS (Linux, macOS). Windows lacks some of these tools out of the box.
-      - Examples:
-        - Airflow uses `fork()` in its process management, which doesn’t work natively on Windows.
-        - Some of its dependencies (like `pycparser` or `cgroups`) are hard to compile or are incompatible with Windows.
-    - Dependency Management: Airflow has many dependencies that rely on native **C extensions**. On **Linux**, these are compiled using tools like **gcc** (**GNU Compiler Collection**), which are readily available. Windows, however, needs something like **Microsoft Build Tools**, which can be challenging to set up correctly.
-    - Subprocess Management: Airflow's scheduler and worker processes rely on Unix-like behavior for managing subprocesses and inter-process communication. These mechanisms are either non-existent or work differently on Windows.
-    - Windows-Specific Challenges: Even if you manage to install Airflow using workarounds (e.g., Docker for Windows), running it natively is not ideal because of potential performance and stability issues.
+- **dbt** allows you to define SQL models (e.g., tables, views) in `.sql` files, which it compiles and executes against databases like PostgreSQL. **Airflow** can trigger dbt commands (e.g., `dbt run`) using operators like `DbtRunOperator` from the `astronomer-cosmos` package or `BashOperator` for simpler setups. The `dbt/` folder will contain `dbt` project, including **models**, **configurations**, and **profiles**.
 
 # Creating DAGs Uisng Python
 

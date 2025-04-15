@@ -1,27 +1,19 @@
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.utils.dates import days_ago
-import clickhouse_connect
-import logging
-from datetime import timedelta
-from airflow.hooks.base import BaseHook
-from airflow.models import Variable
-import pendulum
+from plugins.utils import (
+    default_args,
+    DAG, 
+    PythonOperator, 
+    PostgresHook, 
+    days_ago, 
+    clickhouse_connect, 
+    timedelta, 
+    BaseHook, 
+    Variable, 
+    logging, 
+    pendulum
+    )
 
 # Set up logging
 logger = logging.getLogger(__name__)
-
-# Default arguments for the DAG
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'email_on_failure': True,  # Enable email alerts
-    'email': ['rodgerso65@gmail.com'],
-    'email_on_retry': False,
-    'retries': 3,
-    'retry_delay': timedelta(minutes=5),
-}
 
 # Reusable PostgresHook function
 def get_postgres_hook():
@@ -176,7 +168,7 @@ with DAG(
     'sync_quotes_from_postgres_to_clickhouse',
     default_args=default_args,
     description='Syncs quotes from Postgres to ClickHouse hourly for analytics.',
-    schedule_interval='*/30 5-22 * * *', # Every 30 mins from 5am to 10pm
+    schedule='*/30 5-22 * * *', # Every 30 mins from 5am to 10pm
     start_date=days_ago(1),
     catchup=False,
     tags=['sync', 'quotes', 'clickhouse'],

@@ -255,8 +255,8 @@ with DAG(
     "sync_mysql_amtdb_customers_to_postgres",
     default_args=default_args,
     description="Sync MySQL AMTDB customers to Postgres in batches",
-    #schedule_interval='*/30 5-22 * * *',
-    schedule_interval='0 5-22 * * *',  # Runs at the top of every hour
+    #schedule='*/30 5-22 * * *',
+    schedule='0 5-22 * * *',  # Runs at the top of every hour
     start_date=days_ago(1),
     catchup=False,
     tags=["sync", "mysql", "postgres"],

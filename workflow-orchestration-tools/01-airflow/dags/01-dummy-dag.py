@@ -18,7 +18,7 @@ def print_current_date():
 dag = DAG(
     'dummy_dag', # unique identifier
     default_args={'start_date': days_ago(1)}, # sets the start date to one day before the current date.
-    schedule_interval='*/5 * * * *', # Sets the DAG to run once a day at 13:00 (1 PM). 
+    schedule='*/5 * * * *', # Sets the DAG to run once a day at 13:00 (1 PM). 
     catchup=False # Prevents Airflow from running past executions that haven't been run yet since the last execution, when the DAG is activated.
 )
 

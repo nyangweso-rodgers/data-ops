@@ -1,9 +1,12 @@
-from airflow import DAG
-from airflow.operators.python import PythonOperator
-from airflow.providers.postgres.hooks.postgres import PostgresHook
-from airflow.utils.dates import days_ago
-import requests
-import logging
+from plugins.utils import (
+    default_args,
+    DAG, 
+    PythonOperator, 
+    PostgresHook, 
+    days_ago, 
+    requests, 
+    logging
+    )
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -11,15 +14,6 @@ logger = logging.getLogger(__name__)
 def get_postgres_hook():
     """Return a PostgresHook instance for the users database."""
     return PostgresHook(postgres_conn_id='postgres_users_db')
-
-# Default arguments for the DAG
-default_args = {
-    'owner': 'airflow',
-    'depends_on_past': False,
-    'email_on_failure': False,
-    'email_on_retry': False,
-    'retries': 1,
-}
 
 # Function to check if table exists and create it if not
 def check_and_create_table():
@@ -57,6 +51,7 @@ def fetch_and_insert_quote():
     # Fetch random quote
     try:
         response = requests.get("http://api.quotable.io/random", timeout=5)
+        #response = requests.get("https://api.quotable.io/random", timeout=5)
         response.raise_for_status()  # Raise exception for bad HTTP status
         data = response.json()
         quote_content = data['content']
@@ -79,7 +74,7 @@ with DAG(
     'quote_fetcher_dag',
     default_args=default_args,
     description='A DAG to check/create a table and insert random quotes',
-    schedule_interval='*/30 5-22 * * *', # Every 30 mins from 5am to 10pm
+    schedule='*/30 5-22 * * *', # Every 30 mins from 5am to 10pm
     start_date=days_ago(1),
     catchup=False,
 ) as dag:
