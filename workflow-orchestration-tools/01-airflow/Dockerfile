@@ -16,7 +16,9 @@ RUN pip install --no-cache-dir \
     psycopg2-binary==2.9.9 \
     connexion[swagger-ui] \
     requests==2.31.0 \
-    clickhouse-connect==0.7.0
+    clickhouse-connect==0.7.0 \
+    openmetadata-managed-apis==1.6.7 \
+    openmetadata-ingestion==1.6.7
 
 # Back to root to copy and chmod the script
 USER root

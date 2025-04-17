@@ -42,6 +42,7 @@ airflow_home/
 logs/
 data/
 __pycache__/
+dag_generated_configs/
 
 # clickhouse
 clickhouse-logs/

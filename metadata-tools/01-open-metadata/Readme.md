@@ -18,13 +18,13 @@
      - You can view the details for each of the columns and the check null or non null value counts which can help you build your trust with the data.
 
 - **Use Cases of Open Metadata**
-  1. Data Discovery: Helps users find relevant datasets by searching metadata, reducing time spent looking for data.
-  2. Data Governance: Enforces policies, ownership, and security (e.g., integrating with SSO or role-based access control) to ensure compliance and proper data usage.
-  3. Data Lineage Tracking: Provides visibility into data origins, transformations, and destinations, aiding in debugging and auditing.
-  4. Data Quality Management: Allows profiling and setting up tests to ensure data reliability (e.g., checking for null values or anomalies).
-  5. Collaboration: Enables teams to document, annotate, and discuss data assets, bridging gaps between technical and business users.
-  6. Observability: Monitors data pipelines and assets for freshness, volume, and latency, with alerting capabilities.
-  7. Integration with Tools: Connects to BI tools, databases, and orchestration systems to create a holistic view of the data ecosystem.
+  1. **Data Discovery**: Helps users find relevant datasets by searching metadata, reducing time spent looking for data.
+  2. **Data Governance**: Enforces policies, ownership, and security (e.g., integrating with SSO or role-based access control) to ensure compliance and proper data usage.
+  3. **Data Lineage Tracking**: Provides visibility into data origins, transformations, and destinations, aiding in debugging and auditing.
+  4. **Data Quality Management**: Allows profiling and setting up tests to ensure data reliability (e.g., checking for null values or anomalies).
+  5. **Collaboration**: Enables teams to document, annotate, and discuss data assets, bridging gaps between technical and business users.
+  6. **Observability**: Monitors data pipelines and assets for freshness, volume, and latency, with alerting capabilities.
+  7. **Integration with Tools**: Connects to BI tools, databases, and orchestration systems to create a holistic view of the data ecosystem.
 
 # Setup Open Metadata Using Docker
 
@@ -86,33 +86,86 @@
       2. **Generated a DAG**: It created a temporary DAG (e.g., `test-connection-Postgres-<random-id>`) to verify connectivity to `postgres-db:5432`.
       3. **Executed the DAG**: The Airflow scheduler ran the **DAG**, and the result was sent back to the UI, confirming success.
 
-## Step : Run the ingestion from your Airflow
+# Ingestion
 
-- **OpenMetadata** integrates with **Airflow** to orchestrate ingestion workflows. You can use **Airflow** to extract metadata and [deploy workflows] (/deployment/ingestion/openmetadata) directly. We can run ingestion workflows in Airflow using three different operators:
+- Two common alternatives for **ingestion**:
 
-  1. Python Operator
-  2. Docker Operator
-  3. Python Virtualenv Operator
+  1. Run a dedicated `ingestion` container
 
-- Using the Docker Operator
-- **Ingestion Workflow classes**:
+     - This acts as a background worker, picking up ingestion workflows triggered from the UI.
+     - Enables a low-code/no-code ingestion experience directly from **OpenMetadata**.
 
-  - We have different classes for different types of workflows.
-  - For example, for the `Metadata` workflow we'll use:
+  2. Use **Apache Airflow**
+     - You can write DAGs that call OpenMetadata’s ingestion scripts via Python or CLI.
+     - Great for version-controlled, scheduled, reproducible ingestion.
+     - Ideal if you want to integrate ingestion into a broader data pipeline or orchestration layer.
 
-    ```py
-      import yaml
+- Remarks:
+  - The `open-metadata-ingestion` service is essentially an **Airflow** instance managed by **OpenMetadata** for running ingestion workflows
 
-      from metadata.workflow.metadata import MetadataWorkflow
+## Step : Run the Ingestion from Airflow
 
-      def run():
-          workflow_config = yaml.safe_load(CONFIG)
-          workflow = MetadataWorkflow.create(workflow_config)
-          workflow.execute()
-          workflow.raise_from_status()
-          workflow.print_status()
-          workflow.stop()
+- **OpenMetadata** integrates with **Airflow** to orchestrate ingestion workflows. You can use **Airflow** to extract metadata and [deploy workflows] (/deployment/ingestion/openmetadata) directly.
+- **Dependecies**
+
+  - **OpenMetadata** requires specific **Airflow** providers and Python packages to enable ingestion workflows.
+  - Update `Dockerfile` to include the **OpenMetadata Airflow APIs** package:
+
+    ```Dockerfile
+      FROM apache/airflow:2.9.0
+
+      # Switch to root for installing system dependencies
+      USER root
+
+      RUN apt-get update && apt-get install -y \
+          default-libmysqlclient-dev \
+          build-essential \
+          && apt-get clean
+
+      # Switch back to airflow user for installing Python packages and runtime
+      USER airflow
+      RUN pip install --no-cache-dir \
+          apache-airflow-providers-mysql==5.6.0 \
+          mysqlclient==2.2.4 \
+          psycopg2-binary==2.9.9 \
+          connexion[swagger-ui] \
+          requests==2.31.0 \
+          clickhouse-connect==0.7.0 \
+          openmetadata-managed-apis==1.6.7
+
+      # Back to root to copy and chmod the script
+      USER root
+      COPY ./scripts/init-airflow.sh /opt/airflow/init-apache-airflow.sh
+      RUN chmod +x /opt/airflow/init-apache-airflow.sh
+
+      # Back to airflow user and set entrypoint
+      USER airflow
+      ENTRYPOINT ["/opt/airflow/init-apache-airflow.sh"]
     ```
+
+  - **Access Airflow UI**
+
+    - Open `http://localhost:8080` (or the port defined in `APACHE_AIRFLOW_PORT`) and log in with the credentials from `APACHE_AIRFLOW_ADMIN_USERNAME` and `APACHE_AIRFLOW_ADMIN_PASSWORD`.
+
+  - **Access OpenMetadata UI**
+    - Open `http://localhost:8585` and log in (default credentials are typically admin/admin unless customized).
+
+- We have different classes for different types of workflows.
+- For example, for the `Metadata` workflow we'll use:
+
+  ```py
+    import yaml
+
+    from metadata.workflow.metadata import MetadataWorkflow
+
+    def run():
+        workflow_config = yaml.safe_load(CONFIG)
+        workflow = MetadataWorkflow.create(workflow_config)
+        workflow.execute()
+        workflow.raise_from_status()
+        workflow.print_status()
+        workflow.stop()
+  ```
 
   - The classes for each workflow type are:
     1. `Metadata`: `from metadata.workflow.metadata import MetadataWorkflow`

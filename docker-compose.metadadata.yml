@@ -1,0 +1,176 @@
+services:
+  # Elasticsearch for OpenMetadata search
+  #
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    healthcheck:
+      #test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status\":\"[green|yellow]'"]
+      test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
+      interval: 15s
+      retries: 10
+      timeout: 10s
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    volumes:
+      - elasticsearch-vol:/usr/share/elasticsearch/data
+    networks:
+      - data-ops-network
+  # open-metadata-execute-migrate-all
+  #
+  open-metadata-execute-migrate-all:
+    image: docker.getcollate.io/openmetadata/server:1.6.7 # Upgraded to 1.6.7
+    container_name: open-metadata-execute-migrate-all
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    restart: on-failure
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      # Database configuration
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_SCHEME: mysql
+      DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USE_SSL: false
+      DB_USER: ${MYSQL_DB_ROOT_USER}
+      DB_USER_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
+      DB_HOST: ${MYSQL_DB_HOST}
+      DB_PORT: ${MYSQL_DB_PORT}
+      OM_DATABASE: open_metadata
+      # Elasticsearch configuration
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
+      SEARCH_TYPE: elasticsearch
+      # Minimal auth settings (required but not critical for migration)
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]"
+      AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+      AUTHENTICATION_PROVIDER: basic
+      AUTHENTICATION_PUBLIC_KEYS: "[http://localhost:8585/api/v1/system/config/jwks]"
+      JWT_ISSUER: "open-metadata.org"
+    networks:
+      - data-ops-network
+  # OpenMetadata Server
+  #
+  open-metadata-server:
+    image: docker.getcollate.io/openmetadata/server:1.6.7
+    container_name: open-metadata-server
+    restart: always
+    ports:
+      - "8585:8585"
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      open-metadata-execute-migrate-all:
+        condition: service_completed_successfully
+    environment:
+      # Basic server settings
+      #OPENMETADATA_CLUSTER_NAME: openmetadata
+      #SERVER_PORT: 8585
+      #LOG_LEVEL: INFO
+      # Database configuration
+      DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+      DB_SCHEME: mysql
+      DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+      DB_USE_SSL: false
+      DB_USER: ${MYSQL_DB_ROOT_USER}
+      DB_USER_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
+      DB_HOST: ${MYSQL_DB_HOST}
+      DB_PORT: ${MYSQL_DB_PORT}
+      OM_DATABASE: open_metadata
+      # Elasticsearch configuration
+      ELASTICSEARCH_HOST: elasticsearch
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT}
+      ELASTICSEARCH_SCHEME: http
+      SEARCH_TYPE: elasticsearch
+
+      # Airflow integration
+      PIPELINE_SERVICE_CLIENT_ENDPOINT: http://apache-airflow-webserver:8080
+      AIRFLOW_USERNAME: ${APACHE_AIRFLOW_ADMIN_USERNAME}
+      AIRFLOW_PASSWORD: ${APACHE_AIRFLOW_ADMIN_PASSWORD}
+      PIPELINE_SERVICE_CLIENT_CLASS_NAME: org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient
+      PIPELINE_SERVICE_CLIENT_VERIFY_SSL: no-ssl
+      SERVER_HOST_API_URL: http://open-metadata-server:8585/api
+
+      # Authentication
+      AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+      AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+      AUTHORIZER_ADMIN_PRINCIPALS: "[admin]" # Only admin is an admin
+      AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+      AUTHENTICATION_PROVIDER: basic
+      AUTHENTICATION_PUBLIC_KEYS: "[http://open-metadata-server:8585/api/v1/system/config/jwks]"
+      JWT_ISSUER: "open-metadata.org"
+      # Heap settings
+      OPENMETADATA_HEAP_OPTS: -Xmx1G -Xms1G
+    networks:
+      - data-ops-network
+  # OpenMetadata Ingestion (Airflow with openmetadata-managed-apis)
+  #
+  #open-metadata-ingestion: # for UI-driven ingestion workflows.
+  #image: docker.getcollate.io/openmetadata/ingestion:1.6.7
+  #container_name: open-metadata-ingestion
+  #restart: always
+  #depends_on:
+  #mysql-db:
+  #condition: service_healthy
+  #environment:
+  #AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+  #AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  #AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: "/opt/airflow/dag_generated_configs"
+  #DB_HOST: ${MYSQL_DB_HOST}
+  #DB_PORT: ${MYSQL_DB_PORT}
+  #AIRFLOW_DB: apache_airflow_ingestion
+  #DB_SCHEME: mysql+mysqldb
+  #DB_USER: ${MYSQL_DB_ROOT_USER}
+  #DB_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
+
+  # Ensure these match the server configuration
+  #AIRFLOW__CORE__SECURE_MODE: "True"
+  #_AIRFLOW_WWW_USER_USERNAME: "admin"
+  #_AIRFLOW_WWW_USER_PASSWORD: "mypassword"
+
+  #AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_SIZE: "5" # Connection pool
+  #AIRFLOW__DATABASE__SQL_ALCHEMY_MAX_OVERFLOW: "10"
+  #AIRFLOW__DATABASE__SQL_ALCHEMY_POOL_PRE_PING: "true" # Check connections
+  #AIRFLOW__OPENMETADATA_AIRFLOW_APIS__OPENMETADATA_SERVER_HOST: "http://open-metadata-server:8585"
+  #AIRFLOW__OPENMETADATA_AIRFLOW_APIS__OPENMETADATA_SERVER_HOST: "http://open-metadata-server:8585/api" # based on the official documentation, though the one above also works
+
+  # Connection to OpenMetadata server
+  #OPENMETADATA_SERVER_URL: "http://open-metadata-server:8585"
+  #OPENMETADATA_SERVER_URL: "http://open-metadata-server:8585/api" # based on the official documentation, though the one above also works
+
+  #AIRFLOW__OPENMETADATA_AIRFLOW_APIS__TIMEOUT: "10" # Explicitly set, optional
+  #entrypoint: /bin/bash
+  #command: "/opt/airflow/ingestion_dependency.sh"
+  #command: >
+  #-c "until mysql -h mysql-db -u root -pmypassword apache_airflow_ingestion -e 'SELECT 1'; do echo 'Waiting for MySQL...'; sleep 2; done; airflow db init && /opt/airflow/ingestion_dependency.sh"
+  #ports:
+  #- "8087:8080"
+  #volumes:
+  #- ingestion-volume-dag-airflow:/opt/airflow/dag_generated_configs
+  #- ingestion-volume-tmp:/tmp
+  #networks:
+  #- data-ops-network
+############################ Networks ################################################
+# networks
+#
+networks:
+  data-ops-network:
+    name: data-ops-network
+    driver: bridge
+
+# Volumnes
+#
+volumes:
+  elasticsearch-vol:

@@ -27,11 +27,16 @@ services:
       AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
       #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
+
+      # OpenMetadata connection
+      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: /opt/airflow/dag_generated_configs # Specifies where OpenMetadata stores generated DAG configurations.
+      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__OPENMETADATA_SERVER_HOST: http://open-metadata-server:8585/api # Points Airflow to the OpenMetadata server for API communication.
     volumes:
       - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
       - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
       - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
       - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
+      - ./workflow-orchestration-tools/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
     networks:
       - data-ops-network
     healthcheck:
@@ -64,11 +69,16 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
+
+      # OpenMetadata connection
+      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: /opt/airflow/dag_generated_configs # Specifies where OpenMetadata stores generated DAG configurations.
+      AIRFLOW__OPENMETADATA_AIRFLOW_APIS__OPENMETADATA_SERVER_HOST: http://open-metadata-server:8585/api # Points Airflow to the OpenMetadata server for API communication.
     volumes:
       - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
       - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
       - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
       - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
+      - ./workflow-orchestration-tools/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
     networks:
       - data-ops-network
 
