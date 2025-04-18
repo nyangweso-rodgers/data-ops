@@ -25,6 +25,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
       AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
 
@@ -67,6 +68,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
 

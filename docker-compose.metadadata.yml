@@ -24,7 +24,7 @@ services:
   # open-metadata-execute-migrate-all
   #
   open-metadata-execute-migrate-all:
-    image: docker.getcollate.io/openmetadata/server:1.6.7 # Upgraded to 1.6.7
+    image: docker.getcollate.io/openmetadata/server:1.6.7 
     container_name: open-metadata-execute-migrate-all
     command: "./bootstrap/openmetadata-ops.sh migrate"
     restart: on-failure
@@ -33,6 +33,8 @@ services:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       # Database configuration
       DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
@@ -57,6 +59,7 @@ services:
       AUTHENTICATION_PROVIDER: basic
       AUTHENTICATION_PUBLIC_KEYS: "[http://localhost:8585/api/v1/system/config/jwks]"
       JWT_ISSUER: "open-metadata.org"
+      #FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
     networks:
       - data-ops-network
   # OpenMetadata Server
@@ -74,12 +77,15 @@ services:
         condition: service_healthy
       open-metadata-execute-migrate-all:
         condition: service_completed_successfully
+    env_file:
+      - .env
     environment:
       # Basic server settings
       #OPENMETADATA_CLUSTER_NAME: openmetadata
       #SERVER_PORT: 8585
       #LOG_LEVEL: INFO
-      # Database configuration
+      
+      # Database configuration for MySQL
       DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
       DB_SCHEME: mysql
       DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
@@ -89,19 +95,24 @@ services:
       DB_HOST: ${MYSQL_DB_HOST}
       DB_PORT: ${MYSQL_DB_PORT}
       OM_DATABASE: open_metadata
-      # Elasticsearch configuration
+
+      # Elasticsearch Configurations
       ELASTICSEARCH_HOST: elasticsearch
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT}
       ELASTICSEARCH_SCHEME: http
       SEARCH_TYPE: elasticsearch
 
-      # Airflow integration
+      # Pipeline Service Client Configuration
+      PIPELINE_SERVICE_CLIENT_CLASS_NAME: org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient
+
+      # Airflow Parameters
       PIPELINE_SERVICE_CLIENT_ENDPOINT: http://apache-airflow-webserver:8080
       AIRFLOW_USERNAME: ${APACHE_AIRFLOW_ADMIN_USERNAME}
       AIRFLOW_PASSWORD: ${APACHE_AIRFLOW_ADMIN_PASSWORD}
-      PIPELINE_SERVICE_CLIENT_CLASS_NAME: org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient
+      
       PIPELINE_SERVICE_CLIENT_VERIFY_SSL: no-ssl
       SERVER_HOST_API_URL: http://open-metadata-server:8585/api
+      #FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
 
       # Authentication
       AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer

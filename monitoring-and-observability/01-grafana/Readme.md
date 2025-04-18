@@ -141,11 +141,11 @@
 
   7. **Step 7**: **Verify the Setup**
 
-     1. Check PostgreSQL Exporter
+     1. **Check PostgreSQL Exporter**
 
         - Open your browser and go to `http://localhost:9187/metrics`. You should see a list of metrics being exposed by the Postgres exporter.
 
-     2. Check Prometheus
+     2. **Check Prometheus**
 
         - Go to `http://localhost:9090`. In the UI, click on "Status" > "Targets". You should see two targets: `prometheus` and `postgres-exporter`, both in the "UP" state.
 
