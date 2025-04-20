@@ -55,9 +55,10 @@ def get_mysql_amtdb_hook():
     conn_id = Variable.get("mysql_conn_id", default_var="mysql_amtdb")
     return MySqlHook(mysql_conn_id=conn_id)
 
-def get_postgres_ep_stage_hook():
-    conn_id = Variable.get("postgres_conn_id", default_var="postgres_ep_stage")
+def get_postgres_ep_stage_hook(postgres_conn_id=None):
+    conn_id = postgres_conn_id or Variable.get("postgres_conn_id", default_var="postgres_ep_stage")
     return PostgresHook(postgres_conn_id=conn_id)
+
 
 def get_postgres_reporting_service_db_hook():
     conn_id = Variable.get("postgres_conn_id", default_var="postgres-reporting-service-db")
