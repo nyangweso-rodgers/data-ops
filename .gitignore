@@ -49,3 +49,6 @@ clickhouse-logs/
 
 # Dagster
 dagster-home/
+
+# dbt
+target/

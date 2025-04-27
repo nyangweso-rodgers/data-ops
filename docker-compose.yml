@@ -1,0 +1,60 @@
+services:
+  # From docker-compose.db.yml
+  postgres-db:
+    extends:
+      file: docker-compose.db.yml
+      service: postgres-db
+  mysql-db:
+    extends:
+      file: docker-compose.db.yml
+      service: mysql-db
+  
+  # From docker-compose.airflow.yml
+  apache-airflow-webserver:
+    extends:
+      file: docker-compose.airflow.yml
+      service: apache-airflow-webserver
+  apache-airflow-scheduler:
+    extends:
+      file: docker-compose.airflow.yml
+      service: apache-airflow-scheduler
+
+  # From docker-compose.warehouse.yml
+  clickhouse-server:
+    extends:
+      file: docker-compose.warehouse.yml
+      service: clickhouse-server
+  clickhouse-tabix-web-client:
+    extends:
+      file: docker-compose.warehouse.yml
+      service: clickhouse-tabix-web-client
+
+  # From docker-compose.metadata.yml
+  elasticsearch:
+    extends:
+      file: docker-compose.metadata.yml
+      service: elasticsearch
+  open-metadata-server:
+    extends:
+      file: docker-compose.metadata.yml
+      service: open-metadata-server
+  open-metadata-execute-migrate-all:
+    extends:
+      file: docker-compose.metadata.yml
+      service: open-metadata-execute-migrate-all
+    
+# Define Volumes
+volumes:
+  postgres-db-volume:
+    external: true
+  mysql-db-volume:
+    external: true
+  clickhouse-server-volume:
+    external: true
+  elasticsearch-vol:
+    external: true
+
+# Define Networks
+networks:
+  data-ops-network:
+    external: true
