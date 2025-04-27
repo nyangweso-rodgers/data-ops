@@ -1,16 +1,46 @@
-INSERT INTO {schema}.{table} (
-    issue_key, summary, issue_type, status, 
-    created, updated, priority, assignee, project_key, sync_time
+INSERT INTO jira.jira_issues (
+    id,
+    issue_key,
+    summary,
+    issuetype_id,
+    issuetype_name,
+    issuetype_subtask,
+    created,
+    resolutiondate,
+    project_id,
+    project_key,
+    project_name,
+    project_type_key,
+    assignee_email,
+    assignee_name,
+    priority_name,
+    priority_id,
+    updated,
+    status_id,
+    status_name,
+    status_category_color,
+    sync_time
 )
 VALUES %s
 ON CONFLICT (issue_key)
 DO UPDATE SET
+    id = EXCLUDED.id,
     summary = EXCLUDED.summary,
-    issue_type = EXCLUDED.issue_type,
-    status = EXCLUDED.status,
+    issuetype_id = EXCLUDED.issuetype_id,
+    issuetype_name = EXCLUDED.issuetype_name,
+    issuetype_subtask = EXCLUDED.issuetype_subtask,
     created = EXCLUDED.created,
-    updated = EXCLUDED.updated,
-    priority = EXCLUDED.priority,
-    assignee = EXCLUDED.assignee,
+    resolutiondate = EXCLUDED.resolutiondate,
+    project_id = EXCLUDED.project_id,
     project_key = EXCLUDED.project_key,
-    sync_time = CURRENT_TIMESTAMP;
+    project_name = EXCLUDED.project_name,
+    project_type_key = EXCLUDED.project_type_key,
+    assignee_email = EXCLUDED.assignee_email,
+    assignee_name = EXCLUDED.assignee_name,
+    priority_name = EXCLUDED.priority_name,
+    priority_id = EXCLUDED.priority_id,
+    updated = EXCLUDED.updated,
+    status_id = EXCLUDED.status_id,
+    status_name = EXCLUDED.status_name,
+    status_category_color = EXCLUDED.status_category_color,
+    sync_time = EXCLUDED.sync_time;

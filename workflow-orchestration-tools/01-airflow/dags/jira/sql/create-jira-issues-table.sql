@@ -1,12 +1,24 @@
-CREATE TABLE IF NOT EXISTS {schema}.{table} (
-    issue_key VARCHAR(50) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS jira.jira_issues (
+    id VARCHAR(50),
+    issue_key VARCHAR(50),
     summary TEXT,
-    issue_type VARCHAR(50),
-    status VARCHAR(50),
+    issuetype_id VARCHAR(50),
+    issuetype_name VARCHAR(50),
+    issuetype_subtask BOOLEAN,
     created TIMESTAMP,
-    updated TIMESTAMP,
-    priority VARCHAR(50),
-    assignee VARCHAR(100),
+    resolutiondate TIMESTAMP,
+    project_id VARCHAR(50),
     project_key VARCHAR(50),
-    sync_time TIMESTAMP
+    project_name VARCHAR(100),
+    project_type_key VARCHAR(50),
+    assignee_email VARCHAR(100),
+    assignee_name VARCHAR(100),
+    priority_name VARCHAR(50),
+    priority_id VARCHAR(50),
+    updated TIMESTAMP,
+    status_id VARCHAR(50),
+    status_name VARCHAR(50),
+    status_category_color VARCHAR(50),
+    sync_time TIMESTAMP,
+    PRIMARY KEY (issue_key)
 );

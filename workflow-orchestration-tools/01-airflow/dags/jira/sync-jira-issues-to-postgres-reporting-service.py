@@ -6,6 +6,8 @@ from plugins.utils import (
     requests,
     AirflowException,
     Variable,
+    load_sql_files,
+    load_fields_yml_files,
     append_sync_time  ,
     get_postgres_reporting_service_db_hook
 )
@@ -15,7 +17,6 @@ from psycopg2.extras import execute_values
 import os
 from dotenv import load_dotenv
 import logging
-from plugins.utils import load_sql_files
 
 # Load environment variables from .env file
 load_dotenv()
@@ -69,12 +70,30 @@ def check_and_create_db_table_if_not_exists(**kwargs) -> None:
         logger.error(f"Failed to check/create table {schema}.{table}: {str(e)}")
         raise AirflowException(f"Table creation failed: {str(e)}")
 
-def fetch_jira_issues(**kwargs) -> list:
+def fetch_jira_issues(**kwargs) -> dict:
     """Fetch issues from multiple Jira projects with pagination."""
     logger.info(f"🔍 JIRA_URL from env: {JIRA_URL}")
     logger.info(f"✅ Project keys to sync: {JIRA_PROJECT_KEYS}")
     auth = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
     headers = {"Accept": "application/json"}
+    
+    # Load fields from fields.yml
+    fields_config = load_fields_yml_files("jira", "fields.yml")
+    jira_issues_fields = fields_config.get("jira_issues_fields", [])
+    
+    # Extract base field names for JQL query
+    jira_fields = []
+    for field in jira_issues_fields:
+        source = field["source"]
+        if source == "constant.utcnow":
+            continue
+        # Take the parent field for API (e.g., 'fields.priority.name' -> 'priority')
+        api_field = source.split(".", 2)[1] if source.startswith("fields.") else source
+        jira_fields.append(api_field)
+    jira_fields = list(set(jira_fields))  # Remove duplicates
+    
+    logger.info(f"Requesting Jira fields: {jira_fields}")
+    
     all_records = []
 
     for project_key in JIRA_PROJECT_KEYS:
@@ -85,7 +104,7 @@ def fetch_jira_issues(**kwargs) -> list:
                 url = f"{JIRA_URL}/rest/api/3/search"
                 query = {
                     "jql": f"project = {project_key}",
-                    "fields": "key,summary,issuetype,status,created,updated,priority,assignee,project",
+                    "fields": ",".join(jira_fields),
                     "maxResults": max_results,
                     "startAt": start_at
                 }
@@ -98,49 +117,92 @@ def fetch_jira_issues(**kwargs) -> list:
                     break
 
                 for issue in issues:
-                    fields = issue.get("fields") or {}
-
-                    # Safely extract nested fields with .get and fallback to None
-                    issue_key = issue.get("key")
-                    summary = fields.get("summary")
-                    issuetype = (fields.get("issuetype") or {}).get("name")
-                    status = (fields.get("status") or {}).get("name")
-                    created = fields.get("created")
-                    updated = fields.get("updated")
-                    priority = (fields.get("priority") or {}).get("name")
-                    assignee = (fields.get("assignee") or {}).get("displayName")
-                    project = (fields.get("project") or {}).get("key")
-
-                    all_records.append((
-                        issue_key,
-                        summary,
-                        issuetype,
-                        status,
-                        created,
-                        updated,
-                        priority,
-                        assignee,
-                        project
-                    ))
-
+                    record = {}
+                    for field in jira_issues_fields:
+                        field_name = field["name"]
+                        source = field["source"]
+                        field_type = field["type"]
+                        
+                        if source == "constant.utcnow":
+                            continue
+                        
+                        try:
+                            value = issue
+                            for key in source.split("."):
+                                value = value.get(key, None) if isinstance(value, dict) else None
+                                if value is None:
+                                    break
+                            
+                            # Type validation based on field_type
+                            if field_type.startswith("VARCHAR") or field_type == "TEXT":
+                                if not isinstance(value, (str, type(None))):
+                                    logger.warning(
+                                        f"Field {field_name} ({source}) expected str, got {type(value).__name__} for issue {issue.get('key')}. Setting to None."
+                                    )
+                                    record[field_name] = None
+                                else:
+                                    record[field_name] = value
+                            elif field_type == "BOOLEAN":
+                                if not isinstance(value, (bool, type(None))):
+                                    logger.warning(
+                                        f"Field {field_name} ({source}) expected bool, got {type(value).__name__} for issue {issue.get('key')}. Setting to False."
+                                    )
+                                    record[field_name] = False
+                                else:
+                                    record[field_name] = value if value is not None else False
+                            elif field_type == "TIMESTAMP":
+                                if not isinstance(value, (str, type(None))) or (isinstance(value, str) and not value.startswith("20")):
+                                    logger.warning(
+                                        f"Field {field_name} ({source}) expected timestamp, got {type(value).__name__} for issue {issue.get('key')}. Setting to None."
+                                    )
+                                    record[field_name] = None
+                                else:
+                                    record[field_name] = value
+                            else:
+                                record[field_name] = value
+                        
+                        except Exception as e:
+                            logger.warning(f"Failed to extract {source} for issue {issue.get('key')}: {str(e)}")
+                            record[field_name] = None
+                    
+                    all_records.append(record)
+                
                 start_at += max_results
-
+                
             except Exception as e:
                 logger.error(f"❌ Failed to fetch issues for project {project_key}: {str(e)}")
                 raise AirflowException(f"Failed to fetch issues for project {project_key}: {str(e)}")
 
+    # Push records to XCom for downstream tasks
     logger.info(f"✅ Total records fetched: {len(all_records)}")
-    return all_records
+    kwargs["ti"].xcom_push(key="jira_issues", value=all_records)
+    
+    # Return a summary instead of the full records
+    return {"total_records": len(all_records), "project_keys": JIRA_PROJECT_KEYS}
 
 def sync_jira_issues_to_postgres(ti, **kwargs) -> None:
     """Sync fetched Jira issues to PostgreSQL."""
-    records = ti.xcom_pull(task_ids="fetch_jira_issues")
+    # Pull XCom key
+    records = ti.xcom_pull(key="jira_issues", task_ids="fetch_jira_issues")
     if not records:
         logger.info("No jira issues records to sync to PostgreSQL.")
         return
     
-    # ➕ Append sync_time timestamp to each record
-    records_with_sync_time = append_sync_time(records)
+    # Load fields from fields.yml
+    fields_config = load_fields_yml_files("jira", "fields.yml")
+    jira_issues_fields = fields_config.get("jira_issues_fields", [])
+    
+    # Exclude sync_time from field_names since it's added by append_sync_time
+    field_names = [field["name"] for field in jira_issues_fields if field["name"] != "sync_time"]
+    
+    # Convert records to tuples matching the table structure (excluding sync_time)
+    records_tuples = [
+        tuple(record.get(field, None) for field in field_names)
+        for record in records
+    ]
+    
+    # Append sync_time timestamp to each record
+    records_with_sync_time = append_sync_time(records_tuples)
     
     pg_hook = get_postgres_reporting_service_db_hook()
     schema = TARGET_CONFIG['postgres_schema']
@@ -162,7 +224,7 @@ with DAG(
     dag_id="sync-jira-issues-to-postgres-reporting-service",
     default_args=default_args,
     start_date=days_ago(1),
-    schedule="@daily",
+    schedule=None,
     catchup=False,
 ) as dag:
 
