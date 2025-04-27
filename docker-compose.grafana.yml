@@ -4,7 +4,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    restart: always
+    #restart: always
     ports:
       - "3006:3000" # Map host port 3006 to container port 3000
     environment:
@@ -21,7 +21,7 @@ services:
     #image: prom/prometheus
     image: prom/prometheus:latest
     container_name: prometheus
-    restart: always
+    #restart: always
     ports:
       - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
     volumes:
@@ -48,13 +48,13 @@ services:
   postgres-db-exporter:
     image: prometheuscommunity/postgres-exporter:latest
     container_name: postgres-db-exporter
+    #restart: always
     ports:
       - "9187:9187"
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/postgres?sslmode=disable"
     depends_on:
       - postgres-db
-    restart: always
     networks:
       - data-ops-network
 ################################ Networks ############################################

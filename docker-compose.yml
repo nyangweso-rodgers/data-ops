@@ -32,26 +32,53 @@ services:
   # From docker-compose.metadata.yml
   elasticsearch:
     extends:
-      file: docker-compose.metadata.yml
+      file: docker-compose.open-metadata.yml
       service: elasticsearch
   open-metadata-server:
     extends:
-      file: docker-compose.metadata.yml
+      file: docker-compose.open-metadata.yml
       service: open-metadata-server
   open-metadata-execute-migrate-all:
     extends:
-      file: docker-compose.metadata.yml
+      file: docker-compose.open-metadata.yml
       service: open-metadata-execute-migrate-all
+
+  # From docker-compose.grafana.yml
+  grafana:
+    extends:
+      file: docker-compose.grafana.yml
+      service: grafana
+  prometheus:
+    extends:
+      file: docker-compose.grafana.yml
+      service: prometheus
+  loki:
+    extends:
+      file: docker-compose.grafana.yml
+      service: loki
+  postgres-db-exporter:
+    extends:
+      file: docker-compose.grafana.yml
+      service: postgres-db-exporter
     
 # Define Volumes
 volumes:
+  # Database Volumes
   postgres-db-volume:
     external: true
   mysql-db-volume:
     external: true
-  clickhouse-server-volume:
+  # Datawarehouse Volumes
+  clickhouse-server-data:
     external: true
   elasticsearch-vol:
+    external: true
+  # Grafana Volumes
+  grafana-vol:
+    external: true
+  prometheus-vol:
+    external: true
+  loki-vol:
     external: true
 
 # Define Networks
