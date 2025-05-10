@@ -8,7 +8,6 @@ services:
       - "9200:9200"
       - "9300:9300"
     healthcheck:
-      #test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q 'status\":\"[green|yellow]'"]
       test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
       interval: 15s
       retries: 10
@@ -173,15 +172,14 @@ services:
   #- ingestion-volume-tmp:/tmp
   #networks:
   #- data-ops-network
-############################ Networks ################################################
-# networks
-#
+
+################################ Networks ############################################
 networks:
   data-ops-network:
-    name: data-ops-network
-    driver: bridge
-
+    external: true # Use the existing network from docker-compose.yml
+  
 # Volumnes
 #
 volumes:
   elasticsearch-vol:
+    name: elasticsearch-vol
