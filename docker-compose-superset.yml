@@ -4,7 +4,7 @@ services:
     build:
       context: ./06-dashboards/01-superset
       dockerfile: Dockerfile
-    container_name: apache-superset
+    container_name: superset
     ports:
       - "${APACHE_SUPERSET_PORT}:${APACHE_SUPERSET_PORT}"
     environment:
@@ -13,7 +13,7 @@ services:
       - APACHE_SUPERSET_ADMIN_PASSWORD=${APACHE_SUPERSET_ADMIN_PASSWORD}
       - APACHE_SUPERSET_PORT=${APACHE_SUPERSET_PORT}
     volumes:
-      - apache-superset-volume:/app/superset_home
+      - superset-volume:/app/superset_home
     networks:
       - data-ops-network
 ################################ Networks ############################################
@@ -23,4 +23,4 @@ networks:
 ################################ Volumes ############################################
 volumes:
   apache-superset-volume:
-    name: apache-superset-volume  
+    name: superset-volume  
