@@ -1,11 +1,11 @@
 services:
-  # apache-airflow-webserver
-  apache-airflow-webserver:
+  # airflow-webserver
+  airflow-webserver:
     build:
       context: ./workflow-orchestration-tools/01-airflow
       dockerfile: Dockerfile
-    image: apache-airflow-webserver
-    container_name: apache-airflow-webserver
+    image: airflow-webserver
+    container_name: airflow-webserver
     command: webserver
     restart: always
     ports:
@@ -15,6 +15,11 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "/opt/airflow/scripts/healthcheck.sh", "webserver"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${APACHE_AIRFLOW_POSTGRES_DB}
@@ -26,7 +31,6 @@ services:
       AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
       AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
       AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
-      #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
 
       # OpenMetadata connection
@@ -38,21 +42,17 @@ services:
       - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
       - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
       - ./workflow-orchestration-tools/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
+      - ./workflow-orchestration-tools/01-airflow/dbt:/opt/airflow/dbt
     networks:
       - data-ops-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
-  # apache-airflow-scheduler
-  apache-airflow-scheduler:
+  # airflow-scheduler
+  airflow-scheduler:
     build:
       context: ./workflow-orchestration-tools/01-airflow
       dockerfile: Dockerfile
-    image: apache-airflow-scheduler
-    container_name: apache-airflow-scheduler
+    image: airflow-scheduler
+    container_name: airflow-scheduler
     command: scheduler
     restart: always
     depends_on:
@@ -60,6 +60,11 @@ services:
         condition: service_healthy
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "/opt/airflow/scripts/healthcheck.sh", "scheduler"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${APACHE_AIRFLOW_POSTGRES_DB}
@@ -81,6 +86,7 @@ services:
       - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
       - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
       - ./workflow-orchestration-tools/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
+      - ./workflow-orchestration-tools/01-airflow/dbt:/opt/airflow/dbt
     networks:
       - data-ops-network
 

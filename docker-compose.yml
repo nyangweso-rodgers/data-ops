@@ -2,22 +2,22 @@ services:
   # From docker-compose.db.yml
   postgres-db:
     extends:
-      file: docker-compose.db.yml
+      file: docker-compose-db.yml
       service: postgres-db
   mysql-db:
     extends:
-      file: docker-compose.db.yml
+      file: docker-compose-db.yml
       service: mysql-db
   
   # From docker-compose.airflow.yml
-  apache-airflow-webserver:
+  airflow-webserver:
     extends:
-      file: docker-compose.airflow.yml
-      service: apache-airflow-webserver
-  apache-airflow-scheduler:
+      file: docker-compose-airflow.yml
+      service: airflow-webserver
+  airflow-scheduler:
     extends:
-      file: docker-compose.airflow.yml
-      service: apache-airflow-scheduler
+      file: docker-compose-airflow.yml
+      service: airflow-scheduler
 
   # From docker-compose.warehouse.yml
   clickhouse-server:
@@ -32,15 +32,15 @@ services:
   # From docker-compose.metadata.yml
   elasticsearch:
     extends:
-      file: docker-compose.open-metadata.yml
+      file: docker-compose-open-metadata.yml
       service: elasticsearch
   open-metadata-server:
     extends:
-      file: docker-compose.open-metadata.yml
+      file: docker-compose-open-metadata.yml
       service: open-metadata-server
   open-metadata-execute-migrate-all:
     extends:
-      file: docker-compose.open-metadata.yml
+      file: docker-compose-open-metadata.yml
       service: open-metadata-execute-migrate-all
 
   # From docker-compose.grafana.yml

@@ -43,6 +43,7 @@ logs/
 data/
 __pycache__/
 dag_generated_configs/
+issue.json
 
 # clickhouse
 clickhouse-logs/
