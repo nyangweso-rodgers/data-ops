@@ -1,0 +1,15 @@
+{
+  "_version": "1.0",
+  "_created": "2025-05-13",
+  "table": "customers",
+  "columns": {
+    "id": { "type": "int", "primary_key": true },
+    "name": { "type": "varchar(255)" },
+    "phoneNumber": { "type": "varchar(20)" },
+    "createdBy": { "type": "int" },
+    "updatedBy": { "type": "int" },
+    "createdAt": { "type": "datetime" },
+    "updatedAt": { "type": "datetime", "incremental": true }
+  },
+  "incremental_column": "updatedAt"
+}

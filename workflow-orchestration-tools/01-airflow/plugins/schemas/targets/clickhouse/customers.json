@@ -1,0 +1,19 @@
+{
+  "_version": "1.0",
+  "_created": "2025-05-13",
+  "source": "mysql/customers",
+  "table": "customers",
+  "database": "analytics",
+  "column_mappings": {
+    "id": { "target": "id", "type": "UInt32" },
+    "name": { "target": "name", "type": "Nullable(String)" },
+    "phoneNumber": { "target": "phone_number", "type": "Nullable(String)" },
+    "createdBy": { "target": "created_by", "type": "Nullable(UInt32)" },
+    "updatedBy": { "target": "updated_by", "type": "Nullable(UInt32)" },
+    "createdAt": { "target": "created_at", "type": "Nullable(DateTime)" },
+    "updatedAt": { "target": "updated_at", "type": "DateTime" }
+  },
+  "engine": "MergeTree()",
+  "order_by": "id",
+  "partition_by": "toYYYYMM(updated_at)"
+}
