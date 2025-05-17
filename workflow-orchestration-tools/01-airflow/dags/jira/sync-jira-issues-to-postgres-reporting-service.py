@@ -1,256 +1,290 @@
-from plugins.utils import (
-    DAG,
-    PythonOperator,
-    default_args,
-    days_ago,
-    requests,
-    AirflowException,
-    Variable,
-    load_sql_files,
-    load_fields_yml_files,
-    append_sync_time  ,
-    get_postgres_reporting_service_db_hook
-)
+from airflow.decorators import dag, task
 from datetime import datetime
-from requests.auth import HTTPBasicAuth
-from psycopg2.extras import execute_values
-import os
-from dotenv import load_dotenv
+from airflow.utils.dates import days_ago
+from airflow.models import Variable
+from plugins.hooks.postgres_hook import PostgresHook
+from plugins.hooks.jira_api_hook import JiraApiHook
+from plugins.utils.schema_loader import SchemaLoader
+from plugins.utils.add_sync_time import add_sync_time
+from plugins.utils.constants import CONNECTION_IDS, DEFAULT_ARGS
 import logging
+from typing import List, Dict, Any
+from psycopg2.extras import execute_values
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Configure logging (use Airflow's logger)
 logger = logging.getLogger(__name__)
 
-# ================== CONFIGURATION ==================
-# Jira configuration from .env
-JIRA_URL = os.getenv("JIRA_URL")
-JIRA_EMAIL = os.getenv("JIRA_EMAIL")
-JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
-#JIRA_PROJECT_KEYS = os.getenv("JIRA_PROJECT_KEYS", "SD").split(",")
-JIRA_PROJECT_KEYS = [key.strip() for key in os.getenv("JIRA_PROJECT_KEYS", "SD").split(",")]
+# Environment-specific configuration
+TARGET_SCHEMA_NAME = Variable.get("postgres_target_schema", default_var="jira")
+DATABASE_TYPE = "postgres"
 
-# Target configuration (Postgres)
-TARGET_CONFIG = {
-    "postgres_schema": Variable.get("POSTGRES_SCHEMA", default_var="jira"),
-    "postgres_table": Variable.get("POSTGRES_TABLE", default_var="jira_issues"),
-}
-
-def verify_connections(**kwargs) -> None:
-    """Verify PostgreSQL connection."""
-    try:
-        pg_hook = get_postgres_reporting_service_db_hook()
-        with pg_hook.get_conn() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT 1")
-        logger.info("PostgreSQL connection verified")
-    except Exception as e:
-        logger.error(f"Connection verification failed: {str(e)}")
-        raise AirflowException(f"Connection verification failed: {str(e)}")
-    
-def check_and_create_db_table_if_not_exists(**kwargs) -> None:
-    pg_hook = get_postgres_reporting_service_db_hook()
-    schema = TARGET_CONFIG['postgres_schema']
-    table = TARGET_CONFIG['postgres_table']
-    
-    try:
-        check_db_table_sql = load_sql_files("jira", "check-jira-issues-table.sql")
-        db_table_exists = pg_hook.get_first(
-            check_db_table_sql, parameters=(schema, table)
-        )[0]
-        if db_table_exists:
-            logger.info(f"Database Table {schema}.{table} already exists, skipping creation..............")
-            return
-        create_db_table_sql = load_sql_files("jira", "create-jira-issues-table.sql").format(schema=schema, table=table)
-        pg_hook.run(create_db_table_sql)
-        logger.info(f"Created database table {schema}.{table}")
-    except Exception as e:
-        logger.error(f"Failed to check/create table {schema}.{table}: {str(e)}")
-        raise AirflowException(f"Table creation failed: {str(e)}")
-
-def fetch_jira_issues(**kwargs) -> dict:
-    """Fetch issues from multiple Jira projects with pagination."""
-    logger.info(f"🔍 JIRA_URL from env: {JIRA_URL}")
-    logger.info(f"✅ Project keys to sync: {JIRA_PROJECT_KEYS}")
-    auth = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
-    headers = {"Accept": "application/json"}
-    
-    # Load fields from fields.yml
-    fields_config = load_fields_yml_files("jira", "fields.yml")
-    jira_issues_fields = fields_config.get("jira_issues_fields", [])
-    
-    # Extract base field names for JQL query
-    jira_fields = []
-    for field in jira_issues_fields:
-        source = field["source"]
-        if source == "constant.utcnow":
-            continue
-        # Take the parent field for API (e.g., 'fields.priority.name' -> 'priority')
-        api_field = source.split(".", 2)[1] if source.startswith("fields.") else source
-        jira_fields.append(api_field)
-    jira_fields = list(set(jira_fields))  # Remove duplicates
-    
-    logger.info(f"Requesting Jira fields: {jira_fields}")
-    
-    all_records = []
-
-    for project_key in JIRA_PROJECT_KEYS:
-        start_at = 0
-        max_results = 100
-        while True:
-            try:
-                url = f"{JIRA_URL}/rest/api/3/search"
-                query = {
-                    "jql": f"project = {project_key}",
-                    "fields": ",".join(jira_fields),
-                    "maxResults": max_results,
-                    "startAt": start_at
-                }
-                response = requests.get(url, headers=headers, params=query, auth=auth)
-                response.raise_for_status()
-                data = response.json()
-                
-                issues = data.get("issues", [])
-                if not issues:
-                    break
-
-                for issue in issues:
-                    record = {}
-                    for field in jira_issues_fields:
-                        field_name = field["name"]
-                        source = field["source"]
-                        field_type = field["type"]
-                        
-                        if source == "constant.utcnow":
-                            continue
-                        
-                        try:
-                            value = issue
-                            for key in source.split("."):
-                                value = value.get(key, None) if isinstance(value, dict) else None
-                                if value is None:
-                                    break
-                            
-                            # Type validation based on field_type
-                            if field_type.startswith("VARCHAR") or field_type == "TEXT":
-                                if not isinstance(value, (str, type(None))):
-                                    logger.warning(
-                                        f"Field {field_name} ({source}) expected str, got {type(value).__name__} for issue {issue.get('key')}. Setting to None."
-                                    )
-                                    record[field_name] = None
-                                else:
-                                    record[field_name] = value
-                            elif field_type == "BOOLEAN":
-                                if not isinstance(value, (bool, type(None))):
-                                    logger.warning(
-                                        f"Field {field_name} ({source}) expected bool, got {type(value).__name__} for issue {issue.get('key')}. Setting to False."
-                                    )
-                                    record[field_name] = False
-                                else:
-                                    record[field_name] = value if value is not None else False
-                            elif field_type == "TIMESTAMP":
-                                if not isinstance(value, (str, type(None))) or (isinstance(value, str) and not value.startswith("20")):
-                                    logger.warning(
-                                        f"Field {field_name} ({source}) expected timestamp, got {type(value).__name__} for issue {issue.get('key')}. Setting to None."
-                                    )
-                                    record[field_name] = None
-                                else:
-                                    record[field_name] = value
-                            else:
-                                record[field_name] = value
-                        
-                        except Exception as e:
-                            logger.warning(f"Failed to extract {source} for issue {issue.get('key')}: {str(e)}")
-                            record[field_name] = None
-                    
-                    all_records.append(record)
-                
-                start_at += max_results
-                
-            except Exception as e:
-                logger.error(f"❌ Failed to fetch issues for project {project_key}: {str(e)}")
-                raise AirflowException(f"Failed to fetch issues for project {project_key}: {str(e)}")
-
-    # Push records to XCom for downstream tasks
-    logger.info(f"✅ Total records fetched: {len(all_records)}")
-    kwargs["ti"].xcom_push(key="jira_issues", value=all_records)
-    
-    # Return a summary instead of the full records
-    return {"total_records": len(all_records), "project_keys": JIRA_PROJECT_KEYS}
-
-def sync_jira_issues_to_postgres(ti, **kwargs) -> None:
-    """Sync fetched Jira issues to PostgreSQL."""
-    # Pull XCom key
-    records = ti.xcom_pull(key="jira_issues", task_ids="fetch_jira_issues")
-    if not records:
-        logger.info("No jira issues records to sync to PostgreSQL.")
-        return
-    
-    # Load fields from fields.yml
-    fields_config = load_fields_yml_files("jira", "fields.yml")
-    jira_issues_fields = fields_config.get("jira_issues_fields", [])
-    
-    # Exclude sync_time from field_names since it's added by append_sync_time
-    field_names = [field["name"] for field in jira_issues_fields if field["name"] != "sync_time"]
-    
-    # Convert records to tuples matching the table structure (excluding sync_time)
-    records_tuples = [
-        tuple(record.get(field, None) for field in field_names)
-        for record in records
-    ]
-    
-    # Append sync_time timestamp to each record
-    records_with_sync_time = append_sync_time(records_tuples)
-    
-    pg_hook = get_postgres_reporting_service_db_hook()
-    schema = TARGET_CONFIG['postgres_schema']
-    table = TARGET_CONFIG['postgres_table']
-    
-    upsert_query = load_sql_files("jira", "upsert-jira-issues.sql").format(schema=schema, table=table)
-    
-    try:
-        with pg_hook.get_conn() as conn:
-            with conn.cursor() as cur:
-                execute_values(cur, upsert_query, records_with_sync_time)
-            conn.commit()
-        logger.info(f"Synced {len(records_with_sync_time)} records to {schema}.{table}")
-    except Exception as e:
-        logger.error(f"Failed to sync jira issues to {schema}.{table}: {e}")
-        raise AirflowException(f"Sync failed: {e}")
-
-with DAG(
-    dag_id="sync-jira-issues-to-postgres-reporting-service",
-    default_args=default_args,
+@dag(
+    dag_id="sync_jira_issues_to_postgres_reporting_service",
+    default_args=DEFAULT_ARGS,
     start_date=days_ago(1),
     schedule=None,
     catchup=False,
-) as dag:
+)
+def sync_jira_issues_to_postgres_reporting_service():
+    """
+    A DAG that syncs Jira issues to PostgreSQL using TaskFlow API.
+    Uses JiraApiHook to fetch data and upserts into PostgreSQL.
+    Tracks updated timestamp for incremental refreshes using Airflow Variables.
+    Uses add_sync_time for consistent sync time tracking.
+    Supports advanced column mappings (e.g., createdAt → created_at).
+    """
+    
+    @task 
+    def validate_schema():
+        logger.info("Validating schema compatibility")
+        config = SchemaLoader.get_combined_schema(
+            source_type="jira",
+            source_subpath="",
+            target_type="postgres",
+            table_name="jira_issues",
+            source_table_name="issues",
+            target_subpath="reporting_service"
+        )
+        # Inject environment-specific settings
+        config["target"]["schema_name"] = TARGET_SCHEMA_NAME
+        config["target"]["database_type"] = DATABASE_TYPE
+        logger.info("Schema validation successful")
+        return config
+    
+    @task
+    def test_connections():
+        logger.info("Testing connections")
+        
+        pg_hook = PostgresHook(conn_id=CONNECTION_IDS['postgres_reporting_service'], log_level='INFO', connect_timeout=10)
+        pg_success, pg_message = pg_hook.test_connection()
+        if not pg_success:
+            raise Exception(f"PostgreSQL connection failed: {pg_message}")
+        
+        try:
+            jira_url = Variable.get("jira_url")
+            jira_email = Variable.get("jira_email")
+            jira_api_token = Variable.get("jira_api_token")
+            jira_project_keys = Variable.get("jira_project_keys")
+        except KeyError as e:
+            missing_var = str(e).strip("'")
+            logger.error(f"Missing Airflow Variable: {missing_var}")
+            raise KeyError(f"Airflow Variable '{missing_var}' is not set")
+        
+        if not jira_project_keys:
+            logger.error("jira_project_keys cannot be empty")
+            raise ValueError("Airflow Variable 'jira_project_keys' is empty")
+        
+        project_keys = [key.strip() for key in jira_project_keys.split(",")]
+        
+        jira_hook = JiraApiHook(
+            url=jira_url,
+            email=jira_email,
+            api_token=jira_api_token,
+            project_keys=project_keys
+        )
+        jira_success, jira_message = jira_hook.test_connection()
+        if not jira_success:
+            raise Exception(f"Jira API connection failed: {jira_message}")
+        
+        logger.info("All connections successful")
+        return {"postgres": pg_message, "jira": jira_message}
+    
+    @task
+    def fetch_jira_issues(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+        logger.info("Fetching data from Jira API")
+        mappings = config["mappings"]
+        
+        try:
+            jira_url = Variable.get("jira_url")
+            jira_email = Variable.get("jira_email")
+            jira_api_token = Variable.get("jira_api_token")
+            jira_project_keys = Variable.get("jira_project_keys")
+        except KeyError as e:
+            missing_var = str(e).strip("'")
+            logger.error(f"Missing Airflow Variable: {missing_var}")
+            raise KeyError(f"Airflow Variable '{missing_var}' is not set")
+        
+        if not jira_project_keys:
+            logger.error("jira_project_keys cannot be empty")
+            raise ValueError("Airflow Variable 'jira_project_keys' is empty")
+        
+        project_keys = [key.strip() for key in jira_project_keys.split(",")]
+        
+        jira_hook = JiraApiHook(
+            url=jira_url,
+            email=jira_email,
+            api_token=jira_api_token,
+            project_keys=project_keys
+        )
+        
+        jira_fields = []
+        for mapping in mappings:
+            if mapping.get("generated", False):
+                continue
+            source_path = mapping.get("source_path")
+            if source_path and source_path.startswith("fields."):
+                api_field = source_path.split(".", 1)[1].split(".", 1)[0]
+                jira_fields.append(api_field)
+        jira_fields = list(set(jira_fields))
+        logger.info(f"Requesting Jira fields: {jira_fields}")
+        
+        last_sync_str = Variable.get("jira_last_sync_timestamp", default_var=None)
+        
+        issues = jira_hook.fetch_issues(fields=jira_fields, last_sync_timestamp=last_sync_str)
+        
+        all_records = []
+        for issue in issues:
+            record = {}
+            for mapping in mappings:
+                if mapping.get("generated", False):
+                    continue
+                field_name = mapping["target"]
+                source_path = mapping.get("source_path")
+                
+                try:
+                    value = issue
+                    for key in source_path.split("."):
+                        value = value.get(key, None) if isinstance(value, dict) else None
+                        if value is None:
+                            break
+                    
+                    expected_type = mapping["source_type"]
+                    if expected_type == "string" and not isinstance(value, (str, type(None))):
+                        logger.warning(f"Field {field_name} expected string, got {type(value).__name__}. Setting to None.")
+                        value = None
+                    elif expected_type == "timestamp" and not isinstance(value, (str, type(None))):
+                        logger.warning(f"Field {field_name} expected timestamp, got {type(value).__name__}. Setting to None.")
+                        value = None
+                    elif expected_type == "boolean" and not isinstance(value, (bool, type(None))):
+                        logger.warning(f"Field {field_name} expected boolean, got {type(value).__name__}. Setting to False.")
+                        value = False
+                    
+                    record[field_name] = value
+                
+                except Exception as e:
+                    logger.warning(f"Failed to extract {source_path} for issue {issue.get('key')}: {str(e)}")
+                    record[field_name] = None
+            
+            all_records.append(record)
+        
+        if all_records:
+            current_sync = datetime.utcnow().isoformat() + "Z"
+            Variable.set("jira_last_sync_timestamp", current_sync)
+            logger.info(f"Updated jira_last_sync_timestamp to {current_sync}")
+        
+        logger.info(f"Processed {len(all_records)} total records from Jira")
+        return all_records
+    
+    @task
+    def create_postgres_table(config: Dict[str, Any]):
+        logger.info(f"Creating or updating table {config['target']['schema_name']}.jira_issues in PostgreSQL")
+        hook = PostgresHook(conn_id=CONNECTION_IDS['postgres_reporting_service'], log_level='INFO', connect_timeout=10)
+        mappings = config["mappings"]
+        
+        table_name = "jira_issues"
+        schema_name = config["target"]["schema_name"]
+        columns = [
+            f"{m['target']} {m['target_type']}{' PRIMARY KEY' if m['target'] == 'issue_key' else ''}"
+            for m in mappings
+        ]
+        
+        # Check existing table schema
+        try:
+            existing_columns = hook.get_table_columns(schema_name, table_name)
+            expected_columns = {m["target"] for m in mappings}
+            existing_column_names = {c["column_name"] for c in existing_columns}
+            
+            # Add missing columns
+            for m in mappings:
+                if m["target"] not in existing_column_names:
+                    logger.info(f"Adding column {m['target']} to {schema_name}.{table_name}")
+                    column_def = f"{m['target']} {m['target_type']}"
+                    if m["target"] == "issue_key":
+                        column_def += " PRIMARY KEY"
+                    alter_query = f"ALTER TABLE {schema_name}.{table_name} ADD COLUMN {column_def}"
+                    hook.execute_query(alter_query)
+                    logger.info(f"Added column {m['target']}")
+        except Exception as e:
+            logger.warning(f"Failed to check or alter table schema: {e}. Proceeding with table creation.")
+        
+        # Create table if it doesn't exist
+        created = hook.create_table_if_not_exists(
+            table_name=table_name,
+            columns=columns,
+            schema=schema_name
+        )
+        logger.info(f"Table {schema_name}.{table_name} creation status: {'Created' if created else 'Already exists or updated'}")
+        return {"table_name": table_name, "schema_name": schema_name}
+    
+    @task
+    def upsert_to_postgres(table_info: Dict[str, str], records: List[Dict[str, Any]], config: Dict[str, Any]):
+        logger.info(f"Upserting data into PostgreSQL table {table_info['schema_name']}.{table_info['table_name']}")
+        hook = PostgresHook(conn_id=CONNECTION_IDS['postgres_reporting_service'], log_level='INFO', connect_timeout=10)
+        mappings = config["mappings"]
+        
+        if not records:
+            logger.warning("No records to upsert")
+            return 0
+        
+        # Add sync_time using utility
+        add_sync_time(records, config["target"])
+        
+        columns = [m["target"] for m in mappings]
+        upsert_conditions = config["target"].get("upsert_conditions", ["issue_key"])
+        
+        # Prepare values for upsert
+        values = []
+        for record in records:
+            row = []
+            for col in columns:
+                value = record.get(col)
+                # Ensure timestamp format for Postgres
+                if col in ["created", "resolutiondate", "updated", "sync_time"] and value:
+                    try:
+                        # Convert ISO 8601 to Postgres-compatible format
+                        value = datetime.fromisoformat(value.replace("Z", "+00:00")).isoformat()
+                    except ValueError:
+                        logger.warning(f"Invalid timestamp format for {col}: {value}. Setting to None.")
+                        value = None
+                row.append(value)
+            values.append(tuple(row))
+        
+        update_cols = [col for col in columns if col not in upsert_conditions]
+        insert_query = f"""
+            INSERT INTO {table_info['schema_name']}.{table_info['table_name']} ({', '.join(columns)})
+            VALUES %s
+            ON CONFLICT ({', '.join(upsert_conditions)})
+            DO UPDATE SET
+                {', '.join(f"{col} = EXCLUDED.{col}" for col in update_cols)}
+        """
+        
+        batch_size = 100
+        total_records = len(values)
+        rows_affected = 0
+        
+        try:
+            with hook.get_conn() as conn:
+                with conn.cursor() as cur:
+                    for i in range(0, total_records, batch_size):
+                        batch = values[i:i + batch_size]
+                        execute_values(cur, insert_query, batch)
+                        rows_affected += cur.rowcount
+                        logger.info(f"Upserted batch {i // batch_size + 1} with {len(batch)} records")
+                conn.commit()
+            logger.info(f"Upserted {rows_affected} rows into {table_info['schema_name']}.{table_info['table_name']}")
+            return rows_affected
+        except Exception as e:
+            logger.error(f"Failed to upsert records: {str(e)}")
+            raise
+    
+    config = validate_schema()
+    conn_test = test_connections()
+    jira_data = fetch_jira_issues(config)
+    table_info = create_postgres_table(config)
+    upserted = upsert_to_postgres(table_info, jira_data, config)
+    
+    config >> conn_test
+    conn_test >> table_info
+    config >> jira_data
+    table_info >> upserted
 
-    # Task to verify connections
-    verify_conn_task = PythonOperator(
-        task_id="verify_connections",
-        python_callable=verify_connections,
-    )
-
-    # Task to create table
-    check_and_create_db_table_if_not_exists_task = PythonOperator(
-        task_id="check_and_create_db_table_if_not_exists",
-        python_callable=check_and_create_db_table_if_not_exists,
-    )
-
-    # Task to fetch Jira issues
-    fetch_jira_issues_task = PythonOperator(
-        task_id="fetch_jira_issues",
-        python_callable=fetch_jira_issues,
-    )
-
-    # Task to sync to Postgres
-    sync_jira_issues_to_postgres_task = PythonOperator(
-        task_id="sync_jira_issues_to_postgres",
-        python_callable=sync_jira_issues_to_postgres,
-    )
-
-    # Set task dependencies
-    verify_conn_task >> check_and_create_db_table_if_not_exists_task >> fetch_jira_issues_task >> sync_jira_issues_to_postgres_task
+dag = sync_jira_issues_to_postgres_reporting_service()
