@@ -16,6 +16,8 @@ class PostgresHook:
     - Verify database connections
     - Check if tables exist
     - Create tables if they don't exist
+    - Retrieve table schema
+    - Add columns to existing tables
     """
     
     def __init__(
@@ -60,10 +62,11 @@ class PostgresHook:
             'password': conn.password,
             'port': str(conn.port or 5432)
         }
+    
     @contextmanager
     def get_conn(self) -> Iterator[connection]:
         """
-        Context manager for PostgreSQL connections.
+        Context manager for PostgreSQL cursors.
         
         Yields:
             psycopg2 connection object
@@ -108,6 +111,7 @@ class PostgresHook:
                 raise
             finally:
                 cur.close()
+    
     def test_connection(self) -> Tuple[bool, str]:
         """
         Test the PostgreSQL connection.
@@ -182,7 +186,7 @@ class PostgresHook:
                 """).format(
                     schema=sql.Identifier(schema),
                     table=sql.Identifier(table_name),
-                    columns=sql.SQL(', '.join(columns))
+                    columns=sql.SQL(', ').join(map(sql.SQL, columns))
                 )
                 cur.execute(create_table_query)
                 self.logger.info(f"Table {schema}.{table_name} created successfully")
@@ -190,27 +194,92 @@ class PostgresHook:
         except Exception as e:
             self.logger.error(f"Error creating table: {e}")
             raise
+    
+    def get_table_columns(self, schema: str, table_name: str) -> List[Dict[str, str]]:
+        """
+        Retrieve the columns of a table from the database.
+        
+        Args:
+            schema: Database schema (e.g., 'public', 'jira')
+            table_name: Name of the table
+            
+        Returns:
+            List of dictionaries with column_name and data_type
+        """
+        try:
+            query = """
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_schema = %s AND table_name = %s
+            """
+            with self.get_cursor() as cur:
+                cur.execute(query, (schema, table_name))
+                results = cur.fetchall()
+                return [{"column_name": row[0], "data_type": row[1]} for row in results]
+        except Exception as e:
+            self.logger.error(f"Error retrieving table columns: {e}")
+            raise
+    
+    def add_column(
+        self,
+        schema: str,
+        table_name: str,
+        column_name: str,
+        column_type: str,
+        is_primary_key: bool = False
+    ) -> None:
+        """
+        Add a column to an existing table.
+        
+        Args:
+            schema: Database schema
+            table_name: Name of the table
+            column_name: Name of the column to add
+            column_type: SQL type of the column (e.g., 'VARCHAR(50)', 'TIMESTAMP')
+            is_primary_key: If True, adds PRIMARY KEY constraint
+        """
+        try:
+            column_def = f"{column_name} {column_type}"
+            if is_primary_key:
+                column_def += " PRIMARY KEY"
+            alter_query = sql.SQL("""
+                ALTER TABLE {schema}.{table}
+                ADD COLUMN {column_def}
+            """).format(
+                schema=sql.Identifier(schema),
+                table=sql.Identifier(table_name),
+                column_def=sql.SQL(column_def)
+            )
+            with self.get_cursor() as cur:
+                cur.execute(alter_query)
+                self.logger.info(f"Added column {column_name} to {schema}.{table_name}")
+        except Exception as e:
+            self.logger.error(f"Error adding column {column_name}: {e}")
+            raise
+    
     def execute_query(
         self, 
         query: str, 
-        params: Optional[Union[tuple, dict]] = None
-    ) -> List[Any]:
+        params: Optional[Union[tuple, dict]] = None,
+        fetch: bool = False
+    ) -> Union[List[Any], int]:
         """
-        Execute a query and return all results.
+        Execute a query and optionally return results.
         
         Args:
             query: SQL query to execute
             params: Parameters to pass to the query
+            fetch: If True, return query results; otherwise, return affected row count
             
         Returns:
-            List of query results
+            List of query results (if fetch=True) or number of affected rows
         """
         try:
             with self.get_cursor() as cur:
                 cur.execute(query, params)
-                if cur.description:  # Query returns results
+                if fetch and cur.description:
                     return cur.fetchall()
-                return cur.rowcount  # Query affects rows (e.g., UPDATE, DELETE)
+                return cur.rowcount
         except Exception as e:
             self.logger.error(f"Error executing query: {e}")
             raise

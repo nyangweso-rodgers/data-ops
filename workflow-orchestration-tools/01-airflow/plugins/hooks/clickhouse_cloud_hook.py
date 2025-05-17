@@ -22,13 +22,14 @@ class ClickHouseCloudHook(BaseHook):
         self,
         clickhouse_conn_id: str = default_conn_name,
         log_level: int = LOG_LEVELS['INFO'],
+        connect_timeout: Optional[int] = None,
         *args,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.clickhouse_conn_id = clickhouse_conn_id
+        self.connect_timeout = connect_timeout
         self.client = None
-        
         # Set up logging with the specified level
         self.log.setLevel(log_level)
         
@@ -38,7 +39,7 @@ class ClickHouseCloudHook(BaseHook):
         
         :return: ClickHouse client instance
         """
-        if self.client is None:
+        if self.client is not None:
             return self.client
         
         conn = self.get_connection(self.clickhouse_conn_id)
@@ -61,7 +62,33 @@ class ClickHouseCloudHook(BaseHook):
                 conn_config[key] = extras[key]
                 
         self.client = clickhouse_connect.get_client(**conn_config)
+        self.log.info(f"Connected to ClickHouse: {conn_config['host']}:{conn_config['port']}")
         return self.client
+    
+    def test_connection(self) -> tuple[bool, str]:
+        """
+        Tests the connection to ClickHouse by executing a simple query.
+        
+        :return: Tuple of (success: bool, message: str)
+        """
+        try:
+            client = self.get_conn()
+            client.query("SELECT 1")
+            return True, "Connection successful"
+        except Exception as e:
+            self.log.error(f"Connection test failed: {str(e)}")
+            return False, f"Connection failed: {str(e)}"
+        
+    def database_exists(self, database: str) -> bool:
+        """
+        Check if a database exists in ClickHouse.
+        
+        :param database: The name of the database to check
+        :return: True if the database exists, False otherwise
+        """
+        client = self.get_conn()
+        result = client.query("SELECT name FROM system.databases WHERE name = %s", (database,))
+        return len(result.result_rows) > 0
     
     def table_exists(self, table_name: str, database: Optional[str] = None) -> bool:
         """
@@ -73,25 +100,26 @@ class ClickHouseCloudHook(BaseHook):
         """
         client = self.get_conn()
         
-        # Construct the query to check if table exists
+        # If database is not provided, use the current database
+        if not database:
+            current_db_result = client.query("SELECT currentDatabase()").first_row
+            database = current_db_result[0]
+            
         query = """
             SELECT name 
             FROM system.tables 
             WHERE database = {database:String} AND name = {table:String}
         """
         
-        # If database is not provided, use the current database
-        if not database:
-            # Get the current database
-            current_db_result = client.query("SELECT currentDatabase()").first_row
-            database = current_db_result[0]
-            
-        result = client.query(query, parameters={
-            'database': database,
-            'table': table_name
-        })
-        
-        return len(result.result_rows) > 0
+        try:
+            result = client.query(query, parameters={
+                'database': database,
+                'table': table_name
+            })
+            return len(result.result_rows) > 0
+        except Exception as e:
+            self.log.error(f"Failed to check if table exists: {str(e)}")
+            raise
     
     def create_table(
         self, 
@@ -104,49 +132,95 @@ class ClickHouseCloudHook(BaseHook):
         extra_clauses: Optional[str] = None
     ) -> None:
         """
-        Create a table if it doesn't exist.
+        Create a table in ClickHouse if it doesn't exist.
         
         :param table_name: Name of the table to create
-        :param schema: List of dictionaries with 'name' and 'type' keys
+        :param schema: List of dictionaries with 'name' and 'type' keys (e.g., [{'name': 'id', 'type': 'UInt32'}])
         :param database: Database name (optional if already specified in connection)
         :param engine: ClickHouse table engine (default: MergeTree())
-        :param order_by: ORDER BY clause (required for MergeTree engine)
-        :param partition_by: PARTITION BY clause (optional)
-        :param extra_clauses: Any additional clauses for table creation
+        :param order_by: ORDER BY clause (required for MergeTree engines)
+        :param partition_by: PARTITION BY clause (e.g., 'toYYYYMM(created_at)' for partitioning by created_at)
+        :param extra_clauses: Any additional clauses for table creation (e.g., 'SETTINGS ...')
         """
-        if self.table_exists(table_name, database):
-            self.log.info(f"Table '{table_name}' already exists")
-            return
-            
         client = self.get_conn()
         
-        # Prepare the database part
-        db_prefix = f"{database}." if database else ""
+        if database:
+            if not self.database_exists(database):
+                client.command(f"CREATE DATABASE IF NOT EXISTS {database}")
+        else:
+            current_db_result = client.query("SELECT currentDatabase()").first_row
+            database = current_db_result[0]
+
+        if self.table_exists(table_name, database):
+            self.log.info(f"Table '{database}.{table_name}' already exists")
+            return
+            
+        # Validate schema contains partition_by field if specified
+        if partition_by:
+            field_names = [col['name'] for col in schema]
+            if partition_by not in field_names and not any(part in partition_by for part in field_names):
+                raise ValueError(f"partition_by '{partition_by}' must reference a field in the schema: {field_names}")
         
-        # Build column definitions
-        columns = []
-        for col in schema:
-            columns.append(f"{col['name']} {col['type']}")
+        # Validate engine requirements
+        if "MergeTree" in engine and not order_by:
+            raise ValueError("MergeTree engine requires an ORDER BY clause")
         
+        columns = [f"{col['name']} {col['type']}" for col in schema]
         columns_str = ", ".join(columns)
         
-        # Build the query
+        db_prefix = f"{database}." if database else ""
         query = f"CREATE TABLE {db_prefix}{table_name} ({columns_str}) ENGINE = {engine}"
         
-        # Add ORDER BY clause (required for MergeTree)
         if "MergeTree" in engine and order_by:
             query += f" ORDER BY ({order_by})"
         
-        # Add optional PARTITION BY clause
         if partition_by:
             query += f" PARTITION BY {partition_by}"
             
-        # Add any extra clauses
         if extra_clauses:
             query += f" {extra_clauses}"
             
-        client.command(query)
-        self.log.info(f"Created table '{table_name}'")
+        try:
+            client.command(query)
+            self.log.info(f"Created table '{database}.{table_name}' with engine {engine}")
+        except Exception as e:
+            self.log.error(f"Failed to create table '{database}.{table_name}': {str(e)}")
+            raise
+    
+    def insert_rows(
+        self,
+        table_name: str,
+        rows: List[Dict[str, Any]],
+        database: Optional[str] = None
+    ) -> int:
+        """
+        Insert multiple rows into a ClickHouse table efficiently.
+        
+        :param table_name: Name of the table
+        :param rows: List of dictionaries with column:value pairs
+        :param database: Database name (optional)
+        :return: Number of rows inserted
+        """
+        if not rows:
+            return 0
+
+        client = self.get_conn()
+        db_prefix = f"{database}." if database else ""
+        
+        columns = list(rows[0].keys())
+        data = [[row[col] for col in columns] for row in rows]
+        
+        try:
+            client.insert(
+                table=f"{db_prefix}{table_name}",
+                data=data,
+                column_names=columns
+            )
+            self.log.info(f"Inserted {len(rows)} rows into {db_prefix}{table_name}")
+            return len(rows)
+        except Exception as e:
+            self.log.error(f"Failed to insert rows into {db_prefix}{table_name}: {str(e)}")
+            raise
         
     def run_query(self, sql: str, parameters: Optional[Dict[str, Any]] = None) -> List[tuple]:
         """
@@ -157,11 +231,19 @@ class ClickHouseCloudHook(BaseHook):
         :return: Query results as list of tuples
         """
         client = self.get_conn()
-        result = client.query(sql, parameters=parameters)
-        return result.result_rows
+        try:
+            result = client.query(sql, parameters=parameters)
+            self.log.info(f"Query executed successfully: {sql}")
+            return result.result_rows
+        except Exception as e:
+            self.log.error(f"Failed to execute query: {sql}. Error: {str(e)}")
+            raise
     
     def close(self) -> None:
-        """Close the connection if it exists."""
+        """
+        Close the connection to ClickHouse if it exists.
+        """
         if self.client is not None:
             self.client.close()
             self.client = None
+            self.log.info("ClickHouse connection closed")
