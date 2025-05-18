@@ -1,0 +1,48 @@
+{
+  "table": "issues",
+  "columns": {
+    "id": { "type": "string", "source": "id" },
+    "issue_key": { "type": "string", "source": "key", "primary_key": true },
+    "summary": { "type": "string", "source": "fields.summary" },
+    "issuetype_id": { "type": "string", "source": "fields.issuetype.id" },
+    "issuetype_name": { "type": "string", "source": "fields.issuetype.name" },
+    "issuetype_subtask": {
+      "type": "boolean",
+      "source": "fields.issuetype.subtask"
+    },
+    "created": { "type": "timestamp", "source": "fields.created" },
+    "resolutiondate": {
+      "type": "timestamp",
+      "source": "fields.resolutiondate"
+    },
+    "project_id": { "type": "string", "source": "fields.project.id" },
+    "project_key": { "type": "string", "source": "fields.project.key" },
+    "project_name": { "type": "string", "source": "fields.project.name" },
+    "project_type_key": {
+      "type": "string",
+      "source": "fields.project.projectTypeKey"
+    },
+    "assignee_email": {
+      "type": "string",
+      "source": "fields.assignee.emailAddress"
+    },
+    "assignee_name": {
+      "type": "string",
+      "source": "fields.assignee.displayName"
+    },
+    "priority_name": { "type": "string", "source": "fields.priority.name" },
+    "priority_id": { "type": "string", "source": "fields.priority.id" },
+    "updated": {
+      "type": "timestamp",
+      "source": "fields.updated",
+      "incremental": true
+    },
+    "status_id": { "type": "string", "source": "fields.status.id" },
+    "status_name": { "type": "string", "source": "fields.status.name" },
+    "status_category_color": {
+      "type": "string",
+      "source": "fields.status.statusCategory.colorName"
+    }
+  },
+  "incremental_column": "updated"
+}

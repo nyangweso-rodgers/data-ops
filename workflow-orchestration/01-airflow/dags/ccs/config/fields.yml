@@ -1,0 +1,127 @@
+call_details_list:
+  - name: call_key
+    source: call_key
+    type: String
+  - name: call_id
+    source: call_id
+    type: String
+  - name: is_answered
+    source: is_answered
+    type: Nullable(UInt8)
+  - name: is_assigned
+    source: is_assigned
+    type: Nullable(UInt8)
+  - name: is_abandoned
+    source: is_abandoned
+    type: Nullable(UInt8)
+  - name: queue_date
+    source: queue_date
+    type: Nullable(DateTime)
+  - name: call_date
+    source: call_date
+    type: Nullable(DateTime)
+  - name: talk_date
+    source: talk_date
+    type: Nullable(DateTime)
+  - name: hangup_date
+    source: hangup_date
+    type: Nullable(DateTime)
+  - name: wait_duration
+    source: wait_duration
+    type: Nullable(Int32)
+  - name: duration
+    source: duration
+    type: Nullable(Int32)
+  - name: is_short_call
+    source: is_short_call
+    type: Nullable(UInt8)
+  - name: caller_id
+    source: caller_id
+    type: Nullable(String)
+  - name: called_number
+    source: called_number
+    type: Nullable(String)
+  - name: queue_name
+    source: queue_name
+    type: Nullable(String)
+  - name: is_inbound
+    source: is_inbound
+    type: Nullable(UInt8)
+  - name: agent_name
+    source: agent_name
+    type: Nullable(String)
+  - name: agent_email
+    source: agent_email
+    type: Nullable(String)
+  - name: hold_duration
+    source: hold_duration
+    type: Nullable(Int32)
+  - name: has_voicemail
+    source: has_voicemail
+    type: Nullable(UInt8)
+  - name: unique_id
+    source: unique_id
+    type: Nullable(String)
+  - name: local_release
+    source: local_release
+    type: Nullable(UInt8)
+  - name: answered_by
+    source: answered_by
+    type: Nullable(String)
+  - name: status
+    source: status
+    type: Nullable(String)
+  - name: wrapup_code
+    source: wrapup_code
+    type: Nullable(String)
+  - name: voicemail_duration
+    source: voicemail_duration
+    type: Nullable(Int32)
+  - name: disposition
+    source: disposition
+    type: Nullable(String)
+  - name: has_csat
+    source: has_csat
+    type: Nullable(UInt8)
+  - name: csat_score
+    source: csat_score
+    type: Nullable(Int32)
+  - name: csat_completed
+    source: csat_completed
+    type: Nullable(UInt8)
+  - name: csat_answers
+    source: csat_answers
+    type: Nullable(String)
+  - name: csat
+    source: csat
+    type: Nullable(UInt8)
+  - name: black_list
+    source: black_list
+    type: Nullable(UInt8)
+  - name: source_tenant
+    source: source_tenant
+    type: Nullable(String)
+  - name: hangup_cause
+    source: hangup_cause
+    type: Nullable(String)
+  - name: transferred
+    source: transferred
+    type: Nullable(UInt8)
+  - name: attendant_overflow
+    source: attendant_overflow
+    type: Nullable(UInt8)
+  - name: campaign_name
+    source: campaign_name
+    type: Nullable(String)
+  - name: channel
+    source: channel
+    type: Nullable(String)
+  - name: is_click2call
+    source: is_click2call
+    type: Nullable(UInt8)
+  - name: is_ivr_click2call
+    source: is_ivr_click2call
+    type: Nullable(UInt8)
+  - name: sync_time
+    source: constant.utcnow
+    type: DateTime

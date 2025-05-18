@@ -1,0 +1,16 @@
+version: 2
+models:
+  - name: stg_premises
+    description: Staging view for premises data
+  - name: stg_countries
+    description: Staging view for countries data
+  - name: stg_premise_details
+    description: Staging view for premise details
+  - name: stg_premise_types
+    description: Staging view for premise types
+  - name: stg_regions
+    description: Staging view for regions
+  - name: stg_states
+    description: Staging view for states
+  - name: stg_substates
+    description: Staging view for substates

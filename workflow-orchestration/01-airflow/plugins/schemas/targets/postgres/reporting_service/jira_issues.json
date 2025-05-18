@@ -1,0 +1,36 @@
+{
+  "source": "jira/issues",
+  "table": "jira_issues",
+  "column_mappings": {
+    "id": { "target": "id", "type": "VARCHAR(50)" },
+    "issue_key": { "target": "issue_key", "type": "VARCHAR(50)" },
+    "summary": { "target": "summary", "type": "TEXT" },
+    "issuetype_id": { "target": "issuetype_id", "type": "VARCHAR(50)" },
+    "issuetype_name": { "target": "issuetype_name", "type": "VARCHAR(50)" },
+    "issuetype_subtask": { "target": "issuetype_subtask", "type": "BOOLEAN" },
+    "created": { "target": "created", "type": "TIMESTAMP" },
+    "resolutiondate": { "target": "resolutiondate", "type": "TIMESTAMP" },
+    "project_id": { "target": "project_id", "type": "VARCHAR(50)" },
+    "project_key": { "target": "project_key", "type": "VARCHAR(50)" },
+    "project_name": { "target": "project_name", "type": "VARCHAR(100)" },
+    "project_type_key": { "target": "project_type_key", "type": "VARCHAR(50)" },
+    "assignee_email": { "target": "assignee_email", "type": "VARCHAR(100)" },
+    "assignee_name": { "target": "assignee_name", "type": "VARCHAR(100)" },
+    "priority_name": { "target": "priority_name", "type": "VARCHAR(50)" },
+    "priority_id": { "target": "priority_id", "type": "VARCHAR(50)" },
+    "updated": { "target": "updated", "type": "TIMESTAMP" },
+    "status_id": { "target": "status_id", "type": "VARCHAR(50)" },
+    "status_name": { "target": "status_name", "type": "VARCHAR(50)" },
+    "status_category_color": {
+      "target": "status_category_color",
+      "type": "VARCHAR(50)"
+    },
+    "sync_time": {
+      "target": "sync_time",
+      "type": "TIMESTAMP",
+      "generated": true
+    }
+  },
+  "primary_key": "issue_key",
+  "upsert_conditions": ["issue_key"]
+}

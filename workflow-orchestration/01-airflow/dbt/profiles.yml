@@ -1,0 +1,12 @@
+premises_mashup:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_REPORTING_SERVICE_DB_HOST') }}"
+      port: 5432
+      user: "{{ env_var('POSTGRES_REPORTING_SERVICE_DB_DATA_PIPELINE_USER') }}"
+      password: "{{ env_var('POSTGRES_REPORTING_SERVICE_DB_PASSWORD') }}"
+      dbname: "{{ env_var('POSTGRES_REPORTING_SERVICE_DB') }}"
+      schema: dbt
+      threads: 4

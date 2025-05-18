@@ -1,0 +1,34 @@
+{
+  "name": "sf-leads-postgres-kafka-source-with-json",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+    "tasks.max": "1",
+
+    "connection.url": "jdbc:postgresql://<host>:5432/<database_name>",
+    "connection.user": "<user>",
+    "connection.password": "<password>",
+
+    "mode": "timestamp",
+    "timestamp.column.name": "lastmodifieddate",
+
+    "table.whitelist": "sf_leads",
+
+    "topic.prefix": "ep-stage.",
+    "topic.creation.default.replication.factor": "1",
+    "topic.creation.default.partitions": "1",
+
+    "poll.interval.ms": "5000",
+    "validate.non.null": "true",
+
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "schema.registry.url": "http://schema-registry:8081",
+
+    "transforms": "InsertKey, ExtractId",
+    "transforms.InsertKey.type": "org.apache.kafka.connect.transforms.ValueToKey",
+    "transforms.InsertKey.fields": "id",
+    "transforms.ExtractId.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.ExtractId.field": "id"
+  }
+}

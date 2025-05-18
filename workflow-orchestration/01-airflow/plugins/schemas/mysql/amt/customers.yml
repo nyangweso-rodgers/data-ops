@@ -1,0 +1,100 @@
+_meta:
+  version: "1.1" # Schema version (for breaking changes)
+  created: "2025-05-17" # ISO 8601 format (YYYY-MM-DD)
+  owner: "Rodgers Nyangweso"
+  description: "Customer data sync from MySQL to ClickHouse/Postgres"
+
+source:
+  columns:
+    id:
+      type: int
+      primary_key: true
+      nullable: false
+      active: true
+    name:
+      type: varchar(255)
+      nullable: true
+      active: true
+    phoneNumber:
+      type: varchar(20)
+      nullable: true
+      target: phone_number
+      active: true
+    createdBy:
+      type: int
+      nullable: true
+      target: created_by
+      active: true
+    updatedBy:
+      type: int
+      nullable: true
+      target: updated_by
+      active: true
+    createdAt:
+      type: datetime
+      nullable: true
+      target: created_at
+      active: true
+    updatedAt:
+      type: datetime
+      nullable: true
+      target: updated_at
+      incremental: true
+      active: true
+targets:
+  clickhouse:
+    columns:
+      id:
+        type: UInt32
+        nullable: false
+      name:
+        type: Nullable(String)
+        nullable: true
+      phone_number:
+        type: Nullable(String)
+        nullable: true
+      created_by:
+        type: Nullable(UInt32)
+        nullable: true
+      updated_by:
+        type: Nullable(UInt32)
+        nullable: true
+      created_at:
+        type: Nullable(DateTime)
+        nullable: true
+      updated_at:
+        type: DateTime
+        nullable: false
+      sync_time:
+        type: Nullable(DateTime)
+        nullable: true
+        auto_generated: true
+        description: "Timestamp when data was synced"
+  postgres:
+    columns:
+      id:
+        type: integer
+        nullable: false
+      name:
+        type: varchar(255)
+        nullable: true
+      phone_number:
+        type: varchar(20)
+        nullable: true
+      created_by:
+        type: integer
+        nullable: true
+      updated_by:
+        type: integer
+        nullable: true
+      created_at:
+        type: timestamp
+        nullable: true
+      updated_at:
+        type: timestamp
+        nullable: false
+      sync_time:
+        type: timestamp
+        nullable: true
+        auto_generated: true
+        description: "Timestamp when data was synced"

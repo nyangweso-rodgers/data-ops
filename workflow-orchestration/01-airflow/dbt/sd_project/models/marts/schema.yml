@@ -1,0 +1,10 @@
+version: 1
+
+models:
+  - name: premises_mashup
+    description: "Enriched mashup of premise data with geography and type details."
+    columns:
+      - name: customer_id
+        description: "Unique ID of the customer"
+      - name: region_name
+        description: "Region where the premise is located"

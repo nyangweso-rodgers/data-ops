@@ -1,0 +1,181 @@
+# Apache Airflow
+
+## Table Of Contents
+
+# Setup
+
+# Integrating dbt with Airflow
+
+- **dbt** allows you to define SQL models (e.g., tables, views) in `.sql` files, which it compiles and executes against databases like PostgreSQL. **Airflow** can trigger dbt commands (e.g., `dbt run`) using operators like `DbtRunOperator` from the `astronomer-cosmos` package or `BashOperator` for simpler setups. The `dbt/` folder will contain `dbt` project, including **models**, **configurations**, and **profiles**.
+
+# Creating DAGs Uisng Python
+
+- **Components of DAG File**:
+
+  1. **Imports** (**The Building Blocks**)
+
+     - `DAG` is the core class that defines a workflow.
+     - `PythonOperator`: Executes Python functions as tasks.
+     - `LoggingMixin`: For proper Airflow logging (better than `print()`).
+     - `PostgresHook`
+     - `days_ago`
+
+  2. **Default Arguments**
+
+     - Defines task-level defaults:
+       ```py
+        default_args = {
+          'owner': 'airflow',
+          'depends_on_past': False,
+          'email_on_failure': False,
+          'email_on_retry': False,
+          'retries': 1,
+       }
+       ```
+     - `owner`: Labels tasks as owned by `airflow`.
+     - `depends_on_past`: Tasks don’t wait for prior runs to succeed.
+     - `email_on_failure/retry`: No emails (requires SMTP setup anyway).
+     - `retries`: Tasks retry once if they fail.
+
+  3. **Task Functions** (**The Workers**)
+
+     - Example:
+       ```py
+        def print_greeting():
+        print("Hello, Airflow enthusiasts!")
+       ```
+     - Each function represents a discrete unit of work.
+
+  4. **DAG Definition** (**The Blueprint**)
+
+     - Example:
+       ```py
+        dag = DAG(
+          'dummy_dag', # Unique DAG ID
+          default_args={'start_date': days_ago(1)},
+          schedule_interval='*/5 * * * *',
+          catchup=False
+       )
+       ```
+
+  5. **Tasks** (**The Steps**)
+     - Example:
+       ```py
+        print_greeting_task = PythonOperator(
+        task_id='print_greeting',
+        python_callable=print_greeting,
+        dag=dag
+       )
+       ```
+
+- **Examples DAGs For this Project**:
+
+  1. `dummy_dag`
+  2. `fetch-quote-and-sync-to-postgres-db`
+
+     - **Purpose**: The **DAG** checks for a quotes table in the `users` database (via `postgres_default`), creates it if missing, fetches a random quote from `api.quotable.io`, and inserts it into the table.
+     - **Schedule**: Runs daily (@daily).
+     - **Tasks**: Two sequential tasks:
+       1. `check_and_create_table`: Ensures the `quotes` table exists.
+       2. `fetch_and_insert_quote`: Fetches and stores a quote.
+
+## 3. Fetch and Sync Data From Postgres to ClickHouse
+
+- **Dependecies**:
+  1. `clickhouse_connect`
+     - Install to Airflow Comtainer by:
+       ```sh
+        docker exec -it apache-airflow-webserver pip install clickhouse-connect
+       ```
+     - Or, Update `Dockerfile`
+       ```Dockerfile
+        RUN pip install clickhouse-connect
+       ```
+- Create a ClickHouse Connection in Apache Airflow UI
+  - Access the Airflow Web UI on `http://localhost:8080`
+  - Navigate to **Admin** > **Connections** and Create a New Connection by clicking the `+` button
+  - Fill the connection details:
+    - **Connection Id**: `clickhouse_default`
+    - **Connection Type**: `HTTP` (Port `8123` is a ClickHouse’s HTTP interface. Airflow’s HTTP connection type aligns with this.Note that if we use the native TCP protocol, port `9000`, you could use `Generic` or a custom type)
+    - **Host**: `clickhouse-server`
+    - **Schema**: `default`
+    - **Login**: `<clickhouse-username>`
+    - **Password**: `<clickhouse-password>`
+    - **Port**: `8123`
+    - **Extra**: Leave blank (or optionally add `{"secure": false}`)
+    - Save the Connection
+
+# Example Custom Hooks
+
+## 1. `postgres-hook.py`
+
+- Functionality:
+
+  1. **Connection Management**: Uses `psycopg2` with Airflow’s connection store (`_get_conn_params`, `get_conn`, `get_cursor`).
+  2. **Table Management**: Supports `table_exists` and `create_table_if_not_exists`.
+  3. **Query Execution**: Handles queries (`execute_query`) and bulk inserts (`insert_rows`).
+  4. **Logging**: Robust logging with configurable levels via `LOG_LEVELS`.
+
+- Available **Methods**:
+
+  1. `test_connection() -> Tuple[bool, str]`:
+
+     - **Use Case**: Verify that the database connection is working before performing operations.
+     - **When to Use**: At the start of a DAG or task to ensure connectivity, especially for critical workflows.
+     - **Example**: Check if the database is reachable before proceeding with data processing.
+
+  2. `table_exists(table_name: str, schema: str = "public") -> bool`:
+
+     - **Use Case**: Check if a table exists in the database.
+     - **When to Use**: Before creating a table or inserting data to avoid errors or redundant operations.
+     - **Example**: Ensure a target table exists before loading data.
+
+  3. `create_table_if_not_exists(table_name: str, columns: List[str], schema: str = "public") -> bool`:
+
+     - **Use Case**: Create a table with specified columns if it doesn’t already exist.
+     - **When to Use**: To set up a table for data storage in an ETL pipeline.
+     - **Example**: Create a table for storing user data if it’s not already present.
+
+  4. `execute_query(query: str, params: Optional[Union[tuple, dict]] = None) -> Union[List[Any], int]`:
+
+     - **Use Case**: Run arbitrary SQL queries, such as SELECT, UPDATE, DELETE, or custom operations.
+     - **When to Use**: For fetching data, updating records, or performing operations not covered by other methods.
+     - **Example**: Retrieve data for processing or update records based on a condition.
+
+  5. `insert_rows(table_name: str, rows: List[Dict[str, Any]], schema: str = "public") -> int`:
+     - **Use Case**: Perform bulk insertion of multiple rows into a table.
+     - **When to Use**: To load large datasets efficiently into a table.
+     - **Example**: Insert a batch of user records from an external source.
+
+## 2. `mysql_hook.py`
+
+## 3. `clickhouse_cloud_hook.py`
+
+## 4. `jira_api_hook.py`
+
+## 5. `ccs_api_hook.py`
+
+# Architectures
+
+## 1. Sync Customers from MySQL Database to ClickHouse
+
+- The pipeline is schedule to do the following:
+
+  1. Schema definition (YAML configuration)
+  2. Source connectivity (MySQL hook)
+  3. Target connectivity (ClickHouse hook)
+  4. Schema validation and transformation (SchemaLoader)
+  5. Orchestration (Airflow DAG)
+
+- DAG Implementation:
+  1. Schema validation
+  2. Connection testing for both source and target
+  3. Source table validation
+  4. Data fetching with incremental logic
+  5. Target table creation/validation
+  6. Data insertion
+  7. Task Dependecies
+
+# Resources and Further Reading
+
+1.

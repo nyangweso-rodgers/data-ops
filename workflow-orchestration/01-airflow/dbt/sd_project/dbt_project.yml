@@ -1,0 +1,19 @@
+name: sd_project
+version: "1.0.0"
+
+profile: premises_mashup
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+macro-paths: ["macros"]
+
+models:
+  sd_project:
+    staging:
+      +schema: staging
+      +materialized: view
+      +database: "{{ env_var('POSTGRES_REPORTING_SERVICE_DB') }}"
+    marts:
+      +schema: marts
+      +materialized: table
+      +database: "{{ env_var('POSTGRES_REPORTING_SERVICE_DB') }}"

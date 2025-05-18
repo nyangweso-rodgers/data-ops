@@ -1,0 +1,13 @@
+version: 2
+sources:
+  - name: postgres-ep
+    database: "{{ env_var('POSTGRES_REPORTING_SERVICE_DB') }}"
+    schema: raw
+    tables:
+      - name: countries
+      - name: premise_details
+      - name: premise_types
+      - name: premises
+      - name: regions
+      - name: states
+      - name: substates
