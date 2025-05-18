@@ -22,11 +22,11 @@ services:
   # From docker-compose.warehouse.yml
   clickhouse-server:
     extends:
-      file: docker-compose.warehouse.yml
+      file: docker-compose-clickhouse.yml
       service: clickhouse-server
   clickhouse-tabix-web-client:
     extends:
-      file: docker-compose.warehouse.yml
+      file: docker-compose-clickhouse.yml
       service: clickhouse-tabix-web-client
 
   # From docker-compose.metadata.yml
@@ -46,20 +46,26 @@ services:
   # From docker-compose.grafana.yml
   grafana:
     extends:
-      file: docker-compose.grafana.yml
+      file: docker-compose-grafana.yml
       service: grafana
   prometheus:
     extends:
-      file: docker-compose.grafana.yml
+      file: docker-compose-grafana.yml
       service: prometheus
   loki:
     extends:
-      file: docker-compose.grafana.yml
+      file: docker-compose-grafana.yml
       service: loki
   postgres-db-exporter:
     extends:
-      file: docker-compose.grafana.yml
+      file: docker-compose-grafana.yml
       service: postgres-db-exporter
+
+  # From docker-compose-docusaurus.yml
+  docusaurus:
+    extends:
+      file: docker-compose-docusaurus.yml
+      service: docusaurus
     
 # Define Volumes
 volumes:

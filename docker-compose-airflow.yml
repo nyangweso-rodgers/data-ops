@@ -2,7 +2,7 @@ services:
   # airflow-webserver
   airflow-webserver:
     build:
-      context: ./workflow-orchestration-tools/01-airflow
+      context: ./workflow-orchestration/01-airflow
       dockerfile: Dockerfile
     image: airflow-webserver
     container_name: airflow-webserver
@@ -37,19 +37,19 @@ services:
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: /opt/airflow/dag_generated_configs # Specifies where OpenMetadata stores generated DAG configurations.
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__OPENMETADATA_SERVER_HOST: http://open-metadata-server:8585/api # Points Airflow to the OpenMetadata server for API communication.
     volumes:
-      - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
-      - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
-      - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
-      - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
-      - ./workflow-orchestration-tools/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
-      - ./workflow-orchestration-tools/01-airflow/dbt:/opt/airflow/dbt
+      - ./workflow-orchestration/01-airflow/dags:/opt/airflow/dags
+      - ./workflow-orchestration/01-airflow/logs:/opt/airflow/logs
+      - ./workflow-orchestration/01-airflow/data:/opt/airflow/data
+      - ./workflow-orchestration/01-airflow/plugins:/opt/airflow/plugins
+      - ./workflow-orchestration/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
+      - ./workflow-orchestration/01-airflow/dbt:/opt/airflow/dbt
     networks:
       - data-ops-network
 
   # airflow-scheduler
   airflow-scheduler:
     build:
-      context: ./workflow-orchestration-tools/01-airflow
+      context: ./workflow-orchestration/01-airflow
       dockerfile: Dockerfile
     image: airflow-scheduler
     container_name: airflow-scheduler
@@ -81,12 +81,12 @@ services:
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__DAG_GENERATED_CONFIGS: /opt/airflow/dag_generated_configs # Specifies where OpenMetadata stores generated DAG configurations.
       AIRFLOW__OPENMETADATA_AIRFLOW_APIS__OPENMETADATA_SERVER_HOST: http://open-metadata-server:8585/api # Points Airflow to the OpenMetadata server for API communication.
     volumes:
-      - ./workflow-orchestration-tools/01-airflow/dags:/opt/airflow/dags
-      - ./workflow-orchestration-tools/01-airflow/logs:/opt/airflow/logs
-      - ./workflow-orchestration-tools/01-airflow/data:/opt/airflow/data
-      - ./workflow-orchestration-tools/01-airflow/plugins:/opt/airflow/plugins
-      - ./workflow-orchestration-tools/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
-      - ./workflow-orchestration-tools/01-airflow/dbt:/opt/airflow/dbt
+      - ./workflow-orchestration/01-airflow/dags:/opt/airflow/dags
+      - ./workflow-orchestration/01-airflow/logs:/opt/airflow/logs
+      - ./workflow-orchestration/01-airflow/data:/opt/airflow/data
+      - ./workflow-orchestration/01-airflow/plugins:/opt/airflow/plugins
+      - ./workflow-orchestration/01-airflow/dag_generated_configs:/opt/airflow/dag_generated_configs
+      - ./workflow-orchestration/01-airflow/dbt:/opt/airflow/dbt
     networks:
       - data-ops-network
 
