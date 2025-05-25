@@ -1,0 +1,249 @@
+_meta:
+  version: "1.1" # Schema version
+  created: "2025-05-25" # ISO 8601 format
+  owner: "Rodgers Nyangweso"
+  description: "Jira issues sync to PostgreSQL for reporting"
+
+source:
+  columns:  
+    id:
+      source_path: id
+      type: string
+      primary_key: true
+      nullable: false
+      active: true
+    key:
+      source_path: key
+      type: string
+      nullable: false
+      active: true
+    parent_id:
+      source_path: fields.parent.id
+      type: string
+      nullable: true
+      active: true
+    parent_key:
+      source_path: fields.parent.key
+      type: string
+      nullable: true
+      active: true
+    status_category_id:
+      source_path: fields.statusCategory.id
+      type: integer
+      nullable: true
+      active: true
+    status_category_color:
+      source_path: fields.statusCategory.colorName
+      type: string
+      nullable: true
+      active: true
+    last_viewed:
+      source_path: fields.lastViewed
+      type: timestamp
+      nullable: true
+      active: true
+    priority_id:
+      source_path: fields.priority.id
+      type: string
+      nullable: true
+      active: true
+    priority_name:
+      source_path: fields.priority.name
+      type: string
+      nullable: true
+      active: true
+    assignee_email_address:
+      source_path: fields.assignee.emailAddress
+      type: string
+      nullable: true
+      active: true
+    assignee_display_name:
+      source_path: fields.assignee.displayName
+      type: string
+      nullable: true
+      active: true
+    status_id: 
+      source_path: fields.status.id
+      type: string
+      nullable: true
+      active: true
+    status_name:
+      source_path: fields.status.name
+      type: string
+      nullable: true
+      active: true
+    creator_email_address:
+      source_path: fields.creator.emailAddress
+      type: string
+      nullable: true
+      active: true
+    creator_display_name:
+      source_path: fields.creator.displayName
+      type: string
+      nullable: true
+      active: true
+    reporter_email_address:
+      source_path: fields.reporter.emailAddress
+      type: string
+      nullable: true
+      active: true
+    reporter_display_name:
+      source_path: fields.reporter.displayName
+      type: string
+      nullable: true
+      active: true
+    issue_type_id:
+      source_path: fields.issuetype.id
+      type: string
+      nullable: true
+      active: true
+    issue_type_name:
+      source_path: fields.issuetype.name
+      type: string
+      nullable: true
+      active: true
+    issue_type_description:
+      source_path: fields.issuetype.description
+      type: string
+      nullable: true
+      active: true
+    project_id:
+      source_path: fields.project.id
+      type: string
+      nullable: true
+      active: true
+    project_key:
+      source_path: fields.project.key
+      type: string
+      nullable: true
+      active: true
+    project_name:
+      source_path: fields.project.name
+      type: string
+      nullable: true
+      active: true
+    project_type_key:
+      source_path: fields.project.projectTypeKey
+      type: string
+      nullable: true
+      active: true
+    resolution_date:
+      source_path: fields.resolutiondate
+      type: timestamp
+      nullable: true
+      active: true
+    created_at:
+      source_path: fields.created
+      type: timestamp
+      nullable: true
+      active: true
+    updated_at:
+      source_path: fields.updated
+      type: timestamp
+      nullable: true
+      active: true
+    summary:
+      source_path: fields.summary
+      type: string
+      nullable: true
+      active: true
+    due_date:
+      source_path: fields.duedate
+      type: timestamp
+      nullable: true
+      active: true
+targets:
+  postgres:
+    columns:
+      id:
+        type: varchar(50)
+        nullable: false
+      key:
+        type: varchar(50)
+        nullable: false
+      parent_id:
+        type: varchar(50)
+        nullable: true
+      parent_key:
+        type: varchar(50)
+        nullable: true
+      status_category_id:
+        type: integer
+        nullable: true
+      status_category_color:
+        type: varchar(50)
+        nullable: true
+      last_viewed:
+        type: timestamp
+        nullable: true
+      priority_id:
+        type: varchar(50)
+        nullable: true
+      priority_name:
+        type: varchar(100)
+        nullable: true
+      assignee_email_address:
+        type: varchar(255)
+        nullable: true
+      assignee_display_name:
+        type: varchar(255)
+        nullable: true
+      status_id:
+        type: varchar(50)
+        nullable: true
+      status_name:
+        type: varchar(100)
+        nullable: true
+      creator_email_address:
+        type: varchar(255)
+        nullable: true
+      creator_display_name:
+        type: varchar(255)
+        nullable: true
+      reporter_email_address:
+        type: varchar(255)
+        nullable: true
+      reporter_display_name:
+        type: varchar(255)
+        nullable: true
+      issue_type_id:
+        type: varchar(50)
+        nullable: true
+      issue_type_name:
+        type: varchar(100)
+        nullable: true
+      issue_type_description:
+        type: text
+        nullable: true
+      project_id:
+        type: varchar(50)
+        nullable: true
+      project_key:
+        type: varchar(50)
+        nullable: true
+      project_name:
+        type: varchar(255)
+        nullable: true
+      project_type_key:
+        type: varchar(50)
+        nullable: true
+      resolution_date:
+        type: timestamp
+        nullable: true
+      created_at:
+        type: timestamp
+        nullable: true
+      updated_at:
+        type: timestamp
+        nullable: true
+      summary:
+        type: text
+        nullable: true
+      due_date:
+        type: timestamp
+        nullable: true
+      sync_time:
+        type: timestamp
+        nullable: true
+        auto_generated: true
+        description: "Timestamp when data was synced"
