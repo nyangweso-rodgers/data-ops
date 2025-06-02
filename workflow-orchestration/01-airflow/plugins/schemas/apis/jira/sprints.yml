@@ -1,0 +1,98 @@
+_meta:
+  version: "1.1"
+  created: "2025-05-25"
+  owner: "Rodgers Nyangweso"
+  description: "Jira Sprints sync to PostgreSQL for reporting"
+source:
+  columns:
+    id:
+      source_path: id
+      type: integer
+      primary_key: true
+      nullable: true
+      active: true
+      target: id
+    name:
+      source_path: name
+      type: string
+      nullable: true
+      active: true
+      target: name
+    state:
+      source_path: state
+      type: string
+      nullable: false
+      active: true
+      target: state
+    startDate:
+      source_path: startDate
+      type: timestamp
+      nullable: true
+      active: true
+      target: start_date
+    endDate:
+      source_path: endDate
+      type: timestamp
+      nullable: true
+      active: true
+      target: end_date
+    createdDate:
+      source_path: createdDate
+      type: timestamp
+      nullable: true
+      active: true
+      target: created_date
+    completeDate:
+      source_path: completeDate
+      type: timestamp
+      nullable: true
+      active: true
+      target: complete_date
+    originBoardId:
+      source_path: originBoardId
+      type: integer
+      nullable: true
+      active: true
+      target: original_board_id
+    goal:
+      source_path: goal
+      type: string
+      nullable: true
+      active: true
+      target: goal
+targets:
+  postgres:
+    columns:
+      id:
+        type: integer
+        nullable: false  # Primary keys cannot be nullable
+        primary_key: true  # Add this to mark id as primary key
+      name:
+        type: varchar(255)
+        nullable: false
+      state:
+        type: varchar(50)
+        nullable: false
+      start_date:
+        type: timestamp
+        nullable: true
+      end_date:
+        type: timestamp
+        nullable: true
+      created_date:
+        type: timestamp
+        nullable: true
+      complete_date:
+        type: timestamp
+        nullable: true
+      original_board_id:
+        type: integer
+        nullable: true
+      goal:
+        type: text
+        nullable: true
+      sync_time:
+        type: timestamp
+        nullable: true
+        auto_generated: true
+        description: "Timestamp when data was synced"
