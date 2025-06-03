@@ -18,7 +18,7 @@ CONNECTION_IDS = {
     'postgres_ep_stage': 'postgres_ep_stage',
     'postgres_reporting_service': 'postgres-reporting-service-db',
     'postgres_ep': 'postgres-sunculture-ep-db',
-    'clickhouse_cloud': 'clickhouse_cloud',
+    'clickhouse_cloud': 'clickhouse_cloud'
 }
 
 # Log levels
@@ -53,5 +53,38 @@ SYNC_CONFIGS: Dict[str, Dict[str, Any]] = {
             'partition_by': 'toYYYYMM(updated_at)',  # ClickHouse partitioning expression
         },
     },
+    'jira_sprints_to_postgres': {
+        'source': {
+            'database': None,
+            'schema': None,
+            'table': 'sprints',
+            'source_type': 'apis',
+            'source_subpath': 'jira',
+        },
+        'target': {
+            'connection_id': CONNECTION_IDS['postgres_reporting_service'],
+            'database': 'reporting-service',
+            'schema': 'jira',
+            'table': 'sprints',
+            'target_type': 'postgres',
+        },
+    },
+    'jira_issues_to_postgres': {
+        'source': {
+            'database': None,
+            'schema': None,
+            'table': 'issues',
+            'source_type': 'apis',
+            'source_subpath': 'jira'
+            },
+        'target':{
+            'connection_id': CONNECTION_IDS['postgres_reporting_service'],
+            'database': 'reporting-service',
+            'schema': 'jira',
+            'table': 'issues',
+            'target_type': 'postgres',
+            'upsert_conditions': ['id'],
+        }
+        },
     # Add more sync configs as needed
 }
