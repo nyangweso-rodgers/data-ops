@@ -176,6 +176,38 @@
   6. Data insertion
   7. Task Dependecies
 
+# DAGs
+
+# Sync Jira Projects, Issues & Sprints to Postgres
+
+- **Step 1**: Create `JiraApiHook` API Hook
+  - Uses **Airflow Variables**: `jira_url`, `jira_email`, `jira_api_token`, `jira_project_keys`.
+  - `fetch_sprints` retrieves sprints for all boards associated with `project_keys`, deduplicating by sprint ID.
+
+## Creating the Sprint Sync DAG
+
+- **Objective**: The DAG will:
+
+  - Fetch all sprints (active, closed, future) for projects specified in `jira_project_keys` (e.g., `BSS`,`SD`,`EE`) using `JiraApiHook.fetch_sprints`.
+  - Sync the data to the `jira.sprints` table in the `postgres_reporting_service` database, as defined in `SYNC_CONFIGS['jira_sprints_to_postgres']`.
+  - Ensure the target table exists, creating it if necessary, based on `sprints.yml`.
+  - Use bulk insertion via `PostgresHook.insert_rows` for efficiency.
+  - Handle incremental syncs using `last_sync_timestamp` and the `complete_date` field.
+  - Incorporate type checking/conversion from `JiraApiHook` (e.g., id as 123 → "123").
+
+- **Schema**: Use the provided `sprints.yml` (path: `schemas/jira/jira/sprints.yml`).
+- **Hook**: Use `JiraApiHook` from `plugins/hooks/jira/v2.py`
+- **Sync Config**: Define `jira_sprints_to_postgres` in `SYNC_CONFIGS` with source (`Jira`) and target (`PostgreSQL`) details.
+- **Incremental Sync**: Filter sprints by `complete_date` using a stored `last_sync_timestamp`.
+- **Table Management**: Create or update the PostgreSQL table based on the schema’s targets.postgres.
+- **Utilities**:
+
+  1. `SchemaLoader.load_schema` to load `sprints.yml`
+  2. `add_sync_time` to add `sync_time` to records (assumed to append `datetime.now()`).
+  3. `PostgresHook` for database operations.
+
+- **Constants**: Use `DEFAULT_ARGS`, `CONNECTION_IDS`, and `LOG_LEVELS` from `constants.py`.
+
 # Resources and Further Reading
 
 1.
