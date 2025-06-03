@@ -36,6 +36,7 @@ def add_sync_time(records: List[Dict[str, Any]], target_schema: Dict[str, Any]) 
     start_date=datetime(2025, 6, 2),
     schedule=None,
     catchup=False,
+    tags=['jira', 'postgres', 'sync']
 )
 def sync_jira_issues_to_postgres():
     """
