@@ -8,11 +8,13 @@ source:
   columns:
     id:
       type: int
+      target: id
       primary_key: true
       nullable: false
       active: true
     name:
       type: varchar(255)
+      target: name
       nullable: true
       active: true
     phoneNumber:
