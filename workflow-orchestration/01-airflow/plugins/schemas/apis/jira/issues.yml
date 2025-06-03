@@ -11,153 +11,183 @@ source:
       type: string
       primary_key: true
       nullable: false
+      target: id
       active: true
     key:
       source_path: key
       type: string
       nullable: false
+      target: key
       active: true
     parent_id:
       source_path: fields.parent.id
       type: string
       nullable: true
+      target: parent_id
       active: true
     parent_key:
       source_path: fields.parent.key
       type: string
       nullable: true
+      target: parent_key
       active: true
     status_category_id:
       source_path: fields.statusCategory.id
       type: integer
       nullable: true
+      target: status_category_id
       active: true
     status_category_color:
       source_path: fields.statusCategory.colorName
       type: string
       nullable: true
+      target: status_category_color
       active: true
     last_viewed:
       source_path: fields.lastViewed
       type: timestamp
       nullable: true
+      target: last_viewed
       active: true
     priority_id:
       source_path: fields.priority.id
       type: string
       nullable: true
+      target: priority_id
       active: true
     priority_name:
       source_path: fields.priority.name
       type: string
       nullable: true
+      target: priority_name
       active: true
     assignee_email_address:
       source_path: fields.assignee.emailAddress
       type: string
       nullable: true
+      target: assignee_email_address
       active: true
     assignee_display_name:
       source_path: fields.assignee.displayName
       type: string
       nullable: true
+      target: assignee_display_name
       active: true
     status_id: 
       source_path: fields.status.id
       type: string
       nullable: true
+      target: status_id
       active: true
     status_name:
       source_path: fields.status.name
       type: string
       nullable: true
+      target: status_name
       active: true
     creator_email_address:
       source_path: fields.creator.emailAddress
       type: string
       nullable: true
+      target: creator_email_address
       active: true
     creator_display_name:
       source_path: fields.creator.displayName
       type: string
       nullable: true
+      target: creator_display_name
       active: true
     reporter_email_address:
       source_path: fields.reporter.emailAddress
       type: string
       nullable: true
+      target: reporter_email_address
       active: true
     reporter_display_name:
       source_path: fields.reporter.displayName
       type: string
       nullable: true
+      target: reporter_display_name
       active: true
     issue_type_id:
       source_path: fields.issuetype.id
       type: string
       nullable: true
+      target: issue_type_id
       active: true
     issue_type_name:
       source_path: fields.issuetype.name
       type: string
       nullable: true
+      target: issue_type_name
       active: true
     issue_type_description:
       source_path: fields.issuetype.description
       type: string
       nullable: true
+      target: issue_type_description
       active: true
     project_id:
       source_path: fields.project.id
       type: string
       nullable: true
+      target: project_id
       active: true
     project_key:
       source_path: fields.project.key
       type: string
       nullable: true
+      target: project_key
       active: true
     project_name:
       source_path: fields.project.name
       type: string
       nullable: true
+      target: project_name
       active: true
     project_type_key:
       source_path: fields.project.projectTypeKey
       type: string
       nullable: true
+      target: project_type_key
       active: true
     resolution_date:
       source_path: fields.resolutiondate
       type: timestamp
       nullable: true
+      target: resolution_date
       active: true
     created_at:
       source_path: fields.created
       type: timestamp
       nullable: true
+      target: created_at
       active: true
     updated_at:
       source_path: fields.updated
       type: timestamp
       nullable: true
+      target: updated_at
       active: true
     summary:
       source_path: fields.summary
       type: string
       nullable: true
+      target: summary
       active: true
     due_date:
       source_path: fields.duedate
       type: timestamp
       nullable: true
+      target: due_date
       active: true
 targets:
   postgres:
     columns:
       id:
         type: varchar(50)
-        nullable: false
+        nullable: false  # Primary keys cannot be nullable
+        primary_key: true  # Add this to mark id as primary key
       key:
         type: varchar(50)
         nullable: false
