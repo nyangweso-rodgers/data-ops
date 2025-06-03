@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Iterator
 from requests.exceptions import HTTPError
 from airflow.models import Variable
 from requests import Session
@@ -98,6 +98,34 @@ class JiraApiHook:
             value = sprint.get(source_path)
             record[target_field] = value
         return record
+    
+    def _map_issue(self, issue: Dict, mappings: List[Dict]) -> Dict:
+        """
+        Map issue data to schema fields.
+        
+        Args:
+            issue: Raw issue data from Jira API.
+            mappings: Schema mappings from issues.yml.
+        
+        Returns:
+            Mapped issue record.
+        """
+        record = {}
+        for mapping in mappings:
+            if mapping.get('auto_generated', False):
+                continue
+            target_field = mapping['target']
+            source_path = mapping.get('source', target_field)
+            
+            # Handle nested source paths (e.g., fields.project.key)
+            value = issue
+            for key in source_path.split('.'):
+                if value is None:
+                    break
+                value = value.get(key)
+            
+            record[target_field] = value
+        return record
 
     def fetch_sprints(self, schema: Dict, board_id: int, state: str = 'active,closed,future', last_sync_timestamp: str = None, batch_size: int = 50):
         """
@@ -158,6 +186,75 @@ class JiraApiHook:
                 start_at += data.get("maxResults", batch_size)
             except HTTPError as e:
                 logger.warning(f"Error fetching sprints for board {board_id}: {str(e)}")
+                raise
+            finally:
+                self.close()
+    
+    def fetch_issues(self, schema: Dict, project_keys: List[str], last_sync_timestamp: str = None, batch_size: int = 50) -> Iterator[List[Dict]]:
+        """
+        Fetch issues from Jira for given project keys, filtering by updated timestamp.
+        
+        Args:
+            schema: Configuration with mappings from issues.yml.
+            project_keys: List of Jira project keys.
+            last_sync_timestamp: Last sync time for incremental fetch (ISO 8601).
+            batch_size: Number of issues per batch.
+        
+        Yields:
+            Batches of issue records.
+        """
+        session = self._init_session()
+        jql = f"project in ({','.join(project_keys)})"
+        if last_sync_timestamp:
+            try:
+                last_sync_dt = datetime.fromisoformat(last_sync_timestamp.replace('Z', '+00:00'))
+                jql += f" AND updated >= '{last_sync_dt.strftime('%Y-%m-%d %H:%M')}'"
+            except ValueError:
+                logger.warning(f"Invalid last_sync_timestamp: {last_sync_timestamp}. Ignoring filter.")
+        
+        start_at = 0
+        fields = list({m['source_path'].split('.')[1] for m in schema['mappings'] if m.get('source_path', '').startswith('fields.') and not m.get('auto_generated', False)})
+        
+        while True:
+            try:
+                response = session.get(
+                    f"{self._base_url.rstrip('/')}/rest/api/3/search",
+                    params={
+                        "jql": jql,
+                        "fields": ','.join(fields),
+                        "startAt": start_at,
+                        "maxResults": batch_size
+                    }
+                )
+                response.raise_for_status()
+                data = response.json()
+                issues = data.get('issues', [])
+                
+                if not issues:
+                    break
+                
+                batch = []
+                for issue in issues:
+                    if not isinstance(issue, dict) or 'id' not in issue:
+                        logger.warning(f"Skipping invalid issue: {issue}")
+                        continue
+                    record = self._map_issue(issue, schema['mappings'])
+                    if not record.get('id'):
+                        logger.warning(f"Skipping issue with missing id: {record}")
+                        continue
+                    batch.append(record)
+                
+                if batch:
+                    yield batch
+                    logger.info(f"Fetched batch of {len(batch)} issues, startAt={start_at}")
+                
+                if start_at + len(issues) >= data.get('total', 0):
+                    break
+                start_at += batch_size
+            except HTTPError as e:
+                logger.warning(f"Error fetching issues: {str(e)}")
+                if e.response:
+                    logger.error(f"Response content: {e.response.text}")
                 raise
             finally:
                 self.close()
