@@ -35,7 +35,7 @@
        - `/package.json` - A Docusaurus website is a React app. You can install and use any npm packages you like in them
        - `/sidebars.js` - Used by the documentation to specify the order of documents in the sidebar
 
-3. Step : **Running the development server**
+3. **Step** : **Running the development server**
 
    - To preview the changes, run:
      ```sh
@@ -44,10 +44,12 @@
      ```
    - By default, a browser window will open at http://localhost:3000.
 
-4. Step : Build
+4. **Step** : **Build**
    - Docusaurus is a modern static website generator so we need to build the website into a directory of static contents and put it on a web server so that it can be viewed. To build the website:
      ```sh
         npm run build
      ```
 
 # Resources and Further Reading
+
+1. [docusaurus - docs](https://docusaurus.io/docs)
