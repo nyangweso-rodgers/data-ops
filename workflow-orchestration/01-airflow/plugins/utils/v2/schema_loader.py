@@ -11,7 +11,7 @@ class SchemaLoader:
     SCHEMAS_DIR = Path(__file__).parent.parent.parent / "schemas"
 
     @classmethod
-    @lru_cache(maxsize=32)
+    #@lru_cache(maxsize=32)
     def load_schema(cls, source_type: str, source_subpath: str, table_name: str, target_type: str) -> Dict[str, Any]:
         """
         Load unified schema for a table, supporting both JSON and YAML.
