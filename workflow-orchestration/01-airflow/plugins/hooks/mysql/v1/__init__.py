@@ -1,0 +1,1 @@
+# plugins/hooks/mysql/v1/__init__.py
