@@ -8,7 +8,7 @@
 
 - **dbt** allows you to define SQL models (e.g., tables, views) in `.sql` files, which it compiles and executes against databases like PostgreSQL. **Airflow** can trigger dbt commands (e.g., `dbt run`) using operators like `DbtRunOperator` from the `astronomer-cosmos` package or `BashOperator` for simpler setups. The `dbt/` folder will contain `dbt` project, including **models**, **configurations**, and **profiles**.
 
-# Creating DAGs Uisng Python
+# Creating DAGs Using Python
 
 - **Components of DAG File**:
 
@@ -104,6 +104,18 @@
     - **Port**: `8123`
     - **Extra**: Leave blank (or optionally add `{"secure": false}`)
     - Save the Connection
+
+# Schema-Driven Configuration
+
+- YAML schema file (e.g., `accounts.yml`) defines source-to-target column mappings
+- Dynamic schema validation ensures data compatibility
+- Column aliasing (e.g., `parentAccountId` → `parent_account_id`)
+- **Type conversion** handled automatically
+
+# Creating Custom Hooks
+
+1. `MySqlHook`: Wrapper around Airflow's MySQL hook with enhanced features
+2. `PostgresHook`: Custom PostgreSQL hook with advanced upsert capabilities
 
 # Example Custom Hooks
 

@@ -41,6 +41,7 @@ SYNC_CONFIGS: Dict[str, Dict[str, Any]] = {
             'table': 'customers',
             'source_type': 'mysql',
             'source_subpath': 'amt',
+            'batch_size': 5000  # Suitable for MySQL
         },
         'target': {
             'connection_id': CONNECTION_IDS['clickhouse_cloud'],
@@ -60,6 +61,7 @@ SYNC_CONFIGS: Dict[str, Dict[str, Any]] = {
             'table': 'sprints',
             'source_type': 'apis',
             'source_subpath': 'jira',
+            'batch_size': 100  # API limit (e.g., Jira)
         },
         'target': {
             'connection_id': CONNECTION_IDS['postgres_reporting_service'],
@@ -75,7 +77,8 @@ SYNC_CONFIGS: Dict[str, Dict[str, Any]] = {
             'schema': None,
             'table': 'issues',
             'source_type': 'apis',
-            'source_subpath': 'jira'
+            'source_subpath': 'jira',
+            'batch_size': 100  # API limit (e.g., Jira)
             },
         'target':{
             'connection_id': CONNECTION_IDS['postgres_reporting_service'],
@@ -86,5 +89,23 @@ SYNC_CONFIGS: Dict[str, Dict[str, Any]] = {
             'upsert_conditions': ['id'],
         }
         },
+    'mysql_amt_accounts_to_postgres': {
+        'source': {
+            'connection_id': CONNECTION_IDS['mysql_amtdb'],
+            'database': 'amtdb',
+            'schema': None,  # MySQL schema (same as database in this case)
+            'table': 'accounts',
+            'source_type': 'mysql',
+            'source_subpath': 'amt',
+            'batch_size': 5000  # Suitable for MySQL
+        },
+        'target': {
+            'connection_id': CONNECTION_IDS['postgres_reporting_service'],
+            'database': 'reporting-service',
+            'schema': 'amt',
+            'table': 'accounts',
+            'target_type': 'postgres',
+        },
+    }
     # Add more sync configs as needed
 }
