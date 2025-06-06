@@ -12,11 +12,11 @@ services:
   # From docker-compose.airflow.yml
   airflow-webserver:
     extends:
-      file: docker-compose-airflow.yml
+      file: workflow-orchestration/01-airflow/docker-compose-airflow.yml
       service: airflow-webserver
   airflow-scheduler:
     extends:
-      file: docker-compose-airflow.yml
+      file: workflow-orchestration/01-airflow/docker-compose-airflow.yml
       service: airflow-scheduler
 
   # From docker-compose.warehouse.yml
