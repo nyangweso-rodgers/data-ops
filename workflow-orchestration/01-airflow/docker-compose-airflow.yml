@@ -1,0 +1,88 @@
+services:
+  # airflow-webserver
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: airflow-webserver
+    container_name: airflow-webserver
+    command: webserver
+    restart: always
+    ports:
+      - "${APACHE_AIRFLOW_PORT}:8080"  # Host:Container mapping
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    healthcheck:
+      test: ["CMD", "/opt/airflow/scripts/healthcheck.sh", "webserver"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${APACHE_AIRFLOW_POSTGRES_DB}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      AIRFLOW__CORE__ENABLE_TEST_CONNECTION: ${AIRFLOW__CORE__ENABLE_TEST_CONNECTION}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
+      AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      PYTHONPATH: /opt/airflow/plugins:/opt/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./data:/opt/airflow/data
+      - ./plugins:/opt/airflow/plugins
+      - ./dag_generated_configs:/opt/airflow/dag_generated_configs
+      - ./dbt:/opt/airflow/dbt
+    networks:
+      - data-ops-network
+
+  # airflow-scheduler
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: airflow-scheduler
+    container_name: airflow-scheduler
+    command: scheduler
+    restart: always
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    healthcheck:
+      test: ["CMD", "/opt/airflow/scripts/healthcheck.sh", "scheduler"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/${APACHE_AIRFLOW_POSTGRES_DB}
+      AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+      AIRFLOW__CORE__ENABLE_TEST_CONNECTION: ${AIRFLOW__CORE__ENABLE_TEST_CONNECTION}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
+      PYTHONPATH: /opt/airflow/plugins:/opt/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./data:/opt/airflow/data
+      - ./plugins:/opt/airflow/plugins
+      - ./dag_generated_configs:/opt/airflow/dag_generated_configs
+      - ./dbt:/opt/airflow/dbt
+    networks:
+      - data-ops-network
+
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true # Use the existing network from docker-compose.yml
