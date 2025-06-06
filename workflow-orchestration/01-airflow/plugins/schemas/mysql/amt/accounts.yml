@@ -2,7 +2,7 @@ meta:
   version: "1.1"
   created: "2025-06-05"
   owner: "Rodgers Nyangweso"
-  description: "Accounts data sync from MySQL to Postgres"
+  description: "Accounts Data Product"
 source:
   columns:
     id:
@@ -109,37 +109,37 @@ targets:
         type: character varying(255)
         nullable: true
       jsf_date:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       jsf_id:
         type: character varying(255)
         nullable: true
       dispatch_date:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       first_installment_date:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       installation_date:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       full_deposit_date:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       assignment_id:
         type: character varying(255)
         nullable: true
       assignment_date:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       created_at:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       updated_at:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
       sync_time:
-        type: timestamp with time zone
+        type: timestamp
         nullable: true
         auto_generated: true
         description: "Timestamp when data was synced"

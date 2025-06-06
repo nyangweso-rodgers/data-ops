@@ -1,0 +1,81 @@
+meta:
+  version: "1.1"
+  created: "2025-06-05"
+  owner: "Rodgers Nyangweso"
+  description: "Products"
+source:
+  columns:
+    id:
+      type: int
+      nullable: false
+      primary_key: true
+      target: id
+      active: true
+    productTypeId:
+      type: int
+      nullable: true
+      target: product_type_id
+      active: true
+    companyRegionId:
+      type: int
+      nullable: true
+      target: company_region_id
+      active: true
+    product:
+      type: varchar(255)
+      nullable: true
+      target: product
+      active: true
+    isRefurb:
+      type: tinyint
+      nullable: true
+      target: is_refurb
+      active: true
+    isActive:
+      type: tinyint
+      nullable: true
+      target: is_active
+      active: true
+    createdAt:
+      type: datetime
+      nullable: true
+      target: created_at
+      active: true
+    updatedAt:
+      type: timestamp
+      nullable: false
+      target: updated_at
+      active: true
+targets:
+  postgres:
+    columns:
+      id:
+        type: int
+        primary_key: true
+        nullable: false
+      product_type_id:
+        type: int
+        nullable: true
+      company_region_id:
+        type: int
+        nullable: true
+      product:
+        type: varchar(255)
+        nullable: true
+      is_refurb:
+        type: smallint  
+        nullable: true
+      is_active:
+        type: smallint  
+        nullable: true
+      created_at:
+        type: timestamp
+        nullable: true
+      updated_at:
+        type: timestamp
+        nullable: true
+      sync_time:
+        type: timestamp
+        nullable: true
+        auto_generated: true
+        description: "Timestamp when data was synced"
