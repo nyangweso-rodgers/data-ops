@@ -1,0 +1,17 @@
+
+services:
+  docusaurus:
+    build:
+      context: ./docs/docusaurus
+      dockerfile: Dockerfile
+    image: docusaurus
+    container_name: docusaurus
+    #volumes:
+      #- .:/app
+      #- node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    user: "node" # Run as non-root user for security
+    command: ["yarn", "start", "--host", "0.0.0.0"] 
