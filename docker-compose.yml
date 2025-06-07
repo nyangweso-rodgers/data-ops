@@ -1,15 +1,14 @@
 services:
-  # From docker-compose.db.yml
   postgres-db:
     extends:
-      file: docker-compose-db.yml
+      file: 01-databases/01-postgres/docker-compose-postgres.yml
       service: postgres-db
   mysql-db:
     extends:
-      file: docker-compose-db.yml
+      file: 01-databases/02-mysql/docker-compose-mysql.yml
       service: mysql-db
   
-  # From docker-compose.airflow.yml
+  # Airflow Services
   airflow-webserver:
     extends:
       file: workflow-orchestration/01-airflow/docker-compose-airflow.yml
@@ -19,52 +18,52 @@ services:
       file: workflow-orchestration/01-airflow/docker-compose-airflow.yml
       service: airflow-scheduler
 
-  # From docker-compose.warehouse.yml
+  # ClickHouse Services
   clickhouse-server:
     extends:
-      file: docker-compose-clickhouse.yml
+      file: 04-warehouse/01-clickhouse/docker-compose-clickhouse.yml
       service: clickhouse-server
   clickhouse-tabix-web-client:
     extends:
       file: docker-compose-clickhouse.yml
       service: clickhouse-tabix-web-client
 
-  # From docker-compose.metadata.yml
+  # Open Metadata Services
   elasticsearch:
     extends:
-      file: docker-compose-open-metadata.yml
+      file: metadata/01-open-metadata/docker-compose-open-metadata.yml
       service: elasticsearch
   open-metadata-server:
     extends:
-      file: docker-compose-open-metadata.yml
+      file: metadata/01-open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-server
   open-metadata-execute-migrate-all:
     extends:
-      file: docker-compose-open-metadata.yml
+      file: metadata/01-open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-execute-migrate-all
 
-  # From docker-compose.grafana.yml
+  #  Grafana Services
   grafana:
     extends:
-      file: docker-compose-grafana.yml
+      file: 06-dashbaords/grafana/docker-compose-grafana.yml
       service: grafana
   prometheus:
     extends:
-      file: docker-compose-grafana.yml
+      file: 06-dashbaords/grafana/docker-compose-grafana.yml
       service: prometheus
   loki:
     extends:
-      file: docker-compose-grafana.yml
+      file: 06-dashbaords/grafana/docker-compose-grafana.yml
       service: loki
   postgres-db-exporter:
     extends:
-      file: docker-compose-grafana.yml
+      file: 06-dashbaords/grafana/docker-compose-grafana.yml
       service: postgres-db-exporter
 
   # From docker-compose-docusaurus.yml
   docusaurus:
     extends:
-      file: docker-compose-docusaurus.yml
+      file: docs/docusaurus-site/docker-compose-docusaurus.yml
       service: docusaurus
     
 # Define Volumes
