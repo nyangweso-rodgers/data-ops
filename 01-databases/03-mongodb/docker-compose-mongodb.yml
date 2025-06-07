@@ -1,0 +1,26 @@
+services:
+  mongo-db-community-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mongo-db-community-server
+    ports:
+      - "27017:27017"
+    #env_file: ./databases/02-mongodb-community-server/.env
+    env_file:
+      - ../.env
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo-db-community-server-volume:/data/db
+    networks:
+      - data-ops-network
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true 
+################################ Volumes ############################################
+volumes:
+  mongo-db-community-server-volume:
+    driver: local

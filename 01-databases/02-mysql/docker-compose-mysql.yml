@@ -1,0 +1,33 @@
+services:
+  mysql-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mysql-db
+    restart: always
+    ports:
+      - "3306:3306"
+    env_file:
+      - ../.env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
+    #command: --bind-address=0.0.0.0  # Listen on all interfaces
+    command: --bind-address=0.0.0.0 --wait_timeout=28800 --interactive_timeout=28800
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql-db-volume:/var/lib/mysql
+      - ./init-scripts/:/docker-entrypoint-initdb.d
+    networks:
+      - data-ops-network
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true 
+################################ Volumes ############################################
+volumes:
+  mysql-db-volume:
+    name: mysql-db-volume
