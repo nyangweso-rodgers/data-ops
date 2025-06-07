@@ -1,8 +1,0 @@
-spring:
-  application:
-    name: spring-boot-data-pipeline
-  kafka:
-    #bootstrap-servers: localhost:29092
-    bootstrap-servers: kafka:29092
-server:
-  port: 9093
