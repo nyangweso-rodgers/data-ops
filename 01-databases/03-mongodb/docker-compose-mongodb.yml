@@ -8,7 +8,7 @@ services:
       - "27017:27017"
     #env_file: ./databases/02-mongodb-community-server/.env
     env_file:
-      - ../.env
+      - ../../.env
     environment:
       MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
