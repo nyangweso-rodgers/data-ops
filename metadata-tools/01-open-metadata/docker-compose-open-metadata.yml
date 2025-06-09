@@ -33,7 +33,7 @@ services:
       elasticsearch:
         condition: service_healthy
     env_file:
-      - .env
+      - ../../.env
     environment:
       # Database configuration
       DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
@@ -77,7 +77,7 @@ services:
       open-metadata-execute-migrate-all:
         condition: service_completed_successfully
     env_file:
-      - .env
+      - ../../.env
     environment:
       # Basic server settings
       #OPENMETADATA_CLUSTER_NAME: openmetadata
