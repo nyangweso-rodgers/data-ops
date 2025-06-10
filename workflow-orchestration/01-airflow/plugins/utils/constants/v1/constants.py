@@ -125,6 +125,25 @@ SYNC_CONFIGS: Dict[str, Dict[str, Any]] = {
             'table': 'products',
             'target_type': 'postgres',
             'upsert_conditions': ['id']
-        }}
+        }},
+    'mysql_amt_customers_to_postgres': {
+        'source': {
+            'connection_id': CONNECTION_IDS['mysql_amtdb'],
+            'database': 'amtdb',
+            'schema': None,  # MySQL schema (same as database in this case)
+            'table': 'customers',
+            'source_type': 'mysql',
+            'source_subpath': 'amt',
+            'batch_size': 5000 
+        },
+        'target': {
+            'connection_id': CONNECTION_IDS['postgres_reporting_service'],
+            'database': 'reporting-service',
+            'schema': 'amt',
+            'table': 'customers',
+            'target_type': 'postgres',
+            'upsert_conditions': ['id'] 
+        },
+    },
     # Add more sync configs as needed
 }
