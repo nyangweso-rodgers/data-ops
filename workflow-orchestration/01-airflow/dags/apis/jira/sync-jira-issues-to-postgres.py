@@ -3,10 +3,10 @@ from datetime import datetime
 from airflow.models import Variable
 from plugins.hooks.postgres.v2.postgres_hook import PostgresHook
 from plugins.hooks.jira.v2.jira_hook import JiraApiHook
-from plugins.utils.schema_loader_v2 import SchemaLoader
+from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
 import logging
 from typing import List, Dict, Any
-from plugins.utils.constants import SYNC_CONFIGS, DEFAULT_ARGS
+from plugins.utils.constants.v1.constants import SYNC_CONFIGS, DEFAULT_ARGS
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,8 @@ def add_sync_time(records: List[Dict[str, Any]], target_schema: Dict[str, Any]) 
     dag_id="sync_jira_issues_to_postgres",
     default_args=DEFAULT_ARGS,
     start_date=datetime(2025, 6, 2),
-    schedule=None,
+    #schedule=None,
+    schedule="0 9 * * 1-5",  # Runs at 09:00 UTC (12:00 EAT) Mon-Fri
     catchup=False,
     tags=['jira', 'postgres', 'sync']
 )
@@ -103,8 +104,8 @@ def sync_jira_issues_to_postgres():
             raise ValueError(f"Invalid configuration for {SYNC_KEY}")
         
         pg_hook = PostgresHook(
-            conn_id=sync_config['target']['connection_id'],
-            log_level='INFO'
+            conn_id=sync_config['target']['connection_id']
+            #log_level='INFO'
         )
         success, message = pg_hook.test_connection()
         logger.info(f"PostgreSQL connection test: {message}")
@@ -165,8 +166,8 @@ def sync_jira_issues_to_postgres():
         """
         sync_config = SYNC_CONFIGS[SYNC_KEY]
         pg_hook = PostgresHook(
-            conn_id=sync_config['target']['connection_id'],
-            log_level='INFO'
+            conn_id=sync_config['target']['connection_id']
+            #log_level='INFO'
         )
         table_name = sync_config['target']['table']
         schema_name = sync_config['target']['schema']
@@ -204,8 +205,8 @@ def sync_jira_issues_to_postgres():
         """
         sync_config = SYNC_CONFIGS[SYNC_KEY]
         pg_hook = PostgresHook(
-            conn_id=sync_config['target']['connection_id'],
-            log_level='INFO'
+            conn_id=sync_config['target']['connection_id']
+            #log_level='INFO'
         )
         
         if not issues:
