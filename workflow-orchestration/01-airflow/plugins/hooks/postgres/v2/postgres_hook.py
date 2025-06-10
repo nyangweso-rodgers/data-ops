@@ -263,8 +263,7 @@ class PostgresHook:
                 columns=sql.SQL(', ').join(map(sql.Identifier, columns)),
                 conflict_cols=sql.SQL(', ').join(map(sql.Identifier, upsert_conditions)),
                 column_updates=sql.SQL(', ').join(
-                    sql.SQL(f"{sql.Identifier(col)} = EXCLUDED.{sql.Identifier(col)}")
-                    for col in update_columns
+                    [sql.SQL("{} = EXCLUDED.{}").format(sql.Identifier(col), sql.Identifier(col)) for col in update_columns]
                 )
             )
             
@@ -286,6 +285,7 @@ class PostgresHook:
                 values.append(tuple(row_values))
             
             with self.get_cursor() as cur:
+                logger.debug(f"Generated upsert query: {insert_query.as_string(cur)}")
                 execute_values(cur, insert_query.as_string(cur), values)
                 rows_affected = cur.rowcount
                 logger.info(f"Upserted {rows_affected} rows to {schema}.{table_name}")
@@ -293,3 +293,5 @@ class PostgresHook:
         except Exception as e:
             logger.error(f"Error upserting rows: {e}")
             raise
+        finally:
+            logger.debug(f"Completed upsert operation for {schema}.{table_name}")
