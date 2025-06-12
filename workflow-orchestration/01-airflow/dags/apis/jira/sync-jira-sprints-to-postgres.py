@@ -2,13 +2,15 @@ from datetime import datetime
 from airflow.decorators import dag, task
 from airflow.models import Variable
 from airflow.operators.python import get_current_context
-from plugins.utils.constants.v1.constants import DEFAULT_ARGS, SYNC_CONFIGS
 from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
 from plugins.hooks.jira.v2.jira_hook import JiraApiHook
 from plugins.hooks.postgres.v2.postgres_hook import PostgresHook
 import logging
 from typing import List, Dict, Any
 from requests.exceptions import HTTPError
+
+from plugins.utils.constants.v1.constants import  SYNC_CONFIGS
+from plugins.utils.defaults.v1.defaults import DEFAULT_ARGS
 
 logger = logging.getLogger(__name__)
 

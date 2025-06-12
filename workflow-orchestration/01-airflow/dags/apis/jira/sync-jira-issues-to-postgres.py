@@ -6,7 +6,8 @@ from plugins.hooks.jira.v2.jira_hook import JiraApiHook
 from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
 import logging
 from typing import List, Dict, Any
-from plugins.utils.constants.v1.constants import SYNC_CONFIGS, DEFAULT_ARGS
+from plugins.utils.constants.v1.constants import SYNC_CONFIGS
+from plugins.utils.defaults.v1.defaults import DEFAULT_ARGS
 
 logger = logging.getLogger(__name__)
 
