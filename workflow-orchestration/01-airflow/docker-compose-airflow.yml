@@ -32,7 +32,7 @@ services:
       AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
       AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
-      CONFIGS_DIR: /opt/airflow/configs/sync_jobs
+      CONFIGS_DIR: /opt/airflow/configs/sync_configs
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -69,7 +69,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
-      CONFIGS_DIR: /opt/airflow/configs/sync_jobs
+      CONFIGS_DIR: /opt/airflow/configs/sync_configs
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
