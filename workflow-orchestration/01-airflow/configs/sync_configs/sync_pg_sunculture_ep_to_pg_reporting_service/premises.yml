@@ -1,0 +1,22 @@
+job_id: sync_pg_sunculture_ep_premises_to_pg_reporting_service
+description: |
+  This job synchronizes the `premises` table from the PostgreSQL database `sunculture_ep` to the PostgreSQL database `reporting-service`.
+  It is scheduled to run daily and will handle upserts based on the `id` field.
+source:
+  airflow_connection_id: postgres-sunculture-ep-db
+  database: sunculture_ep
+  table: premises
+  batch_size: 5000
+  incremental_column: updated_at
+
+target:
+  airflow_connection_id: postgres_reporting_service
+  database: reporting-service
+  schema: fma
+  table: premises
+  upsert_conditions: [id]
+
+schemas:
+    source: 
+      filesystem: ../../schemas/yaml/postgres/sunculture_ep/premises/v1/premises.yml
+      github: test

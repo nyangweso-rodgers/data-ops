@@ -1,0 +1,89 @@
+_meta:
+  version: "1.1"
+  created: "2025-06-11"
+  owner: "Rodgers Nyangweso"
+  description: "Premises Schema "
+
+source:
+  postgres:
+    columns:
+      id:
+        type: uuid
+        target: id
+        primary_key: true
+        nullable: false
+        active: true
+      customer_id:
+        type: int4
+        target: customer_id
+        nullable: false
+        active: true
+      account_id:
+        type: _int
+        target: account_id
+        nullable: false
+        active: true
+      premise_type_id:
+        type: uuid
+        target: premise_type_id
+        nullable: false
+        active: true
+      premise_name:
+        type: varchar(255)
+        target: premise_name
+        nullable: true
+        active: true
+      substate_id:
+        type: uuid
+        target: substate_id
+        nullable: true
+        active: true
+      town:
+        type: varchar(255)
+        target: town
+        nullable: true
+        active: true
+      courier_location_id:
+        type: uuid
+        target: courier_location_id
+        nullable: true
+        active: true
+      created_at:
+        type: timestamp
+        target: created_at
+        nullable: false
+        active: true
+      updated_at:
+        type: timestamp
+        target: updated_at
+        nullable: false
+        active: true
+  targets:
+    postgres:
+      columns:
+        id:
+          type: uuid
+          primary_key: true
+        customer_id:
+          type: int4
+        account_id:
+          type: _int
+        premise_type_id:
+          type: uuid
+        premise_name:
+          type: varchar(255)
+        substate_id:
+          type: uuid
+        town:
+          type: varchar(255)
+        courier_location_id:
+          type: uuid
+        created_at:
+          type: timestamp
+        updated_at:
+          type: timestamp
+        sync_time:
+          type: timestamp
+          nullable: true
+          auto_generated: true
+          description: "Timestamp when data was synced"

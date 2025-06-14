@@ -1,0 +1,20 @@
+job_id: sync_mysql_amtdb_customers_to_pg_reporting_service
+description: |
+  This job synchronizes the `customers` table from the MySQL database `amtdb` to the PostgreSQL database `reporting-service`.
+  It is scheduled to run daily and will handle upserts based on the `id` field.
+source:
+  airflow_connection_id: mysql_amtdb
+  database: amtdb
+  table: customers
+  batch_size: 5000
+  incremental_column: updatedAt
+
+target:
+  airflow_connection_id: postgres_reporting_service
+  database: reporting-service
+  schema: amt
+  table: customers
+  upsert_conditions: [id]
+
+schemas:
+  - mysql/amtdb/customers/v1
