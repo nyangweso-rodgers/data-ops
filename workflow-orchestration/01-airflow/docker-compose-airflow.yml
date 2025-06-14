@@ -1,5 +1,5 @@
 services:
-  # airflow-webserver
+################################ airflow-webserver ############################################
   airflow-webserver:
     build:
       context: .
@@ -32,17 +32,15 @@ services:
       AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
       AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
+      CONFIGS_DIR: /opt/airflow/configs/sync_jobs
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
-      - ./data:/opt/airflow/data
       - ./plugins:/opt/airflow/plugins
-      - ./dag_generated_configs:/opt/airflow/dag_generated_configs
-      - ./dbt:/opt/airflow/dbt
+      - ./configs:/opt/airflow/configs
     networks:
       - data-ops-network
-
-  # airflow-scheduler
+################################ airflow-scheduler ############################################
   airflow-scheduler:
     build:
       context: .
@@ -70,19 +68,16 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
-      #PYTHONPATH: /opt/airflow/plugins  # Ensures Python can import from plugins
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
+      CONFIGS_DIR: /opt/airflow/configs/sync_jobs
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
-      - ./data:/opt/airflow/data
       - ./plugins:/opt/airflow/plugins
-      - ./dag_generated_configs:/opt/airflow/dag_generated_configs
-      - ./dbt:/opt/airflow/dbt
+      - ./configs:/opt/airflow/configs
     networks:
       - data-ops-network
-
 ################################ Networks ############################################
 networks:
   data-ops-network:
-    external: true # Use the existing network from docker-compose.yml
+    external: true 
