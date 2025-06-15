@@ -30,7 +30,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       AIRFLOW__WEBSERVER__AUTHENTICATE: "True"
       AIRFLOW__WEBSERVER__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      #AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session,airflow.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
       CONFIGS_DIR: /opt/airflow/configs/sync_configs
     volumes:
@@ -67,7 +68,8 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      #AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session,airflow.api.auth.backend.basic_auth
       PYTHONPATH: /opt/airflow/plugins:/opt/airflow
       CONFIGS_DIR: /opt/airflow/configs/sync_configs
     volumes:
