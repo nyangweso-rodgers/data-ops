@@ -5,4 +5,4 @@ INSERT INTO {database}.{table} (
     answered_by, status, wrapup_code, voicemail_duration, disposition, has_csat, csat_score,
     csat_completed, csat_answers, csat, black_list, source_tenant, hangup_cause, transferred,
     attendant_overflow, campaign_name, channel, is_click2call, is_ivr_click2call, sync_time
-) VALUES
+) VALUES ()

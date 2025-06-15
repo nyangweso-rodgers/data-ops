@@ -13,7 +13,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 # Import constants
-from plugins.utils.constants import DEFAULT_ARGS, CONNECTION_IDS, LOG_LEVELS
+from plugins.utils.defaults.v1.defaults import DEFAULT_ARGS, LOG_LEVELS
 
 # Configure logging
 logging.basicConfig(
