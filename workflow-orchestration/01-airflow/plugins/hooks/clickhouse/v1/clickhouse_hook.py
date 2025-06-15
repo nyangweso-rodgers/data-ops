@@ -5,8 +5,7 @@ from airflow.hooks.base import BaseHook
 import clickhouse_connect
 from clickhouse_connect.driver.client import Client
 
-# Import constants
-from plugins.utils.constants.v1.constants import LOG_LEVELS
+from plugins.utils.defaults.v1.defaults import LOG_LEVELS
 
 class ClickHouseCloudHook(BaseHook):
     """
