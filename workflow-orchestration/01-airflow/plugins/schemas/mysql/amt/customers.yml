@@ -2,7 +2,7 @@ _meta:
   version: "1.1" # Schema version (for breaking changes)
   created: "2025-05-17" # ISO 8601 format (YYYY-MM-DD)
   owner: "Rodgers Nyangweso"
-  description: "Customer data sync from MySQL to ClickHouse/Postgres"
+  description: "Customer Data Product"
 
 source:
   columns:
@@ -41,7 +41,6 @@ source:
       type: datetime
       nullable: true
       target: updated_at
-      incremental: true
       active: true
 targets:
   clickhouse:
