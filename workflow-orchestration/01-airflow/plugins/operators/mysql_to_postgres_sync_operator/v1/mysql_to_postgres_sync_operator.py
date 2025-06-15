@@ -205,7 +205,6 @@ class MySQLToPostgresSyncOperator(BaseOperator):
             conn_id=self.target_config['connection_id']
         )
         
-        # Build source to target column mapping
         source_to_target = {}
         source_columns = []
         
@@ -215,7 +214,6 @@ class MySQLToPostgresSyncOperator(BaseOperator):
                 source_to_target[source_col] = target_col
                 source_columns.append(source_col)
         
-        # Filter source columns to those available in MySQL
         available_source_columns = {c.lower() for c in mysql_table_info["available_columns"]}
         valid_source_columns = [col for col in source_columns if col.lower() in available_source_columns]
         
@@ -225,13 +223,9 @@ class MySQLToPostgresSyncOperator(BaseOperator):
         
         logger.debug(f"Valid source columns for query: {valid_source_columns}")
         
-        # Build the SELECT query with source column names
         columns_str = ", ".join([f"`{col}`" for col in valid_source_columns])
         
-        # Use incremental_column from SYNC_CONFIGS (this should be the source column name)
         incremental_col = self.source_config.get('incremental_column', 'updatedAt')
-        
-        # Get the target name for the incremental column for variable tracking
         target_incremental_col = source_to_target.get(incremental_col, incremental_col.lower())
         
         last_updated_at_str = Variable.get(f"{self.sync_key}_last_updated_at_postgres", default_var="1970-01-01 00:00:00")
@@ -246,22 +240,25 @@ class MySQLToPostgresSyncOperator(BaseOperator):
         logger.debug(f"Executing query: {query} with params: {last_updated_at}")
         params = (last_updated_at,)
         
-        batch_size = self.source_config.get('batch_size', 500)
+        batch_size = self.source_config.get('batch_size', 5000)
         logger.info(f"Using batch size: {batch_size}")
         
         total_rows = 0
         max_updated_at = last_updated_at
+        has_records = False
         
         for batch in mysql_hook.execute_query(query, params, fetch_batch=True, batch_size=batch_size):
             if not batch:
-                break
+                continue
             
+            has_records = True
             mapped_batch = []
+            if total_rows == 0 and batch:
+                logger.debug(f"Sample raw row from MySQL: {dict(batch[0])}")
+            
             for row in batch:
-                logger.debug(f"Raw row from MySQL: {dict(row)}")
                 mapped_row = {}
                 
-                # Map each source column to its target column name
                 for source_col in valid_source_columns:
                     if source_col in row:
                         target_col = source_to_target[source_col]
@@ -269,33 +266,25 @@ class MySQLToPostgresSyncOperator(BaseOperator):
                         mapped_row[target_col] = value
                         
                         if value is None:
-                            logger.debug(f"Source column {source_col} -> target {target_col} is None")
+                            logger.debug(f"Source column {source_col} -> target {target_col} = None")
                     else:
-                        logger.warning(f"Source column {source_col} not found in MySQL row")
+                        logger.warning(f"Missing column {source_col} in MySQL row")
                         target_col = source_to_target[source_col]
                         mapped_row[target_col] = None
                 
-                # Type conversion for integers based on target schema
                 for target_col, props in config["target"]["columns"].items():
                     if target_col in mapped_row and mapped_row[target_col] is not None:
-                        if props.get("type") == "integer" or props.get("type") == "int":
+                        if props.get("type") in ["integer", "int", "smallint"]:
                             try:
                                 mapped_row[target_col] = int(mapped_row[target_col])
                             except (ValueError, TypeError):
                                 logger.warning(f"Could not convert {target_col} value {mapped_row[target_col]} to integer")
-                                mapped_row[target_col] = None
-                        elif props.get("type") == "smallint":
-                            try:
-                                mapped_row[target_col] = int(mapped_row[target_col])
-                            except (ValueError, TypeError):
-                                logger.warning(f"Could not convert {target_col} value {mapped_row[target_col]} to smallint")
                                 mapped_row[target_col] = None
                 
                 mapped_batch.append(mapped_row)
             
             logger.debug(f"Mapped batch sample: {mapped_batch[0] if mapped_batch else 'No rows'}")
             
-            # Add sync_time to each row
             add_sync_time(mapped_batch, config["target"])
             
             try:
@@ -304,26 +293,27 @@ class MySQLToPostgresSyncOperator(BaseOperator):
                     table_name=table_info['table_name'],
                     rows=mapped_batch,
                     schema=table_info['schema_name'],
-                    upsert_conditions=upsert_conditions,
-                    update_condition=None
+                    upsert_conditions=upsert_conditions
                 )
                 total_rows += rows_affected
-                logger.info(f"Upserted {rows_affected} rows into {table_info['schema_name']}.{table_info['table_name']} (Total: {total_rows})")
+                logger.info(f"Upserted {rows_affected} rows to {table_info['schema_name']}.{table_info['table_name']} (Total: {total_rows})")
                 
-                # Update the max timestamp using the target column name
-                updated_at_values = [row[target_incremental_col] for row in mapped_batch if row.get(target_incremental_col) is not None]
+                updated_at_values = [row.get(target_incremental_col) for row in mapped_batch if row.get(target_incremental_col) is not None]
                 if updated_at_values:
                     batch_max_updated_at = max(updated_at_values)
                     max_updated_at = max(max_updated_at, batch_max_updated_at)
                 else:
-                    logger.warning(f"No valid {target_incremental_col} values in batch, skipping max update")
+                    logger.debug(f"No valid {target_incremental_col} values in batch")
             except Exception as e:
                 logger.error(f"Failed to upsert batch: {str(e)}")
                 raise
-            
+        
+        if not has_records:
+            logger.info(f"No records fetched from MySQL for {config['table']} with {incremental_col} > {last_updated_at}")
+        
         if total_rows > 0:
             max_updated_at_str = max_updated_at.strftime("%Y-%m-%d %H:%M:%S")
             Variable.set(f"{self.sync_key}_last_updated_at_postgres", max_updated_at_str)
             logger.info(f"Updated {self.sync_key}_last_updated_at_postgres to {max_updated_at_str}")
         
-        logger.info(f"Completed sync of {total_rows} rows to {table_info['schema_name']}.{table_info['table_name']}")
+        logger.info(f"{'No records' if total_rows == 0 else 'Successfully'} synced {total_rows} rows to {table_info['schema_name']}.{table_info['table_name']}")
