@@ -5,8 +5,9 @@ from airflow.hooks.base import BaseHook
 from airflow.models import Variable
 import clickhouse_connect
 from airflow.utils.dates import days_ago
-from plugins.utils.constants.v1.constants import DEFAULT_ARGS
 import pendulum
+
+from plugins.utils.defaults.v1.defaults import DEFAULT_ARGS
 
 
 import logging

@@ -1,5 +1,4 @@
 from plugins.utils import (
-    default_args,
     DAG, 
     PythonOperator, 
     PostgresHook, 
@@ -7,6 +6,8 @@ from plugins.utils import (
     requests, 
     logging
     )
+
+from plugins.utils.defaults.v1.defaults import DEFAULT_ARGS
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -72,7 +73,7 @@ def fetch_and_insert_quote():
 # Define the DAG
 with DAG(
     'quote_fetcher_dag',
-    default_args=default_args,
+    default_args=DEFAULT_ARGS,
     description='A DAG to check/create a table and insert random quotes',
     schedule='*/30 5-22 * * *', # Every 30 mins from 5am to 10pm
     start_date=days_ago(1),
