@@ -4,9 +4,10 @@ from airflow.utils.dates import days_ago
 from airflow.models import Variable
 from plugins.hooks.mysql.v1.mysql_hook import MySqlHook
 from plugins.hooks.postgres.v2.postgres_hook import PostgresHook
-from plugins.utils.schema_loader_v2 import SchemaLoader
-from plugins.utils.add_sync_time import add_sync_time
-from plugins.utils.constants import DEFAULT_ARGS, SYNC_CONFIGS
+from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
+from plugins.utils.add_sync_time.v1.add_sync_time import add_sync_time
+from plugins.utils.constants.v1.constants import  SYNC_CONFIGS
+from plugins.utils.defaults.v1.defaults import DEFAULT_ARGS
 from typing import Dict, Any
 import logging
 
