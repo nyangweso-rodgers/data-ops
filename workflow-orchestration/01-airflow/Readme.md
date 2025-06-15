@@ -167,6 +167,18 @@
 
 ## 5. `ccs_api_hook.py`
 
+# Custom Operators
+
+- Create Custom Operators that encapsulates various tasks (e.g., schema validation, connection tests, table validation, table preparation, and data sync) into a single reusable operator.
+
+## 1. MySQLToPostgresSyncOperator
+
+- **Custom Operator**: We’ll create a `MySQLToPostgresSyncOperator` that encapsulates the tasks (**schema validation**, **connection tests**, **table validation**, **table preparation**, and **data sync**) into a single reusable operator.
+- **Configuration**: The operator will accept a `sync_key` to look up the specific configuration from `SYNC_CONFIGS`, allowing different tables to have unique settings (e.g., batch size, schema, upsert conditions).
+- **Schema Files**: The operator will use the existing `SchemaLoader` to load table-specific schemas based on the `sync_key`.
+- **Schedules**: Each DAG can use the operator with a different `schedule_interval` to handle varying sync frequencies.
+- **Flexibility**: The operator will support dynamic table names, schemas, and column mappings from the schema files and `SYNC_CONFIGS`.
+
 # Architectures
 
 ## 1. Sync Customers from MySQL Database to ClickHouse
@@ -220,6 +232,13 @@
 
 - **Constants**: Use `DEFAULT_ARGS`, `CONNECTION_IDS`, and `LOG_LEVELS` from `constants.py`.
 
+## Weather Data ETL Pipeline
+
+- Build a weather ETL Pipeline that extracts weather data from the [weatherapi](https://www.weatherapi.com/), transforms the data with Python, and load the data into a Postgres SQL Database.
+- To extract data from [weatherapi](https://www.weatherapi.com/), you will need to follow these steps:
+  1. Register on the [weatherapi website](https://www.weatherapi.com/signup.aspx) and navigate to your dashboard after registering.
+  2. Once you are on your dashboard, go to your API Key section, and copy the API Key.
+
 # Resources and Further Reading
 
-1.
+1. [StackAbuse - Running Airflow Locally with Docker: A Technical Guide](https://stackabuse.com/running-airflow-locally-with-docker-a-technical-guide/?ref=dailydev)
