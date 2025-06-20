@@ -1,0 +1,31 @@
+services:
+  ocr-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ocr-pipeline
+    ports:
+      - "5001:5001"
+    env_file:
+      - ../.env
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - S3_BUCKET=${S3_BUCKET}
+      - SQS_QUEUE_URL=${SQS_QUEUE_URL}
+      - SQS_DLQ_URL=${SQS_DLQ_URL}
+      - ep_stage_db=${ep_stage_db}
+      - ep_stage_db_user=${ep_stage_db_user}
+      - ep_stage_db_password=${ep_stage_db_password}
+      - ep_stage_db_host=${ep_stage_db_host}
+      - ep_stage_db_port=${ep_stage_db_port}
+    volumes:
+      - /tmp:/tmp
+    networks:
+      - sd-network
+
+networks:
+  sd-network:
+    name: sd-network
+    external: true
