@@ -50,6 +50,15 @@
         npm run build
      ```
 
+# Deployment
+
+## 1. Deploy to GitHub Pages
+
+- Run:
+  ```sh
+   npm run deploy
+  ```
+
 # Resources and Further Reading
 
 1. [docusaurus - docs](https://docusaurus.io/docs)
