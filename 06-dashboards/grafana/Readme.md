@@ -1,5 +1,52 @@
 # Grafana
 
+## Table Of Contents
+
+# Setup
+
+## Docker
+
+- **Commands**
+  - Check Plugin Installation
+    ```sh
+      docker exec -it sunculture-grafana grafana cli plugins ls
+    ```
+
+# Plugins
+
+- Built-in Plugins include:
+  1. `CloudWatch`
+  2. `prometheus`
+  3. `graphite`
+  4. `loki`
+  5. `tempo`
+  6. `jaeger`
+  7. e.t.c.,
+
+## 1. Google Sheets
+
+- **Plugin**: `grafana-googlesheets-datasource`
+- **Maintained by**: Grafana Labs
+- **Purpose**: Queries data from Google Sheets using the Google Sheets API.
+- **Version**: Use the latest stable version or pin to a specific version (e.g., 2.0.0).
+- **Configuration**: Requires a **Google Service Account** or **API key** with access to the **Google Sheets API**.
+
+## 2. CloudWatch
+
+- **Plugin**: `grafana-cloudwatch-datasource`
+- **Maintained by**: Grafana Labs
+- **Purpose**: Connects to AWS CloudWatch to retrieve metrics, logs, and traces from AWS services.
+- **Note**: This plugin is included by default in `Grafana 12.0.2`, so no additional installation is needed unless it’s been removed from your custom image.
+- **Configuration**: Requires AWS credentials (access key/secret or IAM role) and region settings.
+
+## 3. Google Analytics
+
+- **Plugin**: `grafana-google-analytics-datasource`
+- **Maintained by**: Grafana Labs
+- **Purpose**: Connects to Google Analytics (**Universal Analytics** or **GA4**) to query metrics like **sessions**, **page views**, and **events**.
+- **Version**: Use the latest stable version or pin to a specific version for stability (e.g., 2.0.1).
+- **Configuration**: Requires OAuth2 authentication (Google Service Account or API key) and a Google Analytics property ID.
+
 ## Grafana API
 
 - **Grafana API** is a RESTful interface that lets you programmatically control nearly every aspect of your Grafana instance.
@@ -168,3 +215,6 @@
 # Resources and Further Reading
 
 1. [Last9 - Getting Started with the Grafana API: Practical Use Cases](https://last9.io/blog/getting-started-with-the-grafana-api/?ref=dailydev)
+2. [grafana - grafana-infinity-datasource](https://github.com/grafana/grafana-infinity-datasource)
+3. [GitHub - 40+ Grafana Dashboards for AWS CloudWatch Metrics](https://github.com/monitoringartist/grafana-aws-cloudwatch-dashboards?ref=dailydev)
+4. [Last9 - Common Issues with Grafana Login and How to Fix Them](https://last9.io/blog/grafana-login/?ref=dailydev)
