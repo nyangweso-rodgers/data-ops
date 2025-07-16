@@ -65,6 +65,12 @@ services:
     extends:
       file: docs/docusaurus-site/docker-compose-docusaurus.yml
       service: docusaurus
+  
+  # Machine Learning Services
+  ml-flow:
+    extends:
+      file: ml-models/ml-flow/docker-compose-ml-flow.yml
+      service: ml-flow
     
 # Define Volumes
 volumes:
