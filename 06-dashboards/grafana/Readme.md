@@ -2,6 +2,35 @@
 
 ## Table Of Contents
 
+# Grafana
+
+- **What problem does Grafana solve?**
+
+  - **Grafana** solves the problem of **monitoring and observability** by allowing users to:
+    1.  Aggregate data from multiple sources into a single dashboard.
+    2.  Visualize real-time metrics and logs for better decision-making.
+    3.  Set up alerts for anomalies and system failures
+    4.  Reduce monitoring costs by offering an open-source alternative to commercial tools.
+
+- **Why is Grafana so popular?**
+  - **Open-Source & Free** – Most features are free, with strong community backing.
+  - **Wide Data Source Support** – Integrates with **Prometheus**, **InfluxDB**, **Elasticsearch**, **MySQL**, and many more.
+  - **Customizable Dashboards** – Provides highly flexible and interactive visualization capabilities.
+  - **Scalability** – Works well in cloud and on-prem environments, making it suitable for various use cases.
+
+# What is Loki vs. Grafana?
+
+- **Loki** is a log aggregation system developed by **Grafana Labs**, specifically designed to work seamlessly with **Grafana**.
+  - **Grafana** → Focuses on visualizing data (**metrics**, **logs**, **traces**).
+  - **Loki** → Focuses on storing and querying logs in a cost-efficient way (similar to how **Prometheus** works for metrics).
+- **Loki** is often paired with **Grafana** to create a **full-stack observability solution** with both metrics and logs in a single dashboard.
+
+# What is Prometheus vs. Grafana
+
+- **Prometheus** is a metrics collection and storage system used for monitoring applications and infrastructure. It scrapes, processes, and stores time-series data.
+- **Grafana** is a **visualization platform** that can display **Prometheus** metrics using interactive dashboards.
+- They are often used together—Prometheus collects and stores the data, while Grafana provides a user-friendly way to visualize it.
+
 # Setup
 
 ## Docker
