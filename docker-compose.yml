@@ -7,7 +7,7 @@ services:
     extends:
       file: 01-databases/02-mysql/docker-compose-mysql.yml
       service: mysql-db
-  
+
   # Airflow Services
   airflow-webserver:
     extends:
@@ -41,12 +41,17 @@ services:
     extends:
       file: metadata-tools/01-open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-execute-migrate-all
-
-  #  Grafana Services
+  # Dashboards
+  ## 1. Grafana Services
   grafana:
     extends:
       file: 06-dashboards/grafana/docker-compose-grafana.yml
       service: grafana
+  ## 2. Taipy Services
+  taipy:
+    extends:
+      file: 06-dashboards/taipy/e-commerce/docker-compose-taipy.yml
+      service: taipy
   prometheus:
     extends:
       file: 06-dashboards/grafana/docker-compose-grafana.yml
@@ -65,13 +70,24 @@ services:
     extends:
       file: docs/docusaurus-site/docker-compose-docusaurus.yml
       service: docusaurus
-  
+
   # Machine Learning Services
   ml-flow:
     extends:
       file: ml-models/ml-flow/docker-compose-ml-flow.yml
       service: ml-flow
-    
+
+  # AI MCP Services
+  mcp-server:
+    extends:
+      file: ai/mcp-pg/docker-compose-mcp-pg.yml
+      service: mcp-server
+
+  mcp-client:
+    extends:
+      file: ai/mcp-pg/docker-compose-mcp-pg.yml
+      service: mcp-client
+
 # Define Volumes
 volumes:
   # Database Volumes
