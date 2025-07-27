@@ -1,0 +1,13 @@
+services:
+  taipy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taipy
+    restart: unless-stopped  # Auto-restart on failure
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1

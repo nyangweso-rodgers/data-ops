@@ -1,0 +1,53 @@
+/* Card styling for filters section */
+.card {
+    background-color: #176fc7;
+    border: 1px solid #18191a;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Taipy-specific card styling */
+.taipy-part.card {
+    background-color: #176fc7;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+/* Metric card styling */
+.metric-card {
+    background-color: #dda4a4;
+    border: 1px solid #0c0d0d;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: box-shadow 0.3s ease;
+}
+
+.metric-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Chart containers */
+.taipy-chart {
+    margin: 20px 0;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: #2a613b;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Table styling */
+.taipy-table {
+    margin-top: 20px;
+}
+
+/* Layout spacing */
+.taipy-layout {
+    gap: 15px;
+}

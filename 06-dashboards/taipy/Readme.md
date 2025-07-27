@@ -19,6 +19,6 @@
   5. You are building a production tool for business users, not just an internal exploratory dashboard.
   6. You are working in a team and need a clean, maintainable codebase.
 
-- Remark: choose **Gradio** for demos. Choose **Streamlit** for interactive exploration. Choose **Taipy** when you’re ready to build high-performance, scalable, and production-grade enterprise data applications.
+- **Remark**: choose **Gradio** for demos. Choose **Streamlit** for interactive exploration. Choose **Taipy** when you’re ready to build high-performance, scalable, and production-grade enterprise data applications.
 
 # Resources and Further Reading
