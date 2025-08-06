@@ -1,8 +1,5 @@
-################################ Messaging Services ############################################
 services:
    ################################ 1 Kafka Zookeeper ############################################
-  # kafka-zookeeper
-  #
   kafka-zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     container_name: kafka-zookeeper
@@ -16,7 +13,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     volumes:
-      - kafka-zookeeper-volume:/var/lib/zookeeper/data
+      - kafka-zookeeper-data:/var/lib/zookeeper/data
     healthcheck:
       test: echo srvr | nc kafka-zookeeper 2181 || exit 1
       #test: curl -s localhost:2181 || exit 1 # using curl to query the Zookeeper server status:
@@ -31,7 +28,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    #hostname: kafka
     container_name: kafka
     depends_on:
       kafka-zookeeper:
@@ -104,7 +100,7 @@ services:
       CONFLUENT_METRICS_ENABLE: "true"
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
     volumes:
-      - kafka-volume:/var/lib/kafka/data
+      - kafka-data:/var/lib/kafka/data
     healthcheck:
       test: nc -z localhost 9092 || exit -1
       start_period: 15s
@@ -120,7 +116,7 @@ services:
     container_name: kafka-ui
     restart: always
     ports:
-      - 8080:8080
+      - "8082:8080"   # maps host:8082 to container:8080
     depends_on:
       - kafka
     environment:
@@ -138,7 +134,6 @@ services:
   kafka-schema-registry:
     image: confluentinc/cp-schema-registry:7.6.1
     container_name: kafka-schema-registry
-    #hostname: kafka-schema-registry
     #restart: unless-stopped
     restart: always
     depends_on:
@@ -175,7 +170,6 @@ services:
     #image: confluentinc/cp-kafka-connect:7.7.0
     build: ./01-connectors/01-cp-kafka-connect
     container_name: cp-kafka-connect
-    hostname: cp-kafka-connect
     restart: always
     ports:
       - "8083:8083"
@@ -350,7 +344,7 @@ networks:
 
 ################################ Volumes ############################################
 volumes:
-  kafka-zookeeper-volume:
-    name: kafka-zookeeper-volume
+  kafka-zookeeper-data:
+    name: kafka-zookeeper-data
   kafka-volume:
-    name: kafka-volume
+    name: kafka-data
