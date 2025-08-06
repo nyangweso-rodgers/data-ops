@@ -1,0 +1,14 @@
+services:
+  redis:
+    image: redis:8.2.0 # https://hub.docker.com/layers/library/redis/8.2.0/images/sha256-005afd128e2e2d908633dae4eddbcfc7d8c9964efe27152e09439bf3e453e47e
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - data-ops-network
+
+networks:
+  data-ops-network:
+    external: true
