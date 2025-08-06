@@ -54,7 +54,7 @@ services:
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/postgres?sslmode=disable"
     depends_on:
-      - postgres-db
+      - postgres
     networks:
       - data-ops-network
 ################################ Networks ############################################
