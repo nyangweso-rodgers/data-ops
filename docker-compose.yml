@@ -1,13 +1,34 @@
 services:
-  postgres-db:
+  postgres:
     extends:
       file: 01-databases/01-postgres/docker-compose-postgres.yml
-      service: postgres-db
+      service: postgres
   mysql-db:
     extends:
       file: 01-databases/02-mysql/docker-compose-mysql.yml
       service: mysql-db
+  redis:
+    extends:
+      file: 01-databases/redis/docker-compose-redis.yml
+      service: redis
+  redisinsight:
+    extends:
+      file: 01-databases/redis/docker-compose-redis.yml
+      service: redisinsight
 
+  # Kafka Services
+  kafka-zookeeper:
+    extends:
+      file: 03-messaging/01-kafka/docker-compose-kafka.yml
+      service: kafka-zookeeper
+  kafka:
+    extends:
+      file: 03-messaging/01-kafka/docker-compose-kafka.yml
+      service: kafka
+  kafka-ui:
+    extends:
+      file: 03-messaging/01-kafka/docker-compose-kafka.yml
+      service: kafka-ui
   # Airflow Services
   airflow-webserver:
     extends:
@@ -50,7 +71,7 @@ services:
   ## 2. Taipy Services
   taipy:
     extends:
-      file: 06-dashboards/taipy/e-commerce/docker-compose-taipy.yml
+      file: 06-dashboards/taipy/sales-dashboard/docker-compose-taipy.yml
       service: taipy
   prometheus:
     extends:
@@ -78,22 +99,33 @@ services:
       service: ml-flow
 
   # AI MCP Services
+  open-webui:
+    extends:
+      file: ai/open-webui/docker-compose-open-webui.yml
+      service: open-webui
   mcp-server:
     extends:
-      file: ai/mcp-pg/docker-compose-mcp-pg.yml
+      file: ai/mcp-servers/docker-compose-mcp-pg.yml
       service: mcp-server
 
   mcp-client:
     extends:
-      file: ai/mcp-pg/docker-compose-mcp-pg.yml
+      file: ai/mcp-servers/docker-compose-mcp-pg.yml
       service: mcp-client
 
 # Define Volumes
 volumes:
   # Database Volumes
-  postgres-db-volume:
+  postgres-data:
     external: true
   mysql-db-volume:
+    external: true
+  redis-data:
+    external: true
+  # Messaging Volumes
+  kafka-zookeeper-data:
+    external: true
+  kafka-data:
     external: true
   # Datawarehouse Volumes
   clickhouse-server-data:

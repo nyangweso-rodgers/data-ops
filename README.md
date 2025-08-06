@@ -1,5 +1,7 @@
 # Data Ops
 
+## Table Of Contents
+
 # Project Description
 
 - This prject is split into several phases:
