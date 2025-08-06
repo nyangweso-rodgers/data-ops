@@ -1,38 +1,29 @@
 services:
-  postgres-db:
+  postgres:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: postgres-db
+    container_name: postgres
     restart: always
     ports:
       - "5432:5432"
     env_file:
       - ../../.env
     environment:
-      PGUSER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    #command:["postgres","-c","wal_level=logical","-c","max_replication_slots=10","-c","max_wal_senders=10",]
-    #command: ["postgres", "-c", "wal_level=logical"]
+      PGUSER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
     command: -c 'shared_preload_libraries=pg_stat_statements'
     volumes:
-      - postgres-db-volume:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
       - ./init-scripts:/docker-entrypoint-initdb.d/
     healthcheck:
-      #test: ["CMD", "psql", "-U", "postgres", "-c", "SELECT 1"]
-      # or
-      #test: ["CMD", "psql", "-U", "admin", "-c", "SELECT 1"]
       test: [
           "CMD-SHELL",
-          "PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -d postgres -c 'SELECT 1'",
+          "PGPASSWORD=${PG_PASSWORD} psql -U ${PG_USER} -d postgres -c 'SELECT 1'",
         ] 
       interval: 10s
       timeout: 5s
       retries: 10
-    #logging:
-    #driver: "json-file"
-    #options:
-    #max-size: "2048m"
     networks:
       - data-ops-network
   # pgadmin
@@ -52,7 +43,7 @@ services:
   #volumes:
   #- pgadmin-volume:/var/lib/pgadmin
   #depends_on:
-  #- postgres-db
+  #- postgres
   #networks:
 ################################ Networks ############################################
 networks:
@@ -60,7 +51,7 @@ networks:
     external: true 
 ################################ Volumes ############################################
 volumes:
-  postgres-db-volume:
-    name: postgres-db-volume
+  postgres-data:
+    name: postgres-data
   #pgadmin-volume:
   #name: pgadmin-volume
