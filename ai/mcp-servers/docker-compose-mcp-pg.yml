@@ -1,0 +1,34 @@
+services:
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mcp-server
+    environment:
+      - MYSQL_HOST=${MYSQL_AMT_DB_HOST}
+      - MYSQL_DB=${MYSQL_AMT_DB_NAME}
+      - MYSQL_USER=${MYSQL_AMT_DB_USER}
+      - MYSQL_PASSWORD=${MYSQL_AMT_DB_PASSWORD}
+    ports:
+      - "8000:8000"  # Expose for HTTP-based clients
+    networks:
+      - data-ops-network
+
+  mcp-client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: mcp-client
+    environment:
+      - MCP_SERVICE_URL=http://mcp_server:8000
+    depends_on:
+      - mcp-server
+    ports:
+      - "8501:8501"  # Streamlit default port
+    networks:
+      - data-ops-network
+
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true 
