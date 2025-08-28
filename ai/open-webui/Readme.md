@@ -7,10 +7,14 @@
 - **OpenWebUI** is a clean and privacy-first interface to interact with open-source **LLMs** like **Llama 3**, **Mistral**, or **Claude** locally on your machine. It supports features like tool calling, memory across chats, and custom personas — all without needing any OpenAI keys or cloud services.
 
 - Features:
+
   1.  Fully self-hosted UI for local LLMs.
   2.  Supports plugin tools, persistent memory, and personas.
   3.  Works with Ollama or Llama.cpp backends.
   4.  No external dependencies or API costs.
+
+- **Releases**:
+  - [v0.6.22](https://github.com/open-webui/open-webui/releases)
 
 # Setup
 
@@ -40,5 +44,6 @@
 
 1. [github.com/open-webui/open-webui](https://github.com/open-webui/open-webui)
 2. [docs.openwebui.com - Open WebUI](https://docs.openwebui.com/)
-3. [Ollama Model Library](https://ollama.com/library?ref=gettingstarted.ai)
-4. [Self-Hosted Private LLM using Ollama and Open WebUI](https://www.gettingstarted.ai/self-host-llm/?ref=dailydev)
+3. [github.com/open-webui - releases](https://github.com/open-webui/open-webui/releases)
+4. [Ollama Model Library](https://ollama.com/library?ref=gettingstarted.ai)
+5. [Self-Hosted Private LLM using Ollama and Open WebUI](https://www.gettingstarted.ai/self-host-llm/?ref=dailydev)
