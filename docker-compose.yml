@@ -39,6 +39,21 @@ services:
       file: workflow-orchestration/01-airflow/docker-compose-airflow.yml
       service: airflow-scheduler
 
+  # Dagster Services
+  dagster:
+    extends:
+      file: workflow-orchestration/02-dagster/docker-compose-dagster.yml
+      service: dagster
+  dagster-webserver:
+    extends:
+      file: workflow-orchestration/02-dagster/docker-compose-dagster.yml
+      service: dagster-webserver
+  dagster-daemon:
+    extends:
+      file: workflow-orchestration/02-dagster/docker-compose-dagster.yml
+      service: dagster-daemon
+  
+
   # ClickHouse Services
   clickhouse-server:
     extends:
@@ -99,20 +114,14 @@ services:
       service: ml-flow
 
   # AI MCP Services
+  ollama:
+    extends:
+      file: ai/open-webui/docker-compose-open-webui.yml
+      service: ollama
   open-webui:
     extends:
       file: ai/open-webui/docker-compose-open-webui.yml
       service: open-webui
-  mcp-server:
-    extends:
-      file: ai/mcp-servers/docker-compose-mcp-pg.yml
-      service: mcp-server
-
-  mcp-client:
-    extends:
-      file: ai/mcp-servers/docker-compose-mcp-pg.yml
-      service: mcp-client
-
 # Define Volumes
 volumes:
   # Database Volumes
@@ -138,6 +147,9 @@ volumes:
   prometheus-vol:
     external: true
   loki-vol:
+    external: true
+  # AI Volumes
+  ollama-data:
     external: true
 
 # Define Networks
