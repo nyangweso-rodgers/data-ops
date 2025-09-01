@@ -4,224 +4,60 @@
 
 # Project Overview
 
-- Build a fullly operational dagster pipeline to:
+# Setting Up Dagster on Docker
 
-  1. Move data from PostgreSQL Database to ClickHouse Server
+## Step 1: Setup Dagster Webserver(`dagster`)
 
-- Setup:
+- Serves the Dagit UI and GraphQL API.
+- Executes pipelines manually or when triggered externally.
+- Communicates with the daemon via the shared `DAGSTER_HOME` storage (e.g., SQLite or Postgres) to see scheduled runs and their status.
 
-  - Define **Services**: `dagster`, `dagster-daemon`, and `dagster-webserver`
-  - Define a **pipeline**: `etl-pipeline.py` is pulling from **Postgres** and appending to **ClickHouse**.
+## Step 2: Setup Dagster Daemon (`dagster-daemon`)
 
-- Design Plan:
+- **Dagster Daemon** is a seperate process that manages:
+  - **Schedules**: Runs jobs at specified intervals (e.g., hourly).
+  - **Sensors**: Triggers runs based on external events (e.g., new data in Postgres).
+  - **Run Queue**: Coordinates execution if you have multiple runs or concurrency limits.
+- Add the `dagster-daemon` service to the root `docker-compose.yml`. It needs to share `DAGSTER_HOME` with the `webserver` for coordination and access your pipeline code.
+- **Note**:
+  - Set `entrypoint: ["dagster-daemon", "run"]` to start the daemon process instead of the webserver.
+  - Shared the same `DAGSTER_HOME` volume so both services use the same storage (e.g., run history, schedules).
+  - No ports exposed— the daemon doesn’t need a public interface; it communicates internally with the webserver.
 
-  1. Postgres
+## Step 3: Setup Dagster Daemon
 
-     - Use `created_at` to identify new records.
-     - Use `updated_at` to detect changes to existing records.
+## Step : Access Dagit
 
-  2. ClickHouse
+- Open your browser and go to `http://localhost:3004` or `http://127.0.0.1:3004`
+- You should see the **Dagit** interface. Look under the **“Definitions”** or **“Assets”** tab for:
+  - The `postgres_to_clickhouse` job.
+  - The `postgres_data` and `clickhouse_table` assets.
+- **Remarks**:
 
-     - Switch to a `ReplacingMergeTree` table engine (replaces old rows by id on merge).
-     - Track the last run’s timestamp to filter incremental data.
+  - Why `127.0.0.1` Works But `localhost` Might Not:
 
-  3. Dagster
-     - Store the last run’s timestamp in Dagster’s instance (persistent storage).
-     - Split logic into **assets**: initial load, new records, and updates.
+    1.  **DNS Resolution Issues**
 
-# Setting Up Dagster
+        - `localhost` requires **DNS resolution** (looking up the hostname)
+        - `127.0.0.1` is a direct IP address (no DNS lookup needed)
+        - Your system's DNS might be misconfigured or slow
 
-## 1. Prerequisites
+    2.  **IPv6 vs IPv4 Conflicts**
 
-- Ensure you have the following:
-  1. Python (version 3.7 or later)
-  2. Pip (Python package manager)
+        - `localhost` might resolve to `IPv6 ::1` instead of `IPv4 127.0.0.1`
+        - Docker typically binds to **IPv4** by default
+        - Your browser might be trying IPv6 first
 
-## 2. Installation
+    3.  **Hosts File Issues**
+        - Your `/etc/hosts` (Linux/Mac) or `C:\Windows\System32\drivers\etc\hosts` (Windows) file might have incorrect entries
+        - Should contain: `127.0.0.1 localhost`
 
-- **Step 2.1**: **Installation**: Start by installing **Dagster** and the `dagster-docker` package. This can be done via pip:
+# Troubleshooting
 
+- **Check Specific Container Health**
   ```sh
-      pip install dagster dagster-docker
+    docker inspect dagster-webserver | grep -A 5 Health
   ```
-
-- **Step 2.2**: **Configuration**: Configure `Dockerfile` to include both **Dagster** and your pipelines.
-
-  - An example `Dockerfile` might look like this:
-
-    ```Dockerfile
-      FROM python:3.8-slim
-
-      RUN pip install dagster dagster-docker
-
-      COPY . /my_dagster_workspace
-      WORKDIR /my_dagster_workspace
-
-      CMD ["dagster", "api", "grpc", "--python-file", "my_pipeline.py", "--host", "0.0.0.0"]
-    ```
-
-- **Step 2.3**: **Running Dagster Pipelines**: With your Docker container set up, you can run your pipelines using the dagster CLI or programmatically via scripts. Containers ensure that your pipeline's environment is reproducible, making it easier to manage dependencies and test changes.
-
-- Install Dagster and Dagit (Dagster’s web-based UI) using pip:
-  ```sh
-    pip install dagster dagit
-  ```
-- Using `docker-compose.yml` File
-
-  ```yml
-  version: "3.7"
-
-  services:
-  docker_example_postgresql:
-    image: postgres:11
-    container_name: docker_example_postgresql
-    environment:
-    POSTGRES_USER: "postgres_user"
-    POSTGRES_PASSWORD: "postgres_password"
-    POSTGRES_DB: "postgres_db"
-    networks:
-      - docker_example_network
-    healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U postgres_user -d postgres_db"]
-    interval: 10s
-    timeout: 8s
-    retries: 5
-
-  docker_example_user_code:
-    build:
-    context: .
-    dockerfile: ./Dockerfile_user_code
-    container_name: docker_example_user_code
-    image: docker_example_user_code_image
-    restart: always
-    environment:
-    DAGSTER_POSTGRES_USER: "postgres_user"
-    DAGSTER_POSTGRES_PASSWORD: "postgres_password"
-    DAGSTER_POSTGRES_DB: "postgres_db"
-    DAGSTER_CURRENT_IMAGE: "docker_example_user_code_image"
-    networks:
-      - docker_example_network
-
-  docker_example_webserver:
-    build:
-    context: .
-    dockerfile: ./Dockerfile_dagster
-    entrypoint:
-      - dagster-webserver
-      - -h
-      - "0.0.0.0"
-      - -p
-      - "3000"
-      - -w
-      - workspace.yaml
-    container_name: docker_example_webserver
-    expose:
-      - "3000"
-    ports:
-      - "3000:3000"
-    environment:
-    DAGSTER_POSTGRES_USER: "postgres_user"
-    DAGSTER_POSTGRES_PASSWORD: "postgres_password"
-    DAGSTER_POSTGRES_DB: "postgres_db"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /tmp/io_manager_storage:/tmp/io_manager_storage
-    networks:
-      - docker_example_network
-    depends_on:
-    docker_example_postgresql:
-      condition: service_healthy
-    docker_example_user_code:
-      condition: service_started
-
-  docker_example_daemon:
-    build:
-    context: .
-    dockerfile: ./Dockerfile_dagster
-    entrypoint:
-      - dagster-daemon
-      - run
-    container_name: docker_example_daemon
-    restart: on-failure
-    environment:
-    DAGSTER_POSTGRES_USER: "postgres_user"
-    DAGSTER_POSTGRES_PASSWORD: "postgres_password"
-    DAGSTER_POSTGRES_DB: "postgres_db"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /tmp/io_manager_storage:/tmp/io_manager_storage
-    networks:
-      - docker_example_network
-    depends_on:
-    docker_example_postgresql:
-      condition: service_healthy
-    docker_example_user_code:
-      condition: service_started
-
-  networks:
-  docker_example_network:
-    driver: bridge
-    name: docker_example_network
-  ```
-
-- **Step** : **Setup Dagster Webserver** (`dagster`)
-
-  - Serves the Dagit UI and GraphQL API.
-  - Executes pipelines manually or when triggered externally.
-  - Communicates with the daemon via the shared `DAGSTER_HOME` storage (e.g., SQLite or Postgres) to see scheduled runs and their status.
-
-- **Step** : **Setup Dagster Daemon** (`dagster-daemon`)
-
-  - **Dagster Daemon** is a seperate process that manages:
-    - **Schedules**: Runs jobs at specified intervals (e.g., hourly).
-    - **Sensors**: Triggers runs based on external events (e.g., new data in Postgres).
-    - **Run Queue**: Coordinates execution if you have multiple runs or concurrency limits.
-  - Add the `dagster-daemon` service to the root `docker-compose.yml`. It needs to share `DAGSTER_HOME` with the `webserver` for coordination and access your pipeline code.
-    ```yml
-    dagster-daemon:
-      build:
-        context: ./workflow-orchestration-tools/02-dagster/dagster-pipeline
-        dockerfile: Dockerfile
-      image: dagster
-      container_name: dagster-daemon
-      entrypoint: ["dagster-daemon", "run"]
-      depends_on:
-        - postgres-db
-        - clickhouse-server
-        - dagster
-      environment:
-        - DAGSTER_HOME=/app/dagster_home
-      volumes:
-        - ./workflow-orchestration-tools/02-dagster/dagster-home:/app/dagster_home
-      networks:
-        - data-ops-network
-    ```
-  - Where:
-    - Set `entrypoint: ["dagster-daemon", "run"]` to start the daemon process instead of the webserver.
-    - Shared the same `DAGSTER_HOME` volume so both services use the same storage (e.g., run history, schedules).
-    - No ports exposed— the daemon doesn’t need a public interface; it communicates internally with the webserver.
-
-- **Step** : **Access Dagit**
-
-  - Open your browser and go to `http://localhost:3004` or `http://127.0.0.1:3004`
-  - You should see the **Dagit** interface. Look under the **“Definitions”** or **“Assets”** tab for:
-    - The `postgres_to_clickhouse` job.
-    - The `postgres_data` and `clickhouse_table` assets.
-
-- **Step** : **Run Your Pipeline**
-  - Before running, confirm your tables are set up in `clickhouse-server`
-  - Example:
-    - Run this via **Tabix** (http://localhost:8090) or a **ClickHouse client**:
-      ```sql
-        CREATE TABLE customers (
-          id Int32,
-          created_by String,
-          updated_by String,
-          created_at DateTime,
-          updated_at DateTime
-      ) ENGINE = MergeTree()
-      ORDER BY (created_at);
-      ```
 
 # Resources and Further Reading
 
