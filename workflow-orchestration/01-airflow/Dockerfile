@@ -1,4 +1,5 @@
 FROM apache/airflow:2.10.5
+# FROM apache/airflow:3.0.2
 # Switch to root for installing system dependencies
 USER root
 RUN apt-get update && apt-get install -y \

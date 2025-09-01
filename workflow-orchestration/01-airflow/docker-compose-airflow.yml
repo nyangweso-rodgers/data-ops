@@ -11,7 +11,7 @@ services:
     ports:
       - "${APACHE_AIRFLOW_PORT}:8080"  # Host:Container mapping
     depends_on:
-      postgres-db:
+      postgres:
         condition: service_healthy
     env_file:
       - ../../.env
@@ -51,7 +51,7 @@ services:
     command: scheduler
     restart: always
     depends_on:
-      postgres-db:
+      postgres:
         condition: service_healthy
     env_file:
       - ../../.env
