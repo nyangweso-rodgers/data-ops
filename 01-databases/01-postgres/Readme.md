@@ -7,7 +7,7 @@
 - Connect to Postgres Docker Container:
 
   ```sh
-    docker exec -it postgres-db psql -U <username>
+    docker exec -it postgres psql -U <username>
   ```
 
 - List existing databases:
@@ -20,3 +20,5 @@
   ```sh
     CREATE DATABASE <database_name>;
   ```
+
+# Resources and Further Reading
