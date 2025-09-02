@@ -19,7 +19,7 @@ source:
         nullable: false
         active: true
       account_id:
-        type: _int
+        type: _int4
         target: account_id
         nullable: false
         active: true
@@ -67,7 +67,7 @@ targets:
       customer_id:
         type: int4
       account_id:
-        type: _int
+        type: _int4
       premise_type_id:
         type: uuid
       premise_name:
