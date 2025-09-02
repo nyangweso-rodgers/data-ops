@@ -53,7 +53,9 @@ issue.json
 clickhouse-logs/
 
 # Dagster
-dagster-home/
+dagster-home/*
+!dagster-home/dagster.yaml
+!dagster-home/workspace.yaml
 
 # dbt
 target/
