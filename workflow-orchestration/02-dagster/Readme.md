@@ -59,6 +59,14 @@
     docker inspect dagster-webserver | grep -A 5 Health
   ```
 
+# Key Concepts
+
+## 1. Asset
+
+## 2. Job
+
+## 3. Resources
+
 # Resources and Further Reading
 
 1. [Dagster Documentation](https://docs.dagster.io/?_gl=1*1bd3xxt*_ga*Nzc4MzMwNDcxLjE3MTcxNDc3OTM.*_ga_84VRQZG7TV*MTcxNzE0Nzc5My4xLjAuMTcxNzE0Nzc5My42MC4wLjA.*_gcl_au*MTcxOTE5MzIyMS4xNzE3MTQ3Nzk0)
