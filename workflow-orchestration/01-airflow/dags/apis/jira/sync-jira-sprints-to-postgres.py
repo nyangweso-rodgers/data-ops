@@ -4,7 +4,7 @@ from airflow.models import Variable
 from airflow.operators.python import get_current_context
 from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
 from plugins.hooks.jira.v2.jira_hook import JiraApiHook
-from plugins.hooks.postgres.v2.postgres_hook import PostgresHook
+from plugins.hooks.pg_hook.v2.pg_hook import PostgresHook
 import logging
 from typing import List, Dict, Any
 from requests.exceptions import HTTPError

@@ -1,7 +1,7 @@
 from airflow.decorators import dag, task
 from datetime import datetime
 from airflow.models import Variable
-from plugins.hooks.postgres.v2.postgres_hook import PostgresHook
+from plugins.hooks.pg_hook.v2.pg_hook import PostgresHook
 from plugins.hooks.jira.v2.jira_hook import JiraApiHook
 from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
 import logging
