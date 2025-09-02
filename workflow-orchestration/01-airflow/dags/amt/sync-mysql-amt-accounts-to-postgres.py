@@ -2,8 +2,8 @@ from airflow.decorators import dag, task
 from datetime import datetime
 from airflow.utils.dates import days_ago
 from airflow.models import Variable
-from plugins.hooks.mysql.v1.mysql_hook import MySqlHook
-from plugins.hooks.postgres.v2.postgres_hook import PostgresHook
+from plugins.hooks.mysql_hook.v1.mysql_hook import MySqlHook
+from plugins.hooks.pg_hook.v2.pg_hook import PostgresHook
 from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
 from plugins.utils.add_sync_time.v1.add_sync_time import add_sync_time
 from plugins.utils.constants.v1.constants import  SYNC_CONFIGS

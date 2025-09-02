@@ -2,7 +2,7 @@ from airflow.decorators import dag, task
 from datetime import datetime
 from airflow.utils.dates import days_ago
 from airflow.models import Variable
-from plugins.hooks.mysql.v1.mysql_hook import MySqlHook
+from plugins.hooks.mysql_hook.v1.mysql_hook import MySqlHook
 from plugins.hooks.clickhouse.v1.clickhouse_hook import ClickHouseCloudHook
 from plugins.utils.schema_loader.v2.schema_loader import SchemaLoader
 from plugins.utils.add_sync_time.v1.add_sync_time import add_sync_time
