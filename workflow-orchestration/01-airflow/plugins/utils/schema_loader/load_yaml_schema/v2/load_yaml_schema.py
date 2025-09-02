@@ -17,8 +17,6 @@ class LoadYamlSchema:
     under 'schemas.source.filesystem' as relative or absolute paths.
     """
     # Configuration
-    DEFAULT_CONFIGS_DIR = Path(__file__).parent.parent.parent.parent.parent.parent / "configs" / "sync_configs"
-    CONFIGS_DIR = Path(os.getenv("CONFIGS_DIR", DEFAULT_CONFIGS_DIR))
     VALID_EXTENSIONS = {".yml", ".yaml"}
 
     @classmethod
@@ -61,49 +59,6 @@ class LoadYamlSchema:
     def _get_schema_hash(cls, schema: Dict[str, Any]) -> str:
         """Generate a hash of the schema for change detection."""
         return hashlib.md5(str(sorted(schema.items())).encode()).hexdigest()
-
-    @classmethod
-    def load_sync_config_file(cls, sync_config_path: str) -> Dict[str, Any]:
-        """
-        Load a sync configuration YAML file from the filesystem.
-
-        Args:
-            sync_config_path: Path to the config file (e.g., 'pg_sunculture_ep_to_pg_reporting_service/premises').
-
-        Returns:
-            Dictionary containing the parsed config.
-
-        Raises:
-            FileNotFoundError: If the config file is not found.
-            ValueError: If the YAML is invalid, empty, or missing required fields.
-        """
-        config_path = None
-        for ext in cls.VALID_EXTENSIONS:
-            candidate_path = cls.CONFIGS_DIR / f"{sync_config_path}{ext}"
-            if candidate_path.exists():
-                config_path = candidate_path
-                break
-
-        if config_path is None:
-            possible_paths = [cls.CONFIGS_DIR / f"{sync_config_path}{ext}" for ext in cls.VALID_EXTENSIONS]
-            logger.error(f"Config file not found for {sync_config_path}: tried {possible_paths}")
-            raise FileNotFoundError(f"Config file not found for {sync_config_path}")
-
-        logger.info(f"Loading sync configs from: {config_path}")
-        try:
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
-            if config is None:
-                raise ValueError(f"Config file {config_path} is empty")
-            if not config.get("job_id") or not config.get("schemas", {}).get("source", {}).get("filesystem"):
-                raise ValueError(f"Invalid sync config at {config_path}: missing job_id or schemas.source.filesystem")
-            
-            logger.info(f"Successfully loaded config for job_id: {config.get('job_id')}")
-            return config
-            
-        except yaml.YAMLError as e:
-            logger.error(f"Invalid YAML in config {config_path}: {e}")
-            raise ValueError(f"Invalid YAML in config {config_path}: {e}")
 
     @classmethod
     def load_yaml_schema(cls, schema_path: str, config_path: Path, 
