@@ -5,15 +5,17 @@ description: |
 source:
   airflow_connection_id: postgres-sunculture-ep-db
   database: sunculture_ep
+  schema: public
   table: premises
   batch_size: 5000
   incremental_column: updated_at
 
 target:
-  airflow_connection_id: postgres_reporting_service
+  airflow_connection_id: postgres-reporting-service-db
   database: reporting-service
   schema: fma
   table: premises
+  batch_size: 5000
   upsert_conditions: [id]
 
 schemas:
