@@ -1,122 +1,74 @@
-# workflow-orchestration-tools/02-dagster/dagster-pipeline/etl-pipeline.py
-from dagster import asset, job, ScheduleDefinition, DefaultScheduleStatus, repository, RunsFilter
-from sqlalchemy import create_engine, text
-import clickhouse_connect
-import logging
-from datetime import datetime
+from dagster import job, op, Out
+import mysql.connector
+from sqlalchemy import create_engine
+import os
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+# Op to fetch data from MySQL
+@op(out=Out(list))
+def fetch_from_mysql(context):
+    # Get MySQL connection details from environment variables
+    mysql_host = os.getenv("MYSQL_HOST", "mysql-db")
+    mysql_user = os.getenv("MYSQL_USER", "mysql_user")
+    mysql_password = os.getenv("MYSQL_PASSWORD", "mysql_password")
+    mysql_db = os.getenv("MYSQL_DB", "source_db")
 
-# Track last run timestamp in Dagster instance storage
-def get_last_run_timestamp(context):
-    last_run = context.instance.get_run_records(
-        filters=RunsFilter(tags={"pipeline": "postgres_to_clickhouse"}),
-        limit=1
-    )
-    if last_run:
-        last_run_ts = last_run[0].start_time
-        # Uncomment for daily full load at 5 AM
-        # now = datetime.utcnow()
-        # if now.hour == 5 and now.minute < 15 and last_run_ts.date() < now.date():
-        #     return None
-        return last_run[0].start_time if last_run else None
-    return None
-
-@asset
-def setup_clickhouse_table():
-    """Create the ClickHouse table with ReplacingMergeTree."""
-    client = clickhouse_connect.get_client(host="clickhouse-server", port=8123, username="default", password="")
-    client.command("""
-        CREATE TABLE IF NOT EXISTS users.customers (
-            id String,
-            created_by String,
-            updated_by String,
-            created_at DateTime,
-            updated_at DateTime
-        ) ENGINE = ReplacingMergeTree(updated_at)
-        ORDER BY id
-    """)
-    logger.debug("Created or verified ClickHouse customers table")
-    return True
-
-@asset
-def postgres_initial_load(context):
-    """Fetch all records on first run."""
-    engine = create_engine("postgresql://postgres:<password>@postgres-db:5432/<database-name>")
-    with engine.connect() as connection:
-        result = connection.execute(text("SELECT id, created_by, updated_by, created_at, updated_at FROM customers"))
-        data = [(str(row[0]), row[1], row[2], row[3], row[4]) for row in result.fetchall()]
-        logger.debug(f"Initial load: Fetched {len(data)} rows from Postgres")
-        return data
-
-@asset
-def postgres_new_records(context):
-    """Fetch records created since last run."""
-    last_run_ts = get_last_run_timestamp(context)
-    if not last_run_ts:
-        return []  # Skip if no prior run (initial load handles it)
-    engine = create_engine("postgresql://postgres:<password>@postgres-db:5432/<database-name>")
-    with engine.connect() as connection:
-        query = text("SELECT id, created_by, updated_by, created_at, updated_at FROM customers WHERE created_at > :last_run")
-        result = connection.execute(query, {"last_run": last_run_ts})
-        data = [(str(row[0]), row[1], row[2], row[3], row[4]) for row in result.fetchall()]
-        logger.debug(f"New records: Fetched {len(data)} rows since {last_run_ts}")
-        return data
-
-@asset
-def postgres_updated_records(context):
-    """Fetch records updated since last run."""
-    last_run_ts = get_last_run_timestamp(context)
-    if not last_run_ts:
-        return []  # Skip if no prior run
-    engine = create_engine("postgresql://postgres:<password>@postgres-db:5432/<database-name>")
-    with engine.connect() as connection:
-        query = text("SELECT id, created_by, updated_by, created_at, updated_at FROM customers WHERE updated_at > :last_run AND created_at <= :last_run")
-        result = connection.execute(query, {"last_run": last_run_ts})
-        data = [(str(row[0]), row[1], row[2], row[3], row[4]) for row in result.fetchall()]
-        logger.debug(f"Updated records: Fetched {len(data)} rows since {last_run_ts}")
-        return data
-
-@asset
-def clickhouse_load(context, postgres_initial_load, postgres_new_records, postgres_updated_records):
-    """Load data into ClickHouse with ReplacingMergeTree."""
-    client = clickhouse_connect.get_client(host="clickhouse-server", port=8123, username="default", password="")
-    
-    # Combine data: initial (first run), new, and updated
-    all_data = postgres_initial_load if not get_last_run_timestamp(context) else (postgres_new_records + postgres_updated_records)
-    if not all_data:
-        logger.debug("No data to load into ClickHouse")
-        return False
-    
+    # Connect to MySQL
     try:
-        client.insert(
-            "users.customers",
-            all_data,
-            column_names=["id", "created_by", "updated_by", "created_at", "updated_at"]
+        conn = mysql.connector.connect(
+            host=mysql_host,
+            user=mysql_user,
+            password=mysql_password,
+            database=mysql_db
         )
-        logger.debug(f"Inserted {len(all_data)} rows into ClickHouse")
-        return True
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, username, email, created_at FROM users")
+        data = cursor.fetchall()
+        context.log.info(f"Fetched {len(data)} rows from MySQL")
+        cursor.close()
+        conn.close()
+        return data
     except Exception as e:
-        logger.error(f"Failed to insert into ClickHouse: {str(e)}", exc_info=True)
+        context.log.error(f"Error fetching from MySQL: {e}")
         raise
 
+# Op to load data into PostgreSQL
+@op
+def load_to_postgres(context, data):
+    # Get PostgreSQL connection details from environment variables
+    pg_user = os.getenv("PG_DAGSTER_USER", "dagster")
+    pg_password = os.getenv("PG_DAGSTER_PASSWORD", "mypassword")
+    pg_host = os.getenv("PG_DAGSTER_HOST", "postgres-db")
+    pg_port = os.getenv("PG_DAGSTER_PORT", "5432")
+    pg_db = os.getenv("PG_DAGSTER_DB", "dagster")
+
+    # Create SQLAlchemy engine
+    connection_string = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}"
+    engine = create_engine(connection_string)
+
+    # Load data into PostgreSQL
+    try:
+        with engine.connect() as conn:
+            # Truncate table for simplicity (modify as needed)
+            conn.execute("TRUNCATE TABLE users")
+            for row in data:
+                conn.execute(
+                    """
+                    INSERT INTO users (id, username, email, created_at)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (row["id"], row["username"], row["email"], row["created_at"])
+                )
+            conn.commit()
+            context.log.info(f"Loaded {len(data)} rows into PostgreSQL")
+    except Exception as e:
+        context.log.error(f"Error loading to PostgreSQL: {e}")
+        raise
+
+# Define the job
 @job
-def postgres_to_clickhouse():
-    """Job to run all assets."""
-    setup = setup_clickhouse_table()
-    initial = postgres_initial_load()
-    new = postgres_new_records()
-    updated = postgres_updated_records()
-    clickhouse_load(setup, initial, new, updated)
+def mysql_to_postgres():
+    data = fetch_from_mysql()
+    load_to_postgres(data)
 
-# Schedule to run every 5 minutes
-postgres_to_clickhouse_schedule = ScheduleDefinition(
-    job=postgres_to_clickhouse,
-    cron_schedule="*/15 5-23 * * 1-7",
-    default_status=DefaultScheduleStatus.RUNNING
-)
-
-@repository
-def etl_repository():
-    return [postgres_to_clickhouse, postgres_to_clickhouse_schedule]
+if __name__ == "__main__":
+    mysql_to_postgres.execute_in_process()
