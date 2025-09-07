@@ -12,19 +12,27 @@ RUN apt-get update && apt-get install -y \
 # Install Python dependencies
 RUN pip install --upgrade pip && \
     pip install \
-    dagster==1.5.9 \
-    dagster-webserver==1.5.9 \
-    dagit==1.5.9 \
-    dagster-postgres==0.21.9 \
+    dagster==1.11.9 \
+    dagster-webserver==1.11.9 \
+    dagster-postgres==0.27.9 \
     sqlalchemy \
     clickhouse-connect \
     psycopg2-binary \
-    mysql-connector-python==8.0.33
-    # && apt-get remove -y gcc && apt-get autoremove -y \ # clean up unnecessary packages
-    # && apt-get clean && rm -rf /var/lib/apt/lists/* # clean up apt cache
+    mysql-connector-python==8.0.33 \
+    pandas \
+    pyyaml
 
 # Copy your pipeline code
-COPY ./dagster-pipeline/etl-pipeline.py /app/dagster-pipeline/
+COPY dagster_pipeline/ /app/dagster_pipeline/
+
+# Create storage directories for Dagster
+RUN mkdir -p /app/dagster_home/storage/logs
+RUN mkdir -p /app/dagster_home/storage/runs
+RUN mkdir -p /app/dagster_home/storage/events
+RUN mkdir -p /app/dagster_home/storage/schedules
+
+# Set Python path
+ENV PYTHONPATH=/app
 
 # Expose Dagit port
 EXPOSE 3004

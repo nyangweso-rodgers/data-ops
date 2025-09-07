@@ -8,24 +8,31 @@
 
 - `02-dagster/`
 
-  - `dagster-home/`
+  - `dagster_home/`
     - `dagster.yaml` # Configures the Dagster instance (e.g., storage, executors).
-    - `workspace.yaml` # Points to the code repository (dagster-pipeline/).
-  - `dagster-pipeline/`
+    - `workspace.yaml` # Points to the code repository (`dagster_pipeline/`).
+  - `dagster_pipeline/`
     - `assets/`
       - `__init__.py` # Exports assets for Dagster to load.
-      - `customers_sync.py` # Defines the customers asset for syncing the customers table.
+      - `sync_customers.py` # Defines the customers asset for syncing the customers table.
+      - `sync_accounts.py`
+      - `sync_orders.py`
     - `config/`
       - `local.yaml` # Defines resources and pipeline configs (with pipeline_configs needing mapping to assets).
       - `prod.yaml` # For production settings
     - `jobs/`
       - `__init__.py` # Exports jobs
-      - `customers_sync_job.py` # Defines the sc_amt_replica_to_reporting_service Job.
+      - `customers_job.py` # Defines the sc_amt_replica_to_reporting_service Job.
+      - `accounts_job.py`
     - `resources/`
       - `__init__.py` # Dynamically creates resources from config/local.yaml.
       - `clickhouse.py` # ClickHouse syncs.
       - `mysql.py` # Implements MySQLResource (using mysql.connector, with pooling and incremental sync support).
       - `postgres.py` # Implements PostgresResource (robust, with pooling and bulk inserts).
+    - `utils/`
+      - `__init__.py`
+      - `base_sync.py` # Shared sync utilities 
+      - `validation.py` # Data validation utilities
   - `docker-compose-dagster.yml`
   - `Dockerfile`
   - `Readme.md`
