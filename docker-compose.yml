@@ -44,14 +44,14 @@ services:
     extends:
       file: workflow-orchestration/02-dagster/docker-compose-dagster.yml
       service: dagster
-  dagster-webserver:
+  dagster_webserver:
     extends:
       file: workflow-orchestration/02-dagster/docker-compose-dagster.yml
-      service: dagster-webserver
-  dagster-daemon:
+      service: dagster_webserver
+  dagster_daemon:
     extends:
       file: workflow-orchestration/02-dagster/docker-compose-dagster.yml
-      service: dagster-daemon
+      service: dagster_daemon
   
 
   # ClickHouse Services
