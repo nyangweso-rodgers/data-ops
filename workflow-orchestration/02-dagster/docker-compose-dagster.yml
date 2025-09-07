@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     image: dagster
     container_name: dagster
-    command: "dagster api grpc -h 0.0.0.0 -p 4000 -f /app/dagster-pipeline/etl-pipeline.py"
+    command: "dagster api grpc -h 0.0.0.0 -p 4000 -f /app/dagster_pipeline/assets/customers_sync.py"
     restart: always
     healthcheck:
       test:
@@ -23,6 +23,8 @@ services:
     depends_on:
       postgres:  
         condition: service_healthy
+    env_file:
+      - ../../.env
     environment:
       - DAGSTER_HOME=/app/dagster_home
       # PostgreSQL connection for Dagster
@@ -31,18 +33,18 @@ services:
       - PG_DAGSTER_HOST=${PG_DAGSTER_HOST}
       - PG_DAGSTER_DB=${PG_DAGSTER_DB}
     volumes:
-      - ./dagster-home:/app/dagster_home
-      - ./dagster-pipeline:/app/dagster-pipeline
+      - ./dagster_home:/app/dagster_home
+      - ./dagster_pipeline:/app/dagster_pipeline
     networks:
       - data-ops-network
 
   # Dagster webserver
-  dagster-webserver:
+  dagster_webserver:
     build:
       context: .
       dockerfile: Dockerfile
     image: dagster
-    container_name: dagster-webserver
+    container_name: dagster_webserver
     ports:
       - "3004:3004"
     command:
@@ -66,6 +68,8 @@ services:
         condition: service_healthy
       dagster:
         condition: service_healthy
+    env_file:
+      - ../../.env
     environment:
       - DAGSTER_HOME=/app/dagster_home
       - DAGSTER_GRPC_SERVER_HOST=dagster
@@ -76,26 +80,30 @@ services:
       - PG_DAGSTER_HOST=${PG_DAGSTER_HOST}
       - PG_DAGSTER_DB=${PG_DAGSTER_DB}
     volumes:
-      - ./dagster-home:/app/dagster_home
-      - ./dagster-pipeline:/app/dagster-pipeline
+      - ./dagster_home:/app/dagster_home
+      - ./dagster_pipeline:/app/dagster_pipeline
     networks:
       - data-ops-network
 
   # Dagster daemon
-  dagster-daemon:
+  dagster_daemon:
     build:
       context: .
       dockerfile: Dockerfile
     image: dagster
-    container_name: dagster-daemon
-    #command: "dagster-daemon run"
-    command: "dagster-daemon run -w /app/dagster_home/workspace.yaml"
+    container_name: dagster_daemon
+    #command: "dagster_daemon run"
+    #command: "dagster_daemon run -w /app/dagster_home/workspace.yaml"
+    #command: ["dagster_daemon", "run"]
+    command: ["dagster-daemon", "run", "-w", "/app/dagster_home/workspace.yaml"]
     restart: always
     depends_on:
       dagster:
         condition: service_healthy
       postgres: 
         condition: service_healthy
+    env_file:
+      - ../../.env
     environment:
       - DAGSTER_HOME=/app/dagster_home
       # PostgreSQL connection for Dagster
@@ -104,14 +112,11 @@ services:
       - PG_DAGSTER_HOST=${PG_DAGSTER_HOST}
       - PG_DAGSTER_DB=${PG_DAGSTER_DB}
     volumes:
-      - ./dagster-home:/app/dagster_home
-      - ./dagster-pipeline:/app/dagster-pipeline
+      - ./dagster_home:/app/dagster_home
+      - ./dagster_pipeline:/app/dagster_pipeline
     networks:
       - data-ops-network
-
-################################ Networks ############################################
+# Networks
 networks:
   data-ops-network:
     external: true
-
-################################ Volumes ############################################

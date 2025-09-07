@@ -4,6 +4,73 @@
 
 # Project Overview
 
+# Project Structure
+
+- `02-dagster/`
+
+  - `dagster-home/`
+    - `dagster.yaml` # Configures the Dagster instance (e.g., storage, executors).
+    - `workspace.yaml` # Points to the code repository (dagster-pipeline/).
+  - `dagster-pipeline/`
+    - `assets/`
+      - `__init__.py` # Exports assets for Dagster to load.
+      - `customers_sync.py` # Defines the customers asset for syncing the customers table.
+    - `config/`
+      - `local.yaml` # Defines resources and pipeline configs (with pipeline_configs needing mapping to assets).
+      - `prod.yaml` # For production settings
+    - `jobs/`
+      - `__init__.py` # Exports jobs
+      - `customers_sync_job.py` # Defines the sc_amt_replica_to_reporting_service Job.
+    - `resources/`
+      - `__init__.py` # Dynamically creates resources from config/local.yaml.
+      - `clickhouse.py` # ClickHouse syncs.
+      - `mysql.py` # Implements MySQLResource (using mysql.connector, with pooling and incremental sync support).
+      - `postgres.py` # Implements PostgresResource (robust, with pooling and bulk inserts).
+  - `docker-compose-dagster.yml`
+  - `Dockerfile`
+  - `Readme.md`
+
+- Breakdown of directories in `dagster_home/`
+
+  1. `.logs_queue/`
+
+     - Temporary queue files for the `QueuedRunCoordinator` (if you had it enabled).
+
+  2. `nux/`
+
+     - "New User Experience" data.
+     - Stores metadata Dagster uses to know if you’ve already seen the getting-started tips / intro flows in the UI.
+     - Harmless, safe to delete, Dagster will recreate if needed.
+
+  3. `.telemetry/`
+
+     - Stores telemetry events (anonymous usage statistics Dagster sends to Elementl by default).
+     - If you disable telemetry (`telemetry: enabled: false`), this directory will stop being populated.
+
+  4. `history/`
+
+     - Keeps a record of CLI command history and some instance event history.
+     - Similar to a “shell history” file.
+     - Can be deleted, but you’ll lose local history references.
+
+  5. `logs/`
+
+     - Compute logs from pipeline/asset runs (stdout/stderr per step).
+     - This is where your tasks’ print/log output goes if you use the `LocalComputeLogManager`.
+     - Very useful for debugging.
+     - Safe to delete, but you’ll lose run logs in Dagit UI for past runs.
+
+  6. `schedules/`
+
+     - Local storage for schedule definitions and ticks when you’re not using Postgres-backed schedule storage.
+     - If you switch to Postgres schedule storage, this becomes unused.
+     - Safe to delte after switching
+
+  7. `storage/`
+     - Default metadata storage when Postgres is not configured (includes run storage, event logs, schedules, etc. as SQLite files).
+     - With Postgres configured, Dagster won’t use this anymore.
+     - Safe to delete once you’re sure everything is migrated.
+
 # Setting Up Dagster on Docker
 
 ## Step 1: Setup Dagster Webserver(`dagster`)
@@ -63,9 +130,33 @@
 
 ## 1. Asset
 
+- **Why Assets are preferred**:
+  1. **Automatic Dependencies**: Dagster tracks what depends on what
+  2. **Data Lineage**: Visual graph of the workflow
+  3. **Incremental Updates**: Only rebuild what changed
+  4. **Self-Documenting**: Clear what each piece produces
+  5. **Easy Testing**: Test individaul assets independenly
+
 ## 2. Job
 
+- **When to Use Jobs**:
+  1. Complex control flow (if/else logic)
+  2. Dynamic pipelines (different steps based on daat)
+  3. Legacy system integrations
+  4. Operational workflows (not data products)
+
 ## 3. Resources
+
+- **Resources** in **Dagster** are external services, connections, or tools required by your pipeline to execute, such as databases, cloud storage, APIs, or compute environments. They encapsulate configuration and lifecycle management for these external dependencies.
+
+# Development Workflow
+
+1. Define **Resources** (database connections, APIs, etc.)
+2. Create **Assets** (data products you want) OR Ops/Jobs (workflows)
+3. Set up Dependencies (assets automatically, jobs manually)
+4. Add Schedules/Sensors (when to run)
+5. Test in development
+6. Deploy to production with different resource configs
 
 # Resources and Further Reading
 
