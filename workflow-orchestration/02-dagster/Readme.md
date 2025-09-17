@@ -31,7 +31,7 @@
       - `postgres.py` # Implements PostgresResource (robust, with pooling and bulk inserts).
     - `utils/`
       - `__init__.py`
-      - `base_sync.py` # Shared sync utilities 
+      - `base_sync.py` # Shared sync utilities
       - `validation.py` # Data validation utilities
   - `docker-compose-dagster.yml`
   - `Dockerfile`
@@ -80,32 +80,32 @@
 
 # Setting Up Dagster on Docker
 
-## Step 1: Setup Dagster Webserver(`dagster`)
+## Requirements
 
-- Serves the Dagit UI and GraphQL API.
-- Executes pipelines manually or when triggered externally.
-- Communicates with the daemon via the shared `DAGSTER_HOME` storage (e.g., SQLite or Postgres) to see scheduled runs and their status.
+1. `dagster` (gRPC Server)
 
-## Step 2: Setup Dagster Daemon (`dagster-daemon`)
+   - **Purpose**: Executes your pipeline code and handles job runs
+   - **Why needed**: This is where your actual data pipelines run
+   - **Command**: `dagster api grpc` - serves your pipeline definitions
+   - **Remarks**:
+     - Communicates with the daemon via the shared `DAGSTER_HOME` storage (e.g., SQLite or Postgres) to see scheduled runs and their status.
 
-- **Dagster Daemon** is a seperate process that manages:
-  - **Schedules**: Runs jobs at specified intervals (e.g., hourly).
-  - **Sensors**: Triggers runs based on external events (e.g., new data in Postgres).
-  - **Run Queue**: Coordinates execution if you have multiple runs or concurrency limits.
-- Add the `dagster-daemon` service to the root `docker-compose.yml`. It needs to share `DAGSTER_HOME` with the `webserver` for coordination and access your pipeline code.
-- **Note**:
-  - Set `entrypoint: ["dagster-daemon", "run"]` to start the daemon process instead of the webserver.
-  - Shared the same `DAGSTER_HOME` volume so both services use the same storage (e.g., run history, schedules).
-  - No ports exposed— the daemon doesn’t need a public interface; it communicates internally with the webserver.
+2. `dagster_webserver` (Web UI)
 
-## Step 3: Setup Dagster Daemon
+   - **Purpose**: Provides the web interface for monitoring, triggering jobs, viewing logs
+   - **Why needed**: Without this, you'd have no UI to interact with Dagster
+   - **Command**: `dagster-webserver` - serves the web interface on port 3004
+
+3. `dagster_daemon` (Background Services)
+   - **Purpose**: Handles **scheduling**, **sensors**, **backfills**, and other background tasks
+   - **Why needed**: Without this, scheduled jobs won't run automatically
+   - **Command**: `dagster-daemon run` - manages background processes
+   - **Remarks**:
+     - Add the `dagster-daemon` service to the root `docker-compose.yml`. It needs to share `DAGSTER_HOME` with the `webserver` for coordination and access your pipeline code.
 
 ## Step : Access Dagit
 
 - Open your browser and go to `http://localhost:3004` or `http://127.0.0.1:3004`
-- You should see the **Dagit** interface. Look under the **“Definitions”** or **“Assets”** tab for:
-  - The `postgres_to_clickhouse` job.
-  - The `postgres_data` and `clickhouse_table` assets.
 - **Remarks**:
 
   - Why `127.0.0.1` Works But `localhost` Might Not:
@@ -167,4 +167,4 @@
 
 # Resources and Further Reading
 
-1. [Dagster Documentation](https://docs.dagster.io/?_gl=1*1bd3xxt*_ga*Nzc4MzMwNDcxLjE3MTcxNDc3OTM.*_ga_84VRQZG7TV*MTcxNzE0Nzc5My4xLjAuMTcxNzE0Nzc5My42MC4wLjA.*_gcl_au*MTcxOTE5MzIyMS4xNzE3MTQ3Nzk0)
+1. [docs.dagster.io](https://docs.dagster.io/?_gl=1*1bd3xxt*_ga*Nzc4MzMwNDcxLjE3MTcxNDc3OTM.*_ga_84VRQZG7TV*MTcxNzE0Nzc5My4xLjAuMTcxNzE0Nzc5My42MC4wLjA.*_gcl_au*MTcxOTE5MzIyMS4xNzE3MTQ3Nzk0)
