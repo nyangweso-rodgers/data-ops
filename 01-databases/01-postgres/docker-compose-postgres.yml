@@ -26,25 +26,6 @@ services:
       retries: 10
     networks:
       - data-ops-network
-  # pgadmin
-  #
-  #pgadmin:
-  #image: dpage/pgadmin4:8.7 # https://hub.docker.com/layers/dpage/pgadmin4/8.7/images/sha256-198236db5d90e491354c351ccd02a21ce736030b72cd0f8b05430bc48a59d86b?context=explore
-  #image: dpage/pgadmin4:8.14.0 # https://hub.docker.com/r/dpage/pgadmin4/tags
-  #container_name: pgadmin
-  #restart: always
-  #ports:
-  #- "5050:80"
-  #env_file:
-  #- .env
-  #environment:
-  #PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-  #PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-  #volumes:
-  #- pgadmin-volume:/var/lib/pgadmin
-  #depends_on:
-  #- postgres
-  #networks:
 ################################ Networks ############################################
 networks:
   data-ops-network:
@@ -53,5 +34,3 @@ networks:
 volumes:
   postgres-data:
     name: postgres-data
-  #pgadmin-volume:
-  #name: pgadmin-volume
