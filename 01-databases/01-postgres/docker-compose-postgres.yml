@@ -10,8 +10,8 @@ services:
     env_file:
       - ../../.env
     environment:
-      PGUSER: ${PG_USER}
-      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      PGUSER: ${LOCAL_USERS_PG_DB_NAME}
+      POSTGRES_PASSWORD: ${LOCAL_USERS_PG_DB_PASSWORD}
     command: -c 'shared_preload_libraries=pg_stat_statements'
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -19,7 +19,7 @@ services:
     healthcheck:
       test: [
           "CMD-SHELL",
-          "PGPASSWORD=${PG_PASSWORD} psql -U ${PG_USER} -d postgres -c 'SELECT 1'",
+          "PGPASSWORD=${LOCAL_USERS_PG_DB_PASSWORD} psql -U ${PG_USER} -d postgres -c 'SELECT 1'",
         ] 
       interval: 10s
       timeout: 5s

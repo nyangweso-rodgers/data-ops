@@ -2,9 +2,7 @@
 FROM postgres:14.18
 
 # Add custom initialization scripts to create multiple databases
-COPY ./init-scripts/init-sales-db.sql /docker-entrypoint-initdb.d/
 COPY ./init-scripts/init-users-db.sql /docker-entrypoint-initdb.d/
-COPY ./init-scripts/init-open-webui-db.sql /docker-entrypoint-initdb.d/
 
 # Set PostgreSQL configuration options
 CMD ["postgres", "-c", "max_replication_slots=10", "-c", "wal_level=logical", "-c", "max_wal_senders=10"]
