@@ -32,3 +32,5 @@ Dockerfile
 
 npm-debug.log
 README.md
+*.md
+*.log
