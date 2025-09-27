@@ -19,7 +19,7 @@ services:
     healthcheck:
       test: [
           "CMD-SHELL",
-          "PGPASSWORD=${LOCAL_USERS_PG_DB_PASSWORD} psql -U ${PG_USER} -d postgres -c 'SELECT 1'",
+          "PGPASSWORD=${LOCAL_USERS_PG_DB_PASSWORD} psql -U ${LOCAL_USERS_PG_DB_USER} -d postgres -c 'SELECT 1'",
         ] 
       interval: 10s
       timeout: 5s
