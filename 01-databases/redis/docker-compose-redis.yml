@@ -1,27 +1,42 @@
 services:
   redis:
-    image: redis:8.2.0 # https://hub.docker.com/layers/library/redis/8.2.0/images/sha256-005afd128e2e2d908633dae4eddbcfc7d8c9964efe27152e09439bf3e453e47e
+    image: redis:8.2.0
     container_name: redis
-    ports:
-      - "6379:6379"
+    command: [
+        "redis-server",
+        "--appendonly", # Redis logs all writes to the appendonly.aof file in /data.
+        "yes",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+      ]
     volumes:
       - redis-data:/data
+    ports:
+      - "6379:6379"
+    env_file:
+      - ../../.env
     networks:
       - data-ops-network
+
   redisinsight:
-    image: redislabs/redisinsight:2.70 # https://hub.docker.com/layers/redislabs/redisinsight/2.70/images/sha256-ed94a0eb2a00ab6923ba71560d2b24dadee7d1493e190d8daf113b860e6271af
-    #image: redislabs/redisinsight:latest
+    image: redislabs/redisinsight:2.70
     container_name: redisinsight
     ports:
-      #- "8001:8001"
-      - "127.0.0.1:8001:8001"  # Force bind to localhost
+      - "5540:5540"
     environment:
-      - REDIS_HOST=redis  # Link to Redis service
-      - REDISINSIGHT_HOST=0.0.0.0  # Ensure binding
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDISINSIGHT_HOST=0.0.0.0
+    env_file:
+      - ../../.env
     networks:
       - data-ops-network
     depends_on:
       - redis
+
+volumes:
+  redis-data:
 
 networks:
   data-ops-network:
