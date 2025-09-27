@@ -52,6 +52,20 @@ services:
     extends:
       file: workflow-orchestration/02-dagster/docker-compose-dagster.yml
       service: dagster_daemon
+
+  # Prefect Services
+  prefect-server:
+    extends:
+      file: workflow-orchestration/03-prefect/docker-compose-prefect.yml
+      service: prefect-server
+  prefect-services:
+    extends:
+      file: workflow-orchestration/03-prefect/docker-compose-prefect.yml
+      service: prefect-services
+  prefect-worker:
+    extends:
+      file: workflow-orchestration/03-prefect/docker-compose-prefect.yml
+      service: prefect-worker
   
 
   # ClickHouse Services
