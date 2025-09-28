@@ -56,15 +56,15 @@ services:
   # Prefect Services
   prefect-server:
     extends:
-      file: workflow-orchestration/03-prefect/docker-compose-prefect.yml
+      file: workflow-orchestration/prefect/docker-compose-prefect.yml
       service: prefect-server
   prefect-services:
     extends:
-      file: workflow-orchestration/03-prefect/docker-compose-prefect.yml
+      file: workflow-orchestration/prefect/docker-compose-prefect.yml
       service: prefect-services
   prefect-worker:
     extends:
-      file: workflow-orchestration/03-prefect/docker-compose-prefect.yml
+      file: workflow-orchestration/prefect/docker-compose-prefect.yml
       service: prefect-worker
   
 
