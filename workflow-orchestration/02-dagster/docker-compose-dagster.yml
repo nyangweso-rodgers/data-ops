@@ -1,4 +1,4 @@
-############################## Workflow Orchestrator - Dagster ##############################################
+############################## Dagster ##############################################
 services:
   # Dagster gRPC server
   dagster:
@@ -7,7 +7,6 @@ services:
       dockerfile: Dockerfile
     image: dagster
     container_name: dagster
-    #command: "dagster api grpc -h 0.0.0.0 -p 4000 -f /app/dagster_pipeline/assets/sync_customers.py"
     command: ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "dagster_pipeline"]
     #restart: always
     restart: no  # Disable for debugging
@@ -32,10 +31,10 @@ services:
       - PYTHONPATH=/app
       - DAGSTER_LOG_LEVEL=DEBUG
       # PostgreSQL connection for Dagster
-      - PG_DAGSTER_USER=${PG_DAGSTER_USER}
-      - PG_DAGSTER_PASSWORD=${PG_DAGSTER_PASSWORD}
-      - PG_DAGSTER_HOST=${PG_DAGSTER_HOST}
-      - PG_DAGSTER_DB=${PG_DAGSTER_DB}
+      - PG_DAGSTER_USER=${DAGSTER_PG_DB_USER}
+      - PG_DAGSTER_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - PG_DAGSTER_HOST=${DAGSTER_PG_DB_HOST}
+      - PG_DAGSTER_DB=${DAGSTER_PG_DB_NAME}
     volumes:
       - ./dagster_home:/app/dagster_home
       - ./dagster_pipeline:/app/dagster_pipeline
@@ -44,10 +43,7 @@ services:
 
   # Dagster webserver
   dagster_webserver:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: dagster
+    image: dagster # Reuse built image, no build section
     container_name: dagster_webserver
     ports:
       - "3004:3004"
@@ -82,10 +78,10 @@ services:
       - PYTHONPATH=/app
       - DAGSTER_LOG_LEVEL=DEBUG
       # PostgreSQL connection for Dagster
-      - PG_DAGSTER_USER=${PG_DAGSTER_USER}
-      - PG_DAGSTER_PASSWORD=${PG_DAGSTER_PASSWORD}
-      - PG_DAGSTER_HOST=${PG_DAGSTER_HOST}
-      - PG_DAGSTER_DB=${PG_DAGSTER_DB}
+      - PG_DAGSTER_USER=${DAGSTER_PG_DB_USER}
+      - PG_DAGSTER_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - PG_DAGSTER_HOST=${DAGSTER_PG_DB_HOST}
+      - PG_DAGSTER_DB=${DAGSTER_PG_DB_NAME}
     volumes:
       - ./dagster_home:/app/dagster_home
       - ./dagster_pipeline:/app/dagster_pipeline
@@ -94,14 +90,8 @@ services:
 
   # Dagster daemon
   dagster_daemon:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: dagster
+    image: dagster # Reuse built image, no build section
     container_name: dagster_daemon
-    #command: "dagster_daemon run"
-    #command: "dagster_daemon run -w /app/dagster_home/workspace.yaml"
-    #command: ["dagster_daemon", "run"]
     command: ["dagster-daemon", "run", "-w", "/app/dagster_home/workspace.yaml"]
     #restart: always
     restart: no  # Disable for debugging
@@ -117,10 +107,10 @@ services:
       - PYTHONPATH=/app
       - DAGSTER_LOG_LEVEL=DEBUG
       # PostgreSQL connection for Dagster
-      - PG_DAGSTER_USER=${PG_DAGSTER_USER}
-      - PG_DAGSTER_PASSWORD=${PG_DAGSTER_PASSWORD}
-      - PG_DAGSTER_HOST=${PG_DAGSTER_HOST}
-      - PG_DAGSTER_DB=${PG_DAGSTER_DB}
+      - PG_DAGSTER_USER=${DAGSTER_PG_DB_USER}
+      - PG_DAGSTER_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - PG_DAGSTER_HOST=${DAGSTER_PG_DB_HOST}
+      - PG_DAGSTER_DB=${DAGSTER_PG_DB_NAME}
     volumes:
       - ./dagster_home:/app/dagster_home
       - ./dagster_pipeline:/app/dagster_pipeline
