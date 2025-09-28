@@ -1,0 +1,84 @@
+services:
+  prefect-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prefect-server
+    container_name: prefect-server
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    environment:
+      #PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${LOCAL_USERS_PG_DB_NAME}:${LOCAL_USERS_PG_DB_PASSWORD}@postgres:5432/${LOCAL_USERS_PG_DB_NAME}
+      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_PG_DB_URL}
+      PREFECT_SERVER_API_HOST: 0.0.0.0 # This allows the server to accept connections from any interface within the container
+      PREFECT_UI_URL: http://localhost:4200 # Where to access the UI
+      PREFECT_UI_API_URL: http://localhost:4200/api # Where UI should connect to API
+      PREFECT_UI_ENABLED: true
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 0
+      PREFECT_REDIS_MESSAGING_PASSWORD: ${REDIS_PASSWORD}
+    command: prefect server start --no-services
+    ports:
+      - "4200:4200"
+    networks:
+      - data-ops-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4200/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prefect-services:
+    image: prefect-server # Reuse built image, no build section
+    container_name: prefect-services
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    environment:
+      #PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${LOCAL_USERS_PG_DB_NAME}:${LOCAL_USERS_PG_DB_PASSWORD}@postgres:5432/${LOCAL_USERS_PG_DB_NAME}
+      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_PG_DB_URL}
+      PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+      PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+      PREFECT_REDIS_MESSAGING_HOST: redis
+      PREFECT_REDIS_MESSAGING_PORT: 6379
+      PREFECT_REDIS_MESSAGING_DB: 0
+      PREFECT_REDIS_MESSAGING_PASSWORD: ${REDIS_PASSWORD}
+    command: prefect server services start
+    networks:
+      - data-ops-network
+
+  prefect-worker:
+    image: prefect-server # Reuse built image, no build section
+    container_name: prefect-worker
+    depends_on:
+      prefect-server:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    environment:
+      PREFECT_API_URL: http://prefect-server:4200/api
+    command: prefect worker start --pool local-pool
+    volumes:
+      - /flows:/app/flows
+    networks:
+      - data-ops-network
+
+volumes:
+  redis-data:
+  postgres-data:
+
+networks:
+  data-ops-network:
+    external: true
