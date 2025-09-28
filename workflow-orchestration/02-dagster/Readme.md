@@ -103,6 +103,39 @@
    - **Remarks**:
      - Add the `dagster-daemon` service to the root `docker-compose.yml`. It needs to share `DAGSTER_HOME` with the `webserver` for coordination and access your pipeline code.
 
+## Step : Setup PostgreSQL DB For Dagster
+
+- Connect to PostgreSQL as superuser
+
+  ```sh
+    # If using Docker container
+    docker exec -it <postgres_container_name> psql -U postgres
+  ```
+
+- Create the database and user
+
+  ```sql
+    -- Create the database
+    CREATE DATABASE dagster;
+
+    -- Create user with password (if user doesn't exist)
+    CREATE USER <user_name> WITH PASSWORD '<password>';
+
+    -- Grant all privileges on the database to the user
+    GRANT ALL PRIVILEGES ON DATABASE dagster TO <user_name>;
+
+    -- Connect to the dagster database
+    \c dagster
+
+    -- Grant schema privileges
+    GRANT ALL ON SCHEMA public TO postgres;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
+
+    -- Exit
+    \q
+  ```
+
 ## Step : Access Dagit
 
 - Open your browser and go to `http://localhost:3004` or `http://127.0.0.1:3004`
