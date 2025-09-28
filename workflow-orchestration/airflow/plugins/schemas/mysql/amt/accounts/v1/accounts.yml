@@ -1,0 +1,145 @@
+meta:
+  version: "1.1"
+  created: "2025-06-05"
+  owner: "Rodgers Nyangweso"
+  description: "Accounts Data Product"
+source:
+  columns:
+    id:
+      type: int
+      target: id
+      primary_key: true
+      active: true
+    parentAccountId:
+      type: int
+      target: parent_account_id
+      nullable: true
+      active: true
+    accountTypeId:
+      type: int
+      target: account_type_id
+      nullable: true
+      active: true
+    customerId:
+      type: int
+      target: customer_id
+      nullable: true
+      active: true
+    accountRef:
+      type: varchar(255)
+      target: account_ref
+      nullable: true
+      active: true
+    status:
+      type: varchar(255)
+      target: status
+      nullable: true
+      active: true
+    jsfDate:
+      type: datetime
+      target: jsf_date
+      nullable: true
+      active: true
+    jsfId:
+      type: varchar(255)
+      target: jsf_id
+      nullable: true
+      active: true
+    dispatchDate:
+      type: datetime
+      target: dispatch_date
+      nullable: true
+      active: true
+    firstInstallmentDate:
+      type: datetime
+      target: first_installment_date
+      nullable: true
+      active: true
+    installationDate:
+      type: datetime
+      target: installation_date
+      nullable: true
+      active: true
+    fullDepositDate:
+      type: datetime
+      target: full_deposit_date
+      nullable: true
+      active: true
+    assignmentId:
+      type: varchar(255)
+      target: assignment_id
+      nullable: true
+      active: true
+    assignmentDate:
+      type: datetime
+      target: assignment_date
+      nullable: true
+      active: true
+    createdAt:
+      type: datetime
+      target: created_at
+      nullable: true
+      active: true
+    updatedAt:
+      type: datetime
+      target: updated_at
+      nullable: true
+      active: true
+      source_incremental: true
+targets:
+  postgres:
+    columns:
+      id:
+        type: integer
+        nullable: false
+        primary_key: true
+      parent_account_id:
+        type: integer
+        nullable: true
+      account_type_id:
+        type: integer
+        nullable: true
+      customer_id:
+        type: integer
+        nullable: true
+      account_ref:
+        type: character varying(255)
+        nullable: true
+      status:
+        type: character varying(255)
+        nullable: true
+      jsf_date:
+        type: timestamp
+        nullable: true
+      jsf_id:
+        type: character varying(255)
+        nullable: true
+      dispatch_date:
+        type: timestamp
+        nullable: true
+      first_installment_date:
+        type: timestamp
+        nullable: true
+      installation_date:
+        type: timestamp
+        nullable: true
+      full_deposit_date:
+        type: timestamp
+        nullable: true
+      assignment_id:
+        type: character varying(255)
+        nullable: true
+      assignment_date:
+        type: timestamp
+        nullable: true
+      created_at:
+        type: timestamp
+        nullable: true
+      updated_at:
+        type: timestamp
+        nullable: true
+      sync_time:
+        type: timestamp
+        nullable: true
+        auto_generated: true
+        description: "Timestamp when data was synced"

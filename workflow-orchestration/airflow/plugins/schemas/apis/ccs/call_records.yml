@@ -1,0 +1,12 @@
+_meta:
+  version: "1.1" 
+  created: "2025-06-07"
+  owner: "Rodgers Nyangweso"
+  description: "Call Records Data Product"
+
+source:
+  columns:  
+targets:
+  postgres:
+    columns:
+  clickhouse:
