@@ -32,11 +32,11 @@ services:
   # Airflow Services
   airflow-webserver:
     extends:
-      file: workflow-orchestration/01-airflow/docker-compose-airflow.yml
+      file: workflow-orchestration/airflow/docker-compose-airflow.yml
       service: airflow-webserver
   airflow-scheduler:
     extends:
-      file: workflow-orchestration/01-airflow/docker-compose-airflow.yml
+      file: workflow-orchestration/airflow/docker-compose-airflow.yml
       service: airflow-scheduler
 
   # Dagster Services
