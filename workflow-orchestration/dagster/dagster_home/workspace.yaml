@@ -1,0 +1,6 @@
+# dagster_home/workspace.yaml
+load_from:
+  - python_package:
+      package_name: dagster_pipeline
+      location_name: dagster_pipeline
+      working_directory: /app
