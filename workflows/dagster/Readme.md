@@ -6,11 +6,40 @@
 
 # Project Structure
 
-- `02-dagster/`
-
+- data-ops/
+  - workflows/
+    -
+- Detailed Setup
+- `dagster/`
   - `dagster_home/`
     - `dagster.yaml` # Configures the Dagster instance (e.g., storage, executors).
     - `workspace.yaml` # Points to the code repository (`dagster_pipeline/`).
+    - `.logs_queue/`
+      - Temporary queue files for the `QueuedRunCoordinator` (if you have it enabled).
+    - `nux/`
+      - "New User Experience" data.
+      - Stores metadata Dagster uses to know if you’ve already seen the getting-started tips / intro flows in the UI.
+      - Harmless, safe to delete, Dagster will recreate if needed.
+    - `.telemetry/`
+      - Stores telemetry events (anonymous usage statistics Dagster sends to Elementl by default).
+      - If you disable telemetry (`telemetry: enabled: false`), this directory will stop being populated.
+    - `history/`
+      - Keeps a record of CLI command history and some instance event history.
+      - Similar to a “shell history” file.
+      - Can be deleted, but you’ll lose local history references.
+    - `logs/`
+      - Compute logs from `pipeline/asset` runs (`stdout/stderr` per step).
+      - This is where your tasks’ print/log output goes if you use the `LocalComputeLogManager`.
+      - Very useful for debugging.
+      - Safe to delete, but you’ll lose run logs in Dagit UI for past runs.
+    - `schedules/`
+      - Local storage for **schedule definitions** and ticks when you’re not using Postgres-backed schedule storage.
+      - If you switch to Postgres schedule storage, this becomes unused.
+      - Safe to delte after switching
+    - `storage/`
+      - Default metadata storage when Postgres is not configured (includes run storage, event logs, schedules, etc. as SQLite files).
+      - With Postgres configured, Dagster won’t use this anymore.
+      - Safe to delete once you’re sure everything is migrated.
   - `dagster_pipeline/`
     - `assets/`
       - `__init__.py` # Exports assets for Dagster to load.
@@ -36,47 +65,6 @@
   - `docker-compose-dagster.yml`
   - `Dockerfile`
   - `Readme.md`
-
-- Breakdown of directories in `dagster_home/`
-
-  1. `.logs_queue/`
-
-     - Temporary queue files for the `QueuedRunCoordinator` (if you had it enabled).
-
-  2. `nux/`
-
-     - "New User Experience" data.
-     - Stores metadata Dagster uses to know if you’ve already seen the getting-started tips / intro flows in the UI.
-     - Harmless, safe to delete, Dagster will recreate if needed.
-
-  3. `.telemetry/`
-
-     - Stores telemetry events (anonymous usage statistics Dagster sends to Elementl by default).
-     - If you disable telemetry (`telemetry: enabled: false`), this directory will stop being populated.
-
-  4. `history/`
-
-     - Keeps a record of CLI command history and some instance event history.
-     - Similar to a “shell history” file.
-     - Can be deleted, but you’ll lose local history references.
-
-  5. `logs/`
-
-     - Compute logs from pipeline/asset runs (stdout/stderr per step).
-     - This is where your tasks’ print/log output goes if you use the `LocalComputeLogManager`.
-     - Very useful for debugging.
-     - Safe to delete, but you’ll lose run logs in Dagit UI for past runs.
-
-  6. `schedules/`
-
-     - Local storage for schedule definitions and ticks when you’re not using Postgres-backed schedule storage.
-     - If you switch to Postgres schedule storage, this becomes unused.
-     - Safe to delte after switching
-
-  7. `storage/`
-     - Default metadata storage when Postgres is not configured (includes run storage, event logs, schedules, etc. as SQLite files).
-     - With Postgres configured, Dagster won’t use this anymore.
-     - Safe to delete once you’re sure everything is migrated.
 
 # Setting Up Dagster on Docker
 
