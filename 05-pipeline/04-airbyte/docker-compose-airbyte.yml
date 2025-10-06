@@ -15,8 +15,8 @@ services:
     environment:
       DB: postgresql
       POSTGRES_DB: ${POSTGRES_USERS_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${LOCAL_PG_DB_USER}
+      POSTGRES_PWD: ${LOCAL_PG_DB_PASSWORD}
       POSTGRES_SEEDS: postgres-db # Use the correct hostname
       DB_HOST: postgres-db # Use the correct hostname
       POSTGRES_PORT: 5432 # Ensure this is explicitly set to PostgreSQL's default port
@@ -37,8 +37,8 @@ services:
     environment:
       #DATABASE_URL: ${POSTGRES_USERS_DATABASE_URL}
       DATABASE_URL: jdbc:postgresql://postgres:5432/users
-      DATABASE_USER: ${POSTGRES_USER}
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_USER: ${LOCAL_PG_DB_USER}
+      DATABASE_PASSWORD: ${LOCAL_PG_DB_PASSWORD}
       TEMPORAL_CLI_ADDRESS: "airbyte-temporal:7233"
       WORKSPACE_ROOT: /workspace
       TEMPORAL_HOST: airbyte-temporal
