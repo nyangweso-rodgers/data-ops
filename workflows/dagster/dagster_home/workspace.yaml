@@ -1,6 +1,4 @@
-# dagster_home/workspace.yaml
 load_from:
-  - python_package:
-      package_name: dagster_pipeline
-      location_name: dagster_pipeline
+  - python_module:
+      module_name: dagster_pipeline.definitions  # Key fix: module_name, not relative_path
       working_directory: /app

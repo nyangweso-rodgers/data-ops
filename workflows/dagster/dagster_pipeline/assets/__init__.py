@@ -1,9 +1,4 @@
 # dagster_pipeline/assets/__init__.py
-from dagster import load_assets_from_modules
-from . import sync_customers
+from .etl.mysql_to_clickhouse.amtdb.accounts_asset import sync_accounts
 
-# Load assets from the sync_customers module
-assets = load_assets_from_modules([sync_customers])
-
-# Export the assets and modules
-__all__ = ['assets', 'sync_customers']
+assets = [sync_accounts]

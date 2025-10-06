@@ -1,17 +1,21 @@
 # dagster_pipeline/__init__.py
-from dagster import Definitions
+from dagster import Definitions, ScheduleDefinition
 from . import assets
-from .jobs import customers_daily_sync_job, customers_daily_schedule
+from .jobs import mysql_amtdb_accounts_job
 from .resources import resources
+import os
 
-# Debug: Print what resources are loaded
-print("DEBUG: Available resources:", list(resources.keys()))
-print("DEBUG: Resource types:", {k: type(v).__name__ for k, v in resources.items()})
+# Define schedule (attach to job)
+accounts_schedule = ScheduleDefinition(
+    job=mysql_amtdb_accounts_job,
+    cron_schedule="*/15 6-21 * * *",
+    execution_timezone="UTC"
+)
 
 # Create the main Definitions object
 defs = Definitions(
-    assets=assets.assets,  # Now correctly accessing the assets list
-    jobs=[customers_daily_sync_job],
-    schedules=[customers_daily_schedule],
+    assets=assets.assets,
+    jobs=[mysql_amtdb_accounts_job],
+    schedules=[accounts_schedule],  # Fixed: use the schedule object
     resources=resources
 )

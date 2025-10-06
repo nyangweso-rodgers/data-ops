@@ -8,8 +8,42 @@
 
 - data-ops/
   - workflows/
-    -
-- Detailed Setup
+    - dagster/
+      - dagster_home/
+        - dagster.yaml
+        - workspace.yaml
+      - dagster_pipeline/
+        - assets/
+          - etl/
+            - mysql_to_clickhouse/
+              - amtdb/
+                - `__init__.py`
+                - accounts_asset.py
+            - postgres_to_clickhouse/
+        - config/
+          - schemas/
+            - mysql/
+              - amtdb/
+                - accounts.yml
+            - postgres/
+        - jobs/
+          - `__init__.py`
+          - mysql_amtdb_accounts_job.py
+        - resources/
+          - `__init__.py`
+          - database.py # Database connection resources
+          - schema_loader.py # Schema configuration loader
+        - utils/
+          - `__init__.py`
+          - clickhouse_utils.py
+          - etl_utils.py
+          - mysql_utils.py
+          - postgres_utils.py
+      - docker-compose-dagster.yml
+      - Dockerfile
+
+## Detailed Setup
+
 - `dagster/`
   - `dagster_home/`
     - `dagster.yaml` # Configures the Dagster instance (e.g., storage, executors).

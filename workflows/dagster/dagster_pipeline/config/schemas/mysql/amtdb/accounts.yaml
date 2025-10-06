@@ -1,0 +1,46 @@
+# config/schemas/mysql/database1/accounts.yaml
+table_name: accounts
+source:
+  database: amtdb
+  table: accounts
+target:
+  database: test
+  table: accounts
+  engine: MergeTree
+  #engine: ReplacingMergeTree  # Changed from MergeTree for auto-upsert/dedup
+  #order_by: id  # Sort key for dedup (matches primary_key: true)
+  sync_metadata:
+    enabled: true
+    columns:
+      sync_at:
+        enabled: true
+        type: DateTime
+        description: "Timestamp when record was synced"
+
+columns:
+  - name: id
+    target_name: id
+    source_type: int
+    target_type: Int64
+    primary_key: true
+    nullable: false
+
+  - name: createdAt
+    target_name: created_at
+    source_type: datetime
+    target_type: DateTime
+    nullable: false
+
+  - name: updatedAt
+    target_name: updated_at
+    source_type: timestamp
+    target_type: DateTime
+    nullable: false
+
+etl_config:
+  sync_type: incremental
+  incremental_key: updatedAt
+  batch_size: 10000
+  #upsert: true
+  upsert: false  # Changed to false—append only
+  create_target: true
