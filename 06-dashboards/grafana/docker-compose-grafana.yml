@@ -52,7 +52,7 @@ services:
     ports:
       - "9187:9187"
     environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres-db:5432/postgres?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://${LOCAL_PG_DB_USER}:${LOCAL_PG_DB_PASSWORD}@postgres-db:5432/postgres?sslmode=disable"
     depends_on:
       - postgres
     networks:
