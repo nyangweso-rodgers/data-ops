@@ -5,7 +5,7 @@ source:
   table: accounts
 target:
   database: test
-  table: accounts
+  table: test_accounts
   engine: MergeTree
   #engine: ReplacingMergeTree  # Changed from MergeTree for auto-upsert/dedup
   #order_by: id  # Sort key for dedup (matches primary_key: true)
