@@ -98,35 +98,6 @@ class ClickHouseUtils:
             context.log.info(f"✓ Table {database}.{table} created successfully")
     
     @staticmethod
-    def sync_data_to_clickhouse(
-        context: AssetExecutionContext,
-        clickhouse_resource: ClickHouseResource,
-        df: pd.DataFrame,
-        database: str,
-        table: str,
-        mode: str = 'append'
-    ) -> int:
-        """
-        Sync data to ClickHouse table
-        """
-        if df.empty:
-            context.log.warning("DataFrame is empty, nothing to sync")
-            return 0
-        
-        context.log.info(f"Syncing {len(df)} rows to {database}.{table} (mode: {mode})")
-        
-        with clickhouse_resource.get_client(database) as client:
-            if mode == 'replace':
-                context.log.info(f"Truncating table {database}.{table}")
-                client.command(f"TRUNCATE TABLE `{database}`.`{table}`")
-            
-            # Fix: Positional df, not data=df
-            client.insert_df(table, df)
-            context.log.info(f"✓ Successfully synced {len(df)} rows to ClickHouse")
-            
-            return len(df)
-    
-    @staticmethod
     def insert_data_to_clickhouse(
         context: AssetExecutionContext,
         clickhouse_resource: ClickHouseResource,
@@ -136,6 +107,7 @@ class ClickHouseUtils:
     ) -> int:
         """
         Append data to ClickHouse table (no upsert/dedup)
+        - OPTIMIZED FOR STREAMING
         """
         if df.empty:
             context.log.warning("DataFrame is empty, nothing to insert")
@@ -144,8 +116,15 @@ class ClickHouseUtils:
         context.log.info(f"Appending {len(df)} rows to {database}.{table}")
         
         with clickhouse_resource.get_client(database) as client:
-            # Fix: Positional df, not data=df
-            client.insert_df(table, df)
+            # Use optimized settings for streaming
+            settings = {
+                'max_insert_block_size': 50000,
+                'async_insert': 1,
+                'wait_for_async_insert': 0,
+            }
+            
+            # Use insert_df with optimized settings
+            client.insert_df(table, df, settings=settings)
             context.log.info(f"✓ Successfully appended {len(df)} rows to ClickHouse")
             
             return len(df)
@@ -161,6 +140,7 @@ class ClickHouseUtils:
     ) -> int:
         """
         Upsert data to ClickHouse (delete existing + insert new)
+        - OPTIMIZED FOR STREAMING
         """
         if df.empty:
             context.log.warning("DataFrame is empty, nothing to upsert")
@@ -169,6 +149,7 @@ class ClickHouseUtils:
         context.log.info(f"Upserting {len(df)} rows to {database}.{table}")
         
         with clickhouse_resource.get_client(database) as client:
+            # Extract unique keys from this batch only
             unique_keys = df[primary_keys].drop_duplicates()
             
             if len(primary_keys) == 1:
@@ -190,10 +171,17 @@ class ClickHouseUtils:
             context.log.info(f"Deleting existing records: {len(unique_keys)} unique key combinations")
             client.command(delete_query)
             
+            # Wait for mutation to complete
             time.sleep(2)
             
-            # Fix: Positional df, not data=df
-            client.insert_df(table, df)
+            # Use optimized insert with streaming settings
+            settings = {
+                'max_insert_block_size': 50000,
+                'async_insert': 1,
+                'wait_for_async_insert': 0,
+            }
+            
+            client.insert_df(table, df, settings=settings)
             context.log.info(f"✓ Successfully upserted {len(df)} rows to ClickHouse")
             
             return len(df)
@@ -211,3 +199,49 @@ class ClickHouseUtils:
             result = client.query(query).result_rows[0][0]
             context.log.info(f"Row count in {database}.{table}: {result}")
             return result
+
+    # NEW: Ultra-optimized method for pure streaming
+    @staticmethod
+    def stream_insert_optimized(
+        context: AssetExecutionContext,
+        clickhouse_resource: ClickHouseResource,
+        df: pd.DataFrame,
+        database: str,
+        table: str,
+        settings: dict = None
+    ) -> int:
+        """
+        Ultra-optimized streaming insert for maximum performance
+        Use this for the fastest possible batch insertion
+        """
+        if df.empty:
+            return 0
+        
+        if settings is None:
+            settings = {
+                'max_insert_block_size': 100000,
+                'async_insert': 1,
+                'wait_for_async_insert': 0,
+                'max_memory_usage': 10000000000,  # 10GB
+            }
+        
+        with clickhouse_resource.get_client(database) as client:
+            try:
+                # Most efficient: use native insert with column-oriented data
+                data = [df[col].values.tolist() for col in df.columns]
+                
+                client.insert(
+                    table, 
+                    data, 
+                    column_names=df.columns.tolist(),
+                    settings=settings
+                )
+                
+                context.log.debug(f"✓ Stream inserted {len(df)} rows")
+                return len(df)
+                
+            except Exception as e:
+                context.log.warning(f"Native insert failed, falling back to insert_df: {e}")
+                # Fallback to standard method
+                client.insert_df(table, df, settings=settings)
+                return len(df)
