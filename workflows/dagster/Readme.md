@@ -9,96 +9,43 @@
 - data-ops/
   - workflows/
     - dagster/
-      - dagster_home/
-        - dagster.yaml
-        - workspace.yaml
-      - dagster_pipeline/
-        - assets/
-          - etl/
-            - mysql_to_clickhouse/
-              - amtdb/
+      - `dagster_home/`
+        - `dagster.yaml` # Configures the Dagster instance (e.g., storage, executors).
+        - `workspace.yaml` # Points to the code repository (`dagster_pipeline/`).
+        - `.logs_queue/` # Temporary queue files for the `QueuedRunCoordinator` (if you have it enabled).
+      - `dagster_pipeline/`
+        - `assets/`
+          - `etl/`
+            - `mysql_to_clickhouse/`
+              - `amtdb/`
                 - `__init__.py`
-                - accounts_asset.py
-            - postgres_to_clickhouse/
+                - `accounts/`
+                  - `__init__.py`
+                  - `v1/accounts_asset.py`
+            - `postgres_to_clickhouse/`
         - config/
           - schemas/
             - mysql/
               - amtdb/
-                - accounts.yml
+                - accounts/v1/accounts.yml
             - postgres/
         - jobs/
           - `__init__.py`
           - mysql_amtdb_accounts_job.py
-        - resources/
+        - `resources/`
+          - `databases/v1/database.py`
           - `__init__.py`
-          - database.py # Database connection resources
+          - `database.py `# Database connection resources
           - schema_loader.py # Schema configuration loader
-        - utils/
+        - `utils/`
           - `__init__.py`
           - clickhouse_utils.py
           - etl_utils.py
-          - mysql_utils.py
-          - postgres_utils.py
+          - mysql_utils.py # Implements `MySQLResource` (using `mysql.connector`, with pooling and incremental sync support).
+          - postgres_utils.py # Implements `PostgresResource` (robust, with pooling and bulk inserts).
+        - definitions.py
       - docker-compose-dagster.yml
       - Dockerfile
-
-## Detailed Setup
-
-- `dagster/`
-  - `dagster_home/`
-    - `dagster.yaml` # Configures the Dagster instance (e.g., storage, executors).
-    - `workspace.yaml` # Points to the code repository (`dagster_pipeline/`).
-    - `.logs_queue/`
-      - Temporary queue files for the `QueuedRunCoordinator` (if you have it enabled).
-    - `nux/`
-      - "New User Experience" data.
-      - Stores metadata Dagster uses to know if you’ve already seen the getting-started tips / intro flows in the UI.
-      - Harmless, safe to delete, Dagster will recreate if needed.
-    - `.telemetry/`
-      - Stores telemetry events (anonymous usage statistics Dagster sends to Elementl by default).
-      - If you disable telemetry (`telemetry: enabled: false`), this directory will stop being populated.
-    - `history/`
-      - Keeps a record of CLI command history and some instance event history.
-      - Similar to a “shell history” file.
-      - Can be deleted, but you’ll lose local history references.
-    - `logs/`
-      - Compute logs from `pipeline/asset` runs (`stdout/stderr` per step).
-      - This is where your tasks’ print/log output goes if you use the `LocalComputeLogManager`.
-      - Very useful for debugging.
-      - Safe to delete, but you’ll lose run logs in Dagit UI for past runs.
-    - `schedules/`
-      - Local storage for **schedule definitions** and ticks when you’re not using Postgres-backed schedule storage.
-      - If you switch to Postgres schedule storage, this becomes unused.
-      - Safe to delte after switching
-    - `storage/`
-      - Default metadata storage when Postgres is not configured (includes run storage, event logs, schedules, etc. as SQLite files).
-      - With Postgres configured, Dagster won’t use this anymore.
-      - Safe to delete once you’re sure everything is migrated.
-  - `dagster_pipeline/`
-    - `assets/`
-      - `__init__.py` # Exports assets for Dagster to load.
-      - `sync_customers.py` # Defines the customers asset for syncing the customers table.
-      - `sync_accounts.py`
-      - `sync_orders.py`
-    - `config/`
-      - `local.yaml` # Defines resources and pipeline configs (with pipeline_configs needing mapping to assets).
-      - `prod.yaml` # For production settings
-    - `jobs/`
-      - `__init__.py` # Exports jobs
-      - `customers_job.py` # Defines the sc_amt_replica_to_reporting_service Job.
-      - `accounts_job.py`
-    - `resources/`
-      - `__init__.py` # Dynamically creates resources from config/local.yaml.
-      - `clickhouse.py` # ClickHouse syncs.
-      - `mysql.py` # Implements MySQLResource (using mysql.connector, with pooling and incremental sync support).
-      - `postgres.py` # Implements PostgresResource (robust, with pooling and bulk inserts).
-    - `utils/`
-      - `__init__.py`
-      - `base_sync.py` # Shared sync utilities
-      - `validation.py` # Data validation utilities
-  - `docker-compose-dagster.yml`
-  - `Dockerfile`
-  - `Readme.md`
 
 # Setting Up Dagster on Docker
 
@@ -219,6 +166,16 @@
 4. Add Schedules/Sensors (when to run)
 5. Test in development
 6. Deploy to production with different resource configs
+
+## Laoding Data into Memory
+
+## Streaming
+
+- The streaming version is a generator that yields batches instead of accumulating everything in memory before returning. This matters because:
+  1.  Memory efficiency - You process one batch at a time, so your memory footprint stays constant regardless of how many rows you're loading.
+  2.  Real-time processing - You can start pushing data to ClickHouse as soon as the first batch is ready, rather than waiting for all data to be fetched and concatenated. This is huge for ETL pipelines—reduces end-to-end latency.
+  3.  Failure resilience - If something breaks midway, you've already committed batches 1-10 to ClickHouse. With the second approach, you'd have wasted time fetching everything only to fail at the concatenation step.
+  4.  Predictable performance - No garbage collection spikes or memory thrashing when dealing with large result sets.
 
 # Resources and Further Reading
 

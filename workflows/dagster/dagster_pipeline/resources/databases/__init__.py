@@ -1,7 +1,8 @@
+# __init__.py
 # dagster-pipeline/resources/__init__.py
 import os
-from .databases import MySQLResource, ClickHouseResource, PostgreSQLResource
-from .schema_loader import SchemaLoader
+from .v1.databases import MySQLResource, ClickHouseResource, PostgreSQLResource
+from ..schema_loader import SchemaLoader
 
 resources = {
     "mysql_resource": MySQLResource(

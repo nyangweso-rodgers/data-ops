@@ -3,7 +3,6 @@ from dagster import Definitions, ScheduleDefinition
 from . import assets
 from .jobs import mysql_amtdb_accounts_job
 from .resources import resources
-import os
 
 # Define schedule (attach to job)
 accounts_schedule = ScheduleDefinition(
@@ -16,6 +15,6 @@ accounts_schedule = ScheduleDefinition(
 defs = Definitions(
     assets=assets.assets,
     jobs=[mysql_amtdb_accounts_job],
-    schedules=[accounts_schedule],  # Fixed: use the schedule object
+    schedules=[accounts_schedule],  
     resources=resources
 )

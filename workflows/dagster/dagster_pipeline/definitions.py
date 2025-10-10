@@ -1,9 +1,9 @@
 # dagster_pipeline/definitions.py
 import os
 from dagster import Definitions, ScheduleDefinition, RunRequest, AssetMaterialization
-from .resources.database import MySQLResource, ClickHouseResource
-from .resources.schema_loader import SchemaLoader
-from .assets.etl.mysql_to_clickhouse.amtdb.accounts_asset import sync_accounts
+from dagster_pipeline.resources.databases.v1.databases import MySQLResource, ClickHouseResource
+from dagster_pipeline.resources.schema_loader.v1.schema_loader import SchemaLoader
+from dagster_pipeline.assets.etl.mysql_to_clickhouse.amtdb.accounts.v1.accounts_asset import sync_accounts_to_clickhouse
 from .jobs.mysql_amtdb_accounts_job import mysql_amtdb_accounts_job  # Import job only
 
 # Global resources (env-safe; None if vars missing—override in Dagit)
@@ -33,7 +33,7 @@ accounts_schedule = ScheduleDefinition(
 
 # Central defs
 defs = Definitions(
-    assets=[sync_accounts],
+    assets=[sync_accounts_to_clickhouse],
     jobs=[mysql_amtdb_accounts_job],
     schedules=[accounts_schedule],
     resources=all_resources
