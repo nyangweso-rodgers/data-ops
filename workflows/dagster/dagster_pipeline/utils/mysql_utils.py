@@ -1,7 +1,8 @@
 from typing import Dict, Any, Optional, List
 import pandas as pd
 from dagster import AssetExecutionContext
-from dagster_pipeline.resources.database import MySQLResource
+from dagster_pipeline.resources.databases import MySQLResource
+from typing import Iterator
 
 
 class MySQLUtils:
@@ -98,9 +99,9 @@ class MySQLUtils:
             context.log.info(f"✓ All required columns exist in {database}.{table}")
             cursor.close()
             return True
-    
-    @staticmethod
-    def fetch_mysql_source_db_table_data(
+
+    @staticmethod  # ← FIXED INDENTATION
+    def stream_mysql_data(
         context: AssetExecutionContext,
         mysql_resource: MySQLResource,
         database: str,
@@ -108,70 +109,59 @@ class MySQLUtils:
         columns: List[str],
         batch_size: int = 10000,
         incremental_config: Optional[Dict[str, Any]] = None
-    ) -> pd.DataFrame:
+    ) -> Iterator[pd.DataFrame]:
         """
-        Fetch data from MySQL table in batches
-        
-        Args:
-            context: Dagster execution context
-            mysql_resource: MySQL resource
-            database: Database name
-            table: Table name
-            columns: List of columns to fetch
-            batch_size: Number of records per batch
-            incremental_config: Config for incremental loading
-                {
-                    'key': 'updated_at',
-                    'last_value': '2024-01-01 00:00:00',
-                    'operator': '>='
-                }
-        
-        Returns:
-            DataFrame with fetched data
+        Stream data from MySQL as batches (generator) - MOST EFFICIENT
         """
-        context.log.info(f"Fetching data from {database}.{table}")
+        context.log.info(f"Streaming data from {database}.{table}")
         
-        # Build query
+        # Build query (same as before)
         columns_str = ', '.join(columns)
         query = f"SELECT {columns_str} FROM {table}"
         
-        # Add incremental filter if provided
         if incremental_config:
             key = incremental_config['key']
             last_value = incremental_config['last_value']
             operator = incremental_config.get('operator', '>')
-            
             query += f" WHERE {key} {operator} '{last_value}'"
-            context.log.info(f"Incremental load: {key} {operator} {last_value}")
         
-        # Add ordering for consistent batching
         if incremental_config:
             query += f" ORDER BY {incremental_config['key']}"
         
         context.log.info(f"Executing query: {query}")
         
         with mysql_resource.get_connection(database) as conn:
-            # Fetch data in chunks
-            df = pd.read_sql(query, conn, chunksize=batch_size)
+            cursor = conn.cursor()
             
-            # Combine all chunks
-            all_data = []
-            total_rows = 0
-            
-            for chunk_num, chunk in enumerate(df, 1):
-                chunk_rows = len(chunk)
-                total_rows += chunk_rows
-                all_data.append(chunk)
-                context.log.info(f"Fetched batch {chunk_num}: {chunk_rows} rows (total: {total_rows})")
-            
-            if not all_data:
-                context.log.warning(f"No data fetched from {database}.{table}")
-                return pd.DataFrame()
-            
-            result_df = pd.concat(all_data, ignore_index=True)
-            context.log.info(f"✓ Total rows fetched: {len(result_df)}")
-            
-            return result_df
+            try:
+                # Set timeouts
+                cursor.execute("SET SESSION net_read_timeout = 3600")
+                cursor.execute("SET SESSION net_write_timeout = 3600")
+                
+                cursor.execute(query)
+                column_names = [desc[0] for desc in cursor.description]
+                
+                total_rows = 0
+                batch_num = 0
+                
+                while True:
+                    rows = cursor.fetchmany(batch_size)
+                    if not rows:
+                        break
+                    
+                    batch_num += 1
+                    batch_rows = len(rows)
+                    total_rows += batch_rows
+                    
+                    batch_df = pd.DataFrame(rows, columns=column_names)
+                    
+                    context.log.info(f"Yielding batch {batch_num}: {batch_rows} rows (total: {total_rows})")
+                    yield batch_df
+                    
+            finally:
+                cursor.close()
+        
+        context.log.info(f"✓ Finished streaming {total_rows} total rows")
     
     @staticmethod
     def get_max_incremental_value(
