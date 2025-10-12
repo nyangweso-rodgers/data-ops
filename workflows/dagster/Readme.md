@@ -21,8 +21,14 @@
                 - `__init__.py`
                 - `accounts/`
                   - `__init__.py`
-                  - `v1/accounts_asset.py`
+                  - `v1/`
+                    - `accounts_asset.py`
+                - `customers/`
+                  - `__init__.py`
+                  - `v1/`
+                    - `customers_asset.py`
             - `postgres_to_clickhouse/`
+              - `fma/`
         - config/
           - schemas/
             - mysql/
@@ -39,10 +45,22 @@
           - schema_loader.py # Schema configuration loader
         - `utils/`
           - `__init__.py`
-          - clickhouse_utils.py
-          - etl_utils.py
-          - mysql_utils.py # Implements `MySQLResource` (using `mysql.connector`, with pooling and incremental sync support).
-          - postgres_utils.py # Implements `PostgresResource` (robust, with pooling and bulk inserts).
+          - `clickhouse_utils/`
+            - `__init__.py`
+            - `v1/`
+              - `clickhouse_utils.py`
+          - `etl_utils/`
+            - `__init__.py`
+            - `v1/`
+              - `etl_utils.py`
+          - `mysql_utils/`
+            - `__init__.py`
+            - `v1/`
+              - `mysql_utils.py`
+          - `postgres_utils/`
+            - `__init__.py`
+            - `v1/`
+              - `postgres_utils.py`
         - definitions.py
       - docker-compose-dagster.yml
       - Dockerfile
@@ -176,7 +194,7 @@
   2.  Real-time processing - You can start pushing data to ClickHouse as soon as the first batch is ready, rather than waiting for all data to be fetched and concatenated. This is huge for ETL pipelines—reduces end-to-end latency.
   3.  Failure resilience - If something breaks midway, you've already committed batches 1-10 to ClickHouse. With the second approach, you'd have wasted time fetching everything only to fail at the concatenation step.
   4.  Predictable performance - No garbage collection spikes or memory thrashing when dealing with large result sets.
-
+# Persisting `last
 # Resources and Further Reading
 
 1. [docs.dagster.io](https://docs.dagster.io/?_gl=1*1bd3xxt*_ga*Nzc4MzMwNDcxLjE3MTcxNDc3OTM.*_ga_84VRQZG7TV*MTcxNzE0Nzc5My4xLjAuMTcxNzE0Nzc5My42MC4wLjA.*_gcl_au*MTcxOTE5MzIyMS4xNzE3MTQ3Nzk0)
