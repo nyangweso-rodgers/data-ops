@@ -1,13 +1,13 @@
 # config/schemas/mysql/database1/accounts.yaml
-table_name: accounts
+table_name: customers
 
 source:
   database: amtdb
-  table: accounts
+  table: customers
 
 target:
   database: test
-  table: test_accounts
+  table: test_customers
   sync_metadata:
     enabled: true
     columns:
@@ -22,6 +22,17 @@ columns:
     target_type: Int64
     primary_key: true
     nullable: false
+
+  - name: companyRegionId
+    target_name: company_region_id
+    source_type: int
+    target_type: Int64
+    nullable: true
+  - name: customerTypeId
+    target_name: customer_type_id
+    source_type: int
+    target_type: Int64
+    nullable: true
 
   - name: createdAt
     target_name: created_at
