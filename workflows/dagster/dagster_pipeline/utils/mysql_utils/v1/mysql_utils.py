@@ -138,7 +138,7 @@ class MySQLUtils:
             }
     
     @staticmethod
-    def validate_mysql_source_db_table(
+    def validate_source_db_table(
         context: AssetExecutionContext,
         mysql_resource: MySQLResource,
         database: str,
@@ -171,7 +171,7 @@ class MySQLUtils:
             return True
     
     @staticmethod
-    def validate_mysql_columns(
+    def validate_columns (
         context: AssetExecutionContext,
         mysql_resource: MySQLResource,
         database: str,
@@ -208,7 +208,7 @@ class MySQLUtils:
             return True
 
     @staticmethod 
-    def stream_mysql_data(
+    def stream_data(
         context: AssetExecutionContext,
         mysql_resource: MySQLResource,
         database: str,
