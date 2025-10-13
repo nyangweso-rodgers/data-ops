@@ -22,6 +22,11 @@ columns:
     target_type: Int64
     primary_key: true
     nullable: false
+  - name: customerId
+    target_name: customer_id
+    source_type: int
+    target_type: Int64
+    nullable: true
 
   - name: createdAt
     target_name: created_at

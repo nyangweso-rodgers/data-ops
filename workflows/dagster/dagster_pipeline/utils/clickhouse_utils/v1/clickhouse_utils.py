@@ -245,3 +245,73 @@ class ClickHouseUtils:
                 # Fallback to standard method
                 client.insert_df(table, df, settings=settings)
                 return len(df)
+    @staticmethod
+    def sync_schema_columns(
+        context: AssetExecutionContext,
+        clickhouse_resource: ClickHouseResource,
+        schema: Dict[str, Any],
+        database: str,
+        table: str
+    ) -> None:
+        """
+        Sync schema changes to existing table.
+        Adds any missing columns that are in the schema but not in the table.
+        """
+        context.log.info(f"Syncing schema for {database}.{table}")
+        
+        with clickhouse_resource.get_client(database) as client:
+            # Get existing columns in the table
+            query = f"""
+                SELECT name, type FROM system.columns 
+                WHERE database = '{database}' AND table = '{table}'
+            """
+            result = client.query(query).result_rows
+            existing_columns = {row[0]: row[1] for row in result}
+            
+            context.log.info(f"Existing columns: {list(existing_columns.keys())}")
+            
+            # Build schema columns mapping
+            schema_columns = {}
+            for col in schema['columns']:
+                target_name = col['target_name']
+                target_type = col['target_type']
+                nullable = col.get('nullable', True)
+                
+                col_type = target_type
+                if not nullable:
+                    col_type += " NOT NULL"
+                
+                schema_columns[target_name] = col_type
+            
+            # Add sync metadata columns to schema
+            sync_metadata = schema['target'].get('sync_metadata', {})
+            if sync_metadata.get('enabled', False):
+                for col_name, col_config in sync_metadata.get('columns', {}).items():
+                    if col_config.get('enabled', False):
+                        schema_columns[col_name] = col_config['type']
+            
+            context.log.info(f"Schema columns: {list(schema_columns.keys())}")
+            
+            # Find missing columns
+            missing_columns = set(schema_columns.keys()) - set(existing_columns.keys())
+            
+            if not missing_columns:
+                context.log.info("✓ Schema is up to date, no new columns to add")
+                return
+            
+            context.log.info(f"Found {len(missing_columns)} new columns to add: {missing_columns}")
+            
+            # Add missing columns
+            for col_name in missing_columns:
+                col_type = schema_columns[col_name]
+                alter_query = f"ALTER TABLE `{database}`.`{table}` ADD COLUMN IF NOT EXISTS `{col_name}` {col_type}"
+                
+                context.log.info(f"Adding column: {col_name} ({col_type})")
+                try:
+                    client.command(alter_query)
+                    context.log.info(f"✓ Successfully added column: {col_name}")
+                except Exception as e:
+                    context.log.error(f"Failed to add column {col_name}: {e}")
+                    raise
+            
+            context.log.info(f"✓ Schema sync complete for {database}.{table}")

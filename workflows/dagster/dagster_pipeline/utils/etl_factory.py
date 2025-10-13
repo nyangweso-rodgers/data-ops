@@ -109,6 +109,12 @@ def create_etl_asset(
                 ClickHouseUtils.create_clickhouse_table_from_schema(
                     context, clickhouse_resource, schema, target_database, target_table
                 )
+            else:
+                # Table exists, sync any schema changes (new columns)
+                context.log.info("Table exists, checking for schema changes...")
+                ClickHouseUtils.sync_schema_columns(
+                    context, clickhouse_resource, schema, target_database, target_table
+                )
             
             # Step 3: Build incremental config
             context.log.info("STEP 3: Streaming data...")
