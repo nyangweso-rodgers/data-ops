@@ -41,11 +41,18 @@ columns:
     target_type: String
     nullable: true
 
+  - name: createdBy
+    target_name: created_by
+    source_type: int
+    target_type: Int64
+    nullable: true
+
   - name: createdAt
     target_name: created_at
     source_type: datetime
     target_type: DateTime
     nullable: false
+    backfill_from: updated_at  # ← Only THIS column gets backfill
 
   - name: updatedAt
     target_name: updated_at

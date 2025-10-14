@@ -59,6 +59,39 @@ class ETLUtils:
         df_transformed = df_transformed.rename(columns=column_mapping)
         context.log.info(f"Renamed columns: {list(column_mapping.keys())} -> {list(column_mapping.values())}")
         
+        # Handle NULL backfill rules (column-specific)
+        context.log.info("Applying NULL backfill rules...")
+        for col in schema['columns']:
+            target_name = col['target_name']
+            
+            # Only process if column has explicit backfill configuration
+            backfill_config = col.get('backfill_from')
+            
+            if not backfill_config:
+                # No backfill rule for this column, skip
+                continue
+            
+            if target_name not in df_transformed.columns:
+                context.log.warning(f"Target column {target_name} not found in data, skipping backfill")
+                continue
+            
+            source_col = backfill_config
+            
+            if source_col not in df_transformed.columns:
+                context.log.warning(f"Backfill source column {source_col} not found in data for {target_name}, skipping")
+                continue
+            
+            # Find rows where target column is NULL
+            null_mask = df_transformed[target_name].isna()
+            num_nulls = null_mask.sum()
+            
+            if num_nulls > 0:
+                # Fill NULLs with values from source column
+                df_transformed.loc[null_mask, target_name] = df_transformed.loc[null_mask, source_col]
+                context.log.info(f"Backfilled {num_nulls} NULL values in {target_name} from {source_col}")
+            else:
+                context.log.info(f"No NULL values found in {target_name}, no backfill needed")
+        
         # Add sync metadata if enabled
         sync_metadata = schema['target'].get('sync_metadata', {})
         if sync_metadata.get('enabled', False):
