@@ -1,0 +1,21 @@
+services:
+  trino:
+    image: trinodb/trino:477  # Full image with connectors built-in
+    container_name: trino
+    ports:
+      - "8080:8080"
+    volumes:
+      #- ./etc:/etc/trino  # Mount your catalog configs here
+      - ./etc/catalog:/etc/trino/catalog  # Mount *only* catalogs—keeps base configs intact
+    environment:
+      - CATALOG_MANAGEMENT=dynamic
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+# Networks
+networks:
+  data-ops-network:
+    external: true
