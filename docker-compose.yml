@@ -136,6 +136,11 @@ services:
     extends:
       file: ai/open-webui/docker-compose-open-webui.yml
       service: open-webui
+  # Trino Service
+  trino:
+    extends:
+      file: trino/docker-compose-trino.yml
+      service: trino
 # Define Volumes
 volumes:
   # Database Volumes
