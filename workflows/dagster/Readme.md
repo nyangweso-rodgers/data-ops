@@ -29,13 +29,13 @@
                     - `customers_asset.py`
             - `postgres_to_clickhouse/`
               - `fma/`
-        - config/
-          - schemas/
-            - mysql/
-              - amtdb/
-                - accounts/v1/accounts.yml
+        - `config/`
+          - `schemas/`
+            - `mysql/`
+              - `amtdb/`
+                - `accounts/v1/accounts.yml`
             - postgres/
-        - jobs/
+        - `jobs/`
           - `__init__.py`
           - mysql_amtdb_accounts_job.py
         - `resources/`
@@ -61,9 +61,25 @@
             - `__init__.py`
             - `v1/`
               - `postgres_utils.py`
-        - definitions.py
-      - docker-compose-dagster.yml
-      - Dockerfile
+        - `definitions.py`
+      - `docker-compose-dagster.yml`
+      - `Dockerfile`
+- Notes:
+- dagster/
+  - dagster_home/
+    - dagster.yaml
+    - workspace.yaml
+  - dagster_pipeline/
+    - assets/
+      - etl/
+        - mysql_to_clickhouse.py 
+        - mysql_to_postgres.py 
+        - postgres_to_clickhouse/py
+    - config/
+    - resources/
+    - utils/
+  - Dockerfile
+  - docker-compose-dagster.yml
 
 # Setting Up Dagster on Docker
 
@@ -194,7 +210,9 @@
   2.  Real-time processing - You can start pushing data to ClickHouse as soon as the first batch is ready, rather than waiting for all data to be fetched and concatenated. This is huge for ETL pipelines—reduces end-to-end latency.
   3.  Failure resilience - If something breaks midway, you've already committed batches 1-10 to ClickHouse. With the second approach, you'd have wasted time fetching everything only to fail at the concatenation step.
   4.  Predictable performance - No garbage collection spikes or memory thrashing when dealing with large result sets.
+
 # Persisting `last
+
 # Resources and Further Reading
 
 1. [docs.dagster.io](https://docs.dagster.io/?_gl=1*1bd3xxt*_ga*Nzc4MzMwNDcxLjE3MTcxNDc3OTM.*_ga_84VRQZG7TV*MTcxNzE0Nzc5My4xLjAuMTcxNzE0Nzc5My42MC4wLjA.*_gcl_au*MTcxOTE5MzIyMS4xNzE3MTQ3Nzk0)
