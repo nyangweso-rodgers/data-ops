@@ -55,10 +55,13 @@ class ClickHouseUtils:
         
         # Build column definitions
         for col in schema['columns']:
-            col_def = f"`{col['target_name']}` {col['target_type']}"
+            col_type = col['target_type']
             
-            if not col.get('nullable', True):
-                col_def += " NOT NULL"
+            # CRITICAL FIX: Wrap nullable columns with Nullable()
+            if col.get('nullable', True):
+                col_def = f"`{col['target_name']}` Nullable({col_type})"
+            else:
+                col_def = f"`{col['target_name']}` {col_type} NOT NULL"
             
             columns.append(col_def)
             
@@ -70,7 +73,9 @@ class ClickHouseUtils:
         if sync_metadata.get('enabled', False):
             for col_name, col_config in sync_metadata.get('columns', {}).items():
                 if col_config.get('enabled', False):
-                    col_def = f"`{col_name}` {col_config['type']}"
+                    col_type = col_config['type']
+                    # Sync metadata columns are typically NOT NULL
+                    col_def = f"`{col_name}` {col_type}"
                     columns.append(col_def)
                     
                     context.log.info(f"Adding sync metadata column: {col_name}")
