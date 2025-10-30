@@ -169,11 +169,13 @@ def create_etl_asset(
                     rows = ClickHouseUtils.upsert_data_to_clickhouse(
                         context, clickhouse_resource, transformed_batch,
                         target_database, target_table, primary_keys
+                        #schema=schema  # ADD THIS
                     )
                 else:
                     rows = ClickHouseUtils.insert_data_to_clickhouse(
                         context, clickhouse_resource, transformed_batch,
                         target_database, target_table
+                        #schema=schema  # ADD THIS
                     )
                 
                 total_rows += rows
