@@ -1,0 +1,11 @@
+services:
+  diabetes-predictor-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: diabetes-predictor-api
+    container_name: diabetes-predictor-api
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
