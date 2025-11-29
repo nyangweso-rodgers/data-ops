@@ -126,6 +126,10 @@ services:
     extends:
       file: ml-models/ml-flow/docker-compose-ml-flow.yml
       service: ml-flow
+  diabetes-predictor-api:
+    extends:
+      file: ml-models/diabetes-predictor/docker-compose-diabetes-predictor-ml-model.yml
+      service: diabetes-predictor-api
 
   # AI MCP Services
   ollama:
