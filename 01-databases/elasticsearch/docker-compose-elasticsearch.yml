@@ -1,13 +1,12 @@
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.4
+    image: elasticsearch:9.2.1
     container_name: elasticsearch
-    restart: unless-stopped # Auto-restart on failure
+    restart: unless-stopped
     ports:
       - "9200:9200"
       - "9300:9300"
     healthcheck:
-      #test: "curl -s http://localhost:9200/_cluster/health?pretty | grep status | grep -qE 'green|yellow' || exit 1"
       test:
         [
           "CMD-SHELL",
@@ -17,11 +16,13 @@ services:
       retries: 10
       timeout: 10s
       start_period: 60s # Give more time for initial bootstrap
+    env_file:
+      - ../../.env
     environment:
       - discovery.type=single-node
       #- xpack.security.enabled=false
       - xpack.security.enabled=true # Enable for prod; set ELASTIC_PASSWORD below
-      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}  # Change this!
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD} 
       - ES_JAVA_OPTS=-Xms2g -Xmx2g  # Scale based on load/host RAM
     ulimits:
       memlock:
@@ -38,7 +39,7 @@ services:
     networks:
       - data-ops-network
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.4  # Match ES version
+    image: kibana:9.2.1  
     container_name: kibana
     restart: unless-stopped
     ports:
@@ -67,7 +68,7 @@ services:
 ################################ Networks ############################################
 networks:
   data-ops-network:
-    external: true # Use the existing network from docker-compose.yml
+    external: true 
 
 ################################ Volumes ############################################
 volumes:
