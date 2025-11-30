@@ -1,0 +1,28 @@
+services:
+  # Neo4j - Metadata storage backend
+  neo4j:
+    image: neo4j:3.5.26
+    container_name: neo4j
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
+      - NEO4J_dbms_memory_heap_initial__size=1G
+      - NEO4J_dbms_memory_heap_max__size=2G
+      - NEO4J_dbms_memory_pagecache_size=512M
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    volumes:
+      - ./data/neo4j:/data
+      - ./logs/neo4j:/logs
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "${NEO4J_USER}", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+################################ Networks ############################################
+networks:
+  data-ops-network:
+    external: true # Use the existing network from docker-compose.yml
