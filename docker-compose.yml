@@ -15,6 +15,23 @@ services:
     extends:
       file: 01-databases/redis/docker-compose-redis.yml
       service: redisinsight
+  
+  # Elasticsearch Service
+  elasticsearch:
+    extends:
+      file: 01-databases/elasticsearch/docker-compose-elasticsearch.yml
+      service: elasticsearch
+
+  # Kibana Service
+  kibana:
+    extends:
+      file: 01-databases/elasticsearch/docker-compose-elasticsearch.yml
+      service: kibana
+  # Neo4j Service
+  neo4j:
+    extends:
+      file: 01-databases/neo4j/docker-compose-neo4j.yml
+      service: neo4j
 
   # Kafka Services
   kafka-zookeeper:
@@ -66,7 +83,6 @@ services:
     extends:
       file: workflows/prefect/docker-compose-prefect.yml
       service: prefect-worker
-  
 
   # ClickHouse Services
   clickhouse-server:
@@ -77,19 +93,30 @@ services:
     extends:
       file: 04-warehouse/01-clickhouse/docker-compose-clickhouse.yml
       service: clickhouse-tabix-web-client
-
-  # Open Metadata Services
-  elasticsearch:
+  
+  # Metadata
+  ## Amundsen Services
+  amundsen-metadata:
     extends:
-      file: metadata-tools/01-open-metadata/docker-compose-open-metadata.yml
-      service: elasticsearch
+      file: metadata/amundsen/docker-compose-amundsen.yml
+      service: amundsen-metadata
+  amundsen-search:
+    extends:
+      file: metadata/amundsen/docker-compose-amundsen.yml
+      service: amundsen-search
+  amundsen-frontend:
+    extends:
+      file: metadata/amundsen/docker-compose-amundsen.yml
+      service: amundsen-frontend
+  
+  ## Open Metadata Services
   open-metadata-server:
     extends:
-      file: metadata-tools/01-open-metadata/docker-compose-open-metadata.yml
+      file: metadata/open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-server
   open-metadata-execute-migrate-all:
     extends:
-      file: metadata-tools/01-open-metadata/docker-compose-open-metadata.yml
+      file: metadata/open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-execute-migrate-all
   # Dashboards
   ## 1. Grafana Services
@@ -154,6 +181,15 @@ volumes:
     external: true
   redis-data:
     external: true
+
+  # Elasticsearch Volumes
+  elasticsearch_data:
+    external: true
+
+  # Neo4j Volumes
+  neo4j_data:
+    external: true
+
   # Messaging Volumes
   kafka-zookeeper-data:
     external: true
@@ -161,8 +197,6 @@ volumes:
     external: true
   # Datawarehouse Volumes
   clickhouse-server-data:
-    external: true
-  elasticsearch-vol:
     external: true
   # Grafana Volumes
   grafana-vol:
