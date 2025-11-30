@@ -95,7 +95,7 @@ services:
       service: clickhouse-tabix-web-client
   
   # Metadata
-  ## Amundsen Services
+  ## 1. Amundsen Services
   amundsen-metadata:
     extends:
       file: metadata/amundsen/docker-compose-amundsen.yml
@@ -118,12 +118,15 @@ services:
     extends:
       file: metadata/open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-execute-migrate-all
+  
   # Dashboards
+  
   ## 1. Grafana Services
   grafana:
     extends:
       file: 06-dashboards/grafana/docker-compose-grafana.yml
       service: grafana
+  
   ## 2. Taipy Services
   taipy:
     extends:
@@ -153,6 +156,8 @@ services:
     extends:
       file: ml-models/ml-flow/docker-compose-ml-flow.yml
       service: ml-flow
+  
+  ## Example ML Model: Diabetes Predictor
   diabetes-predictor-api:
     extends:
       file: ml-models/diabetes-predictor/docker-compose-diabetes-predictor-ml-model.yml
