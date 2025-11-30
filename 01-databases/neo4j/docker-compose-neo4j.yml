@@ -1,5 +1,5 @@
+version: '3.8'
 services:
-  # Neo4j - Metadata storage backend
   neo4j:
     image: neo4j:3.5.26
     container_name: neo4j
@@ -13,7 +13,7 @@ services:
       - "7474:7474"  # HTTP
       - "7687:7687"  # Bolt
     volumes:
-      - ./data/neo4j:/data
+      - neo4j_data:/data # named volume
       - ./logs/neo4j:/logs
     healthcheck:
       test: ["CMD", "cypher-shell", "-u", "${NEO4J_USER}", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
@@ -21,8 +21,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - data-ops-network
 
 ################################ Networks ############################################
 networks:
   data-ops-network:
     external: true # Use the existing network from docker-compose.yml
+
+################################ Volumes ############################################
+volumes:
+  neo4j_data:
+    external: true

@@ -43,9 +43,20 @@
   - View database schema details like labels (similar to "tables" in relational DBs), node/relationship types, and indexes.
   - Export results, manage sessions, and more.
 
-- How to Access:
+- **How to Access:**
+
   - Ensure your Neo4j container is running: `docker-compose up -d neo4j`
   - Open a web browser and go to: http://localhost:7474
   - Log in with the credentials from your environment variables:
+
+- **Understanding the Directories in Neo4j Setup**
+
+  - In the Docker Compose configuration, the volume mount `./data/neo4j:/data` maps the host directory `./data/neo4j` to the `/data` path inside the **Neo4j container**. This is where **Neo4j** stores its persistent data by default (the official Neo4j Docker image for version 3.5 is configured to use `/data` as the data directory). When you start the container and create or query data, **Neo4j** populates subdirectories under `/data`, which appear on your host as `./data/neo4j/<subdir>`. These ensure your graph data survives container restarts.
+  - `./data/neo4j/databases/` directory:
+
+    - Stores the core files for your graph database(s). In Community Edition 3.5, there's only one default database (named graph.db), so you'll see a graph.db/ subdirectory here.
+
+  - `./data/neo4j/dbms/` directory:
+    - Holds DBMS (Database Management System) metadata and supporting files for overall system management, separate from the actual graph data.
 
 # Resources and Further Reading
