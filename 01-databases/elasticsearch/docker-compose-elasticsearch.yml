@@ -10,7 +10,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'curl -u elastic:"$ELASTICSEARCH_PASSWORD" -s http://localhost:9200/_cluster/health | grep -q ''"status":"green"'' || grep -q ''"status":"yellow"'' || exit 1',
+          "curl -u elastic:$$ELASTIC_PASSWORD -s http://localhost:9200/_cluster/health | grep -E 'yellow|green'"
         ]
       interval: 15s
       retries: 10
@@ -52,7 +52,8 @@ services:
       elasticsearch:
         condition: service_healthy  # Waits for ES healthcheck
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status"]
+      #test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status"]
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
       interval: 15s
       retries: 5
       timeout: 5s
