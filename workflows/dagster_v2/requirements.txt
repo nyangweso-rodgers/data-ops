@@ -1,0 +1,31 @@
+# Core Dagster
+dagster==1.8.7
+dagster-webserver==1.8.7
+dagster-postgres==0.24.7
+
+# Database drivers
+psycopg2-binary==2.9.9
+pymysql==1.1.1
+clickhouse-driver==0.2.9
+clickhouse-connect==0.7.19
+
+# Data processing
+pandas==2.2.2
+polars==1.9.0
+pyarrow==17.0.0
+
+# Utilities
+pyyaml==6.0.2
+python-dotenv==1.0.1
+pydantic==2.9.2
+
+# AWS
+boto3==1.35.36
+
+# Monitoring
+structlog==24.4.0
+
+# Development
+pytest==8.0.0
+black==24.0.0
+ruff==0.2.0

@@ -1,0 +1,79 @@
+# Project
+
+- dagster-project/
+  - Readme.md
+  - Dockerfile
+  - docker-compose.yml
+  - `definitions.py` # Dagster entry point
+  - `pyproject.toml`
+  - `requirements.txt`
+  - .github/
+    - workflows/
+      - `validate-pr.yml`
+      - `test.yml` # Run tests
+      - `deploy.yml` # Build & Deploy
+  - dagster_home/
+    - `dagster.yaml`
+    - `workspace.yaml`
+  - dagster_pipeline/
+    - connectors/
+      - sources/ # Source connectors
+        - `mysql_source.py` # MySQL extractor
+        - `postgres_source.py` # PostgreSQL extractor
+        - `s3_source.py`
+        - `api_source.py`
+        - `clickhouse_source.py` # For reverse ETL
+      - destinations/ # Destination connectors
+        - `clickhouse_destination.py`
+        - `bigquery_destination.py`
+        - `s3_destination.py`
+        - `postgres_destination.py`
+        - `mysql_destination.py`
+    - pipelines/
+      - etl/
+        - `mysql_to_clickhouse.py`
+      - analytics/
+      - data_quality/
+    - assets/
+      - schemas/
+        - mysql/
+          - amt/
+            - `accounts.yml`
+            - `customers.yml`
+          - sales_service/
+            - `leads.yml`
+        - postgres/
+          - fma/
+            - `premises.yml`
+          - sentinel/
+            - `devices.yml`
+        - templates/
+          - `table_schema.yml` # ← Template with comments
+    - utils/
+      - db_utils/
+        - `mysql_utils.py`
+        - `postgres_utils.py`
+        - `clickhouse_utils.py`
+      - factories/
+        - `__init__.py`
+        - `base_factory.py` # ← Abstract base class
+        - `mysql_to_clickhouse_factory.py` # ← MySQL-specific
+        - `postgres_to_clickhouse_factory.py` # ← Postgres-specific
+        - `s3_to_clickhouse_factory.py` ← S3/Parquet files
+      - `schema_loader.py`
+      - `state_manager.py`
+      - `type_mapper.py`
+    - scripts/
+      - `__init__.py`
+      - `validate_schemas.py`
+      - `sync_state_backfill.py`
+    - docs/
+      - `architecture.md`
+      - `adding-new-table.md`
+      - `deployment.md`
+    - tests/
+      - `test_type_mapper.py`
+      - `test_schema_loader.py`
+      - `test_mysqlmysql_to_clickhouse_factory.py`
+
+# Resources and Further Reading
