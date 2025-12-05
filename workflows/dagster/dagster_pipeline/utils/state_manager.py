@@ -6,7 +6,7 @@ No need to create additional tables
 
 from typing import Dict, Any, Optional
 from dagster import AssetExecutionContext
-from dagster_pipeline.resources.databases.v1.databases import PostgreSQLResource
+from dagster_pipeline.resources.databases import PostgreSQLResource
 import json
 
 
