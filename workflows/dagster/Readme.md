@@ -72,8 +72,8 @@
   - dagster_pipeline/
     - assets/
       - etl/
-        - mysql_to_clickhouse.py 
-        - mysql_to_postgres.py 
+        - mysql_to_clickhouse.py
+        - mysql_to_postgres.py
         - postgres_to_clickhouse/py
     - config/
     - resources/
@@ -212,6 +212,24 @@
   4.  Predictable performance - No garbage collection spikes or memory thrashing when dealing with large result sets.
 
 # Persisting `last
+
+# Dagster CLI
+
+- You can run the Dagster CLI commands e.g., `dagster asset materialize ...` from the local terminal (not inside a Dagster Docker container or "Dagster terminal"—Dagster doesn't have a dedicated one). It's designed to be executed from the host machine where your project code lives (e.g., the directory containing `definitions.py`). This works even if Dagster UI (`dagit`) is running in Docker.
+- **Setup**
+
+  - Install **Dagster CLI Locally**: If not already, install Dagster in your project env (or globally)
+    ```sh
+      pip install dagster dagster-webserver dagster-mysql  # Add dagster-postgres if using Postgres
+    ```
+    - This gives the `dagster` command without needing Docker for CLI.
+  - Project Directory: Navigate to your project root (e.g., `/path/to/dagster_pipeline/` where `definitions.py` is).
+
+- How to Run the Command
+  - Open local terminal (e.g., VS Code integrated, or bash/cmd), cd to project root, and run:
+    ```sh
+      dagster asset materialize -a migrate_staging_leads_to_production --config '{"limit": 100, "skip_validation": false}'
+    ```
 
 # Resources and Further Reading
 
