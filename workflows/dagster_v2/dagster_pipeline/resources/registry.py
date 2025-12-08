@@ -32,9 +32,19 @@ mysql_amt = MySQLResource(
     port=3306, 
     user=EnvVar("SC_AMT_REPLICA_MYSQL_DB_USER"),
     password=EnvVar("SC_AMT_REPLICA_MYSQL_DB_PASSWORD"),
-    #database=EnvVar("SC_AMT_REPLICA_MYSQL_DB_NAME")
+    database=EnvVar("SC_AMT_REPLICA_MYSQL_DB_NAME")
 )
 
+# ═════════════════════════════════════════════════════════════════════════════
+# SOURCE DATABASES (where we extract data FROM)
+# ═════════════════════════════════════════════════════════════════════════════
+mysql_sales_service_dev = MySQLResource(
+    host=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_HOST"),
+    port=3306,
+    user=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_USER"),
+    password=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_PASSWORD"),
+    database=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_NAME")
+)
 # ← Add more MySQL sources here: mysql_sales, mysql_inventory, etc.
 
 # ═════════════════════════════════════════════════════════════════════════════

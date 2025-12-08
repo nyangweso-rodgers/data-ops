@@ -47,6 +47,8 @@ class MySQLResource(ConfigurableResource):
         description="MySQL password"
     )
     
+    database: str = Field(description="Database name (e.g. 'sales-service-dev')")
+    
     connect_timeout: int = Field(
         default=30,
         description="Connection timeout in seconds"
@@ -64,6 +66,7 @@ class MySQLResource(ConfigurableResource):
             "port": self.port,
             "user": self.user,
             "password": self.password,
+            "database": self.database,
             "connect_timeout": self.connect_timeout
         }
     

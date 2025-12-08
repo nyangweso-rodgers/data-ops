@@ -8,12 +8,14 @@ from dagster import Definitions
 # Import ALL resources from the central registry
 from dagster_pipeline.resources.registry import (
     mysql_amt,
+    mysql_sales_service_dev,
     clickhouse_resource,
     dagster_postgres_resource,
+    
 )
 
 # Import assets 
-from dagster_pipeline.pipelines.etl.mysql_to_clickhouse import assets
+from dagster_pipeline.assets.etl.mysql_to_clickhouse_asset import assets
 
 # Import SchemaLoader class
 from dagster_pipeline.utils.schema_loader import SchemaLoader
@@ -26,10 +28,13 @@ from dagster_pipeline.utils.schema_loader import SchemaLoader
 defs = Definitions(
     assets=assets,
     resources={
-        # Source databases
+        # MySQL
         "mysql_amt": mysql_amt,
+        "mysql_sales_service_dev": mysql_sales_service_dev,
         
-        # Destination databases
+        # Po
+        
+        # ClickHouse
         "clickhouse_resource": clickhouse_resource,
         
         # Infrastructure
