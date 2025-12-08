@@ -180,6 +180,33 @@ class ClickHouseDestinationConnector(BaseDestinationConnector):
         
         return exists
     
+    def _ensure_sync_at_column(self, database: str, table: str) -> None:
+        """Ensure sync_at column exists with proper default"""
+        client = self._get_client()
+        
+        # Check if sync_at already exists
+        result = client.query(
+            "SELECT name, type, default_expression FROM system.columns "
+            "WHERE database = %(db)s AND table = %(tbl)s AND name = 'sync_at'",
+            parameters={"db": database, "tbl": table}
+        )
+        
+        if result.result_rows:
+            logger.debug("sync_at_column_exists", database=database, table=table)
+            return
+        
+        # Add sync_at with high precision and default = now64()
+        alter_query = f"""
+            ALTER TABLE `{database}`.`{table}`
+            ADD COLUMN `sync_at` DateTime64(3) DEFAULT now64(3)
+        """
+        try:
+            client.command(alter_query)
+            logger.info("sync_at_column_added", database=database, table=table)
+        except Exception as e:
+            if "column already exists" not in str(e).lower():
+                logger.warning("sync_at_add_failed", database=database, table=table, error=str(e))
+    
     def create_table(
         self,
         database: str,
@@ -303,6 +330,9 @@ class ClickHouseDestinationConnector(BaseDestinationConnector):
         
         try:
             client.command(create_query)
+            
+            # AUTOMATICALLY ADD sync_at AFTER table creation
+            self._ensure_sync_at_column(database, table)
             
             logger.info(
                 "clickhouse_table_created",
@@ -450,6 +480,7 @@ class ClickHouseDestinationConnector(BaseDestinationConnector):
                 database=database,
                 table=table
             )
+        self._ensure_sync_at_column(database, table)
     
     def get_row_count(self, database: str, table: str) -> int:
         """
