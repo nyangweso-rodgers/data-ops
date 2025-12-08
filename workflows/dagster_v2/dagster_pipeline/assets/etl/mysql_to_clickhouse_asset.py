@@ -4,9 +4,6 @@ All MySQL → ClickHouse ETL assets
 """
 
 from dagster_pipeline.utils.factories.mysql_to_clickhouse_factory import create_mysql_to_clickhouse_asset
-from dagster_pipeline.resources.registry import mysql_amt  
-from dagster_pipeline.resources.registry import clickhouse_resource
-from dagster_pipeline.utils.schema_loader import SchemaLoader
 
 # ============================================================================
 # MYSQL AMT DATABASE → CLICKHOUSE
