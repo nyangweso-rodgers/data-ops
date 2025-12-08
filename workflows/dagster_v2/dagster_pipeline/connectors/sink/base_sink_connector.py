@@ -12,7 +12,7 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
-class BaseDestinationConnector(ABC):
+class BaseSinkConnector(ABC):
     """
     Abstract base class for destination connectors
     

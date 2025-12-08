@@ -15,13 +15,13 @@ import clickhouse_connect
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
-from .base_sink_connector import BaseDestinationConnector
+from .base_sink_connector import BaseSinkConnector
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 
-class ClickHouseDestinationConnector(BaseDestinationConnector):
+class ClickHouseSinkConnector(BaseSinkConnector):
     """
     ClickHouse destination connector
     
@@ -50,7 +50,7 @@ class ClickHouseDestinationConnector(BaseDestinationConnector):
     
     Example:
         >>> config = {...}
-        >>> with ClickHouseDestinationConnector(context, config) as dest:
+        >>> with ClickHouseSinkConnector(context, config) as dest:
         ...     dest.validate()
         ...     
         ...     if not dest.table_exists("analytics", "accounts"):

@@ -3,7 +3,7 @@
 Schema loader for reading and validating YAML schemas
 Loads schemas from dagster_pipeline/schemas/
 """
-from utils.type_mapper import TypeMapper
+from .type_mapper import TypeMapper
 
 import yaml
 from pathlib import Path

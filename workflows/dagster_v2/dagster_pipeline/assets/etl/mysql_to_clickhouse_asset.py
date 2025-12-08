@@ -26,7 +26,7 @@ mysql_sales_service_leadsources = create_mysql_to_clickhouse_asset(
     destination_database="test",
     destination_table="sales_service_leadsources_test",
     mysql_resource_key="mysql_sales_service_dev",   
-    incremental_key="UpdatedAt",
+    incremental_key="updatedAt",
     group_name="mysql_sales_service_dev_to_clickhouse" # Manually spcecified group name
 )
 # Add more tables...

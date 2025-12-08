@@ -31,16 +31,16 @@
         - `s3_source_connector.py`
         - `api_source_connector.py`
         - `clickhouse_source_connector.py` # For reverse ETL
-      - sink/ # Destination connectors ← DATA LOADING
+      - sink/ # Sink connectors ← DATA LOADING
         - `base_sink_connector.py`
         - `clickhouse_sink_connector.py`
         - `bigquery_sink_connector.py`
         - `s3_sink_connector.py`
         - `postgres_sink_connector.py`
         - `mysql_sink_connector.py` # MySQL loading
-    - pipelines/
+    - assets/
       - etl/
-        - `mysql_to_clickhouse.py`
+        - `mysql_to_clickhouse_asset.py`
     - resources/
       - `__init__.py`
       - `clickhouse_resource.py`
