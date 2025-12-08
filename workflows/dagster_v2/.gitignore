@@ -12,6 +12,8 @@ venv/
 dagster_home/history/
 dagster_home/storage/
 *.db
+dagster_home/.logs_queue/
+dagster_home/.nux/
 
 # Environment
 .env
