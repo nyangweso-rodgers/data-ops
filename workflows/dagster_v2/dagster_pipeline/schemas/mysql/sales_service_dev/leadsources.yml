@@ -8,7 +8,7 @@ metadata:
 
 source:
   type: mysql
-  database: sales-service
+  database: sales-service-dev
   table: leadsources
   
   columns:
