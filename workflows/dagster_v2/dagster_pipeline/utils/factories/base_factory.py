@@ -9,8 +9,14 @@ inherit from this base class to ensure consistent behavior.
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Callable, Generator
 from dagster import asset, AssetExecutionContext, Output, AssetMaterialization, MetadataValue
+
+from dagster_pipeline.utils.schema_loader import SchemaLoader
+from dagster_pipeline.utils.type_mapper import TypeMapper
+from dagster_pipeline.utils.state_manager import StateManager
+
 from datetime import datetime
 import structlog
+from typing import Iterator, Union
 
 logger = structlog.get_logger(__name__)
 
@@ -146,7 +152,8 @@ class BaseETLFactory(ABC):
     
     def _default_group_name(self) -> str:
         """Generate default group name"""
-        return f"{self.source_type()}_{self.source_database}_to_{self.destination_type()}"
+        source_db_safe = self.source_database.replace("-", "_")
+        return f"{self.source_type()}_{source_db_safe}_to_{self.destination_type()}"
     
     def _get_asset_description(self) -> str:
         """Generate asset description"""
@@ -165,7 +172,7 @@ class BaseETLFactory(ABC):
             Dagster asset function that executes the ETL pipeline
         """
         
-        def _etl_asset(context: AssetExecutionContext) -> Generator:
+        def _etl_asset(context: AssetExecutionContext) -> Iterator[Union[Output, AssetMaterialization]]:
             """
             Generated ETL asset
             
@@ -177,9 +184,6 @@ class BaseETLFactory(ABC):
             5. Load to destination
             6. Save incremental state
             """
-            from dagster_pipeline.utils.schema_loader import SchemaLoader
-            from dagster_pipeline.utils.type_mapper import TypeMapper
-            from dagster_pipeline.utils.state_manager import StateManager
             
             start_time = datetime.now()
             
@@ -413,11 +417,30 @@ class BaseETLFactory(ABC):
                     "status": MetadataValue.text("success")
                 }
                 
+                # Create output value
+                output_value = {
+                    "rows_synced": total_rows,
+                    "batches": batch_num,
+                    "duration_seconds": duration,
+                    "status": "success"
+                }
+                
                 if final_count is not None:
                     metadata["total_rows_in_destination"] = MetadataValue.int(final_count)
-                
+                    
                 if max_value_tracker is not None:
                     metadata["last_incremental_value"] = MetadataValue.text(str(max_value_tracker))
+                    
+                # Yield Output FIRST (only one Output per asset)
+                yield Output(output_value, metadata=metadata)
+                
+                # Then yield AssetMaterialization for UI observability
+                yield AssetMaterialization(
+                    asset_key=context.asset_key,
+                    description=f"Synced {total_rows:,} rows in {duration:.2f}s",
+                    metadata=metadata
+                )
+                
                 
                 # Log summary
                 context.log.info("=" * 80)
@@ -425,13 +448,6 @@ class BaseETLFactory(ABC):
                 if final_count:
                     context.log.info(f"📊 Total in destination: {final_count:,} rows")
                 context.log.info("=" * 80)
-                
-                # Materialize
-                yield AssetMaterialization(
-                    asset_key=context.asset_key,
-                    description=f"Synced {total_rows:,} rows in {duration:.2f}s",
-                    metadata=metadata
-                )
                 
                 # Return output
                 output_value = {
@@ -441,11 +457,6 @@ class BaseETLFactory(ABC):
                     "status": "success"
                 }
                 
-                if final_count is not None:
-                    output_value["total_rows_in_destination"] = final_count
-                
-                yield Output(output_value, metadata=metadata)
-                
             except Exception as e:
                 duration = (datetime.now() - start_time).total_seconds()
                 
@@ -454,17 +465,21 @@ class BaseETLFactory(ABC):
                 context.log.error(f"❌ Error: {str(e)}")
                 context.log.error("=" * 80)
                 
-                # Log failure
-                yield AssetMaterialization(
-                    asset_key=context.asset_key,
-                    description=f"Failed: {str(e)}",
+                # On failure, you should still yield an Output with the error state
+                yield Output(
+                    value={
+                        "rows_synced": 0,
+                        "status": "failed",
+                        "error": str(e),
+                        "duration_seconds": duration
+                    },
                     metadata={
                         "status": MetadataValue.text("failed"),
                         "error": MetadataValue.text(str(e)),
                         "duration_seconds": MetadataValue.float(duration)
                     }
                 )
-                
+                # Re-raise the exception so Dagster knows the run failed
                 raise
             
             finally:

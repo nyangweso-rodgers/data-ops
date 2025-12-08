@@ -6,8 +6,8 @@ Factory for MySQL → ClickHouse ETL pipelines
 from typing import Optional, Dict, Any
 from dagster import AssetExecutionContext
 from .base_factory import BaseETLFactory
-from dagster_pipeline.connectors.sources.mysql_source import MySQLSourceConnector
-from dagster_pipeline.connectors.destinations.clickhouse_destination import ClickHouseDestinationConnector
+from dagster_pipeline.connectors.sources.mysql_source_connector import MySQLSourceConnector
+from dagster_pipeline.connectors.sink.clickhouse_sink_connector import ClickHouseDestinationConnector
 
 
 class MySQLToClickHouseFactory(BaseETLFactory):
@@ -52,7 +52,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         CRITICAL: This must match EXACTLY what's in definitions.py
         """
         return {
-            self.mysql_resource_key,           # e.g., "mysql_amt"
+            self.mysql_resource_key,         
             "clickhouse_resource",             # Destination
             "schema_loader",                   # Schema loading
             "dagster_postgres_resource",       # State management for incremental tracking
