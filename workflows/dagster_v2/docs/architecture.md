@@ -34,3 +34,14 @@
 - S3 for compute logs (optional, for log archival and cost savings)
 - Good as artifact storage (large intermediate files, result artifacts).
 - Dagster supports using S3 for object store (storing assets/results), but not ideal as primary run/event database because querying runs and event logs is harder and less efficient.
+
+# ETL Factories - The Orchestration Layer
+
+- Factories tie everything together! They use connectors to create end-to-end ETL pipelines.
+- Factories orchestrate the ETL flow:
+  - Load schema (SchemaLoader)
+  - Map Types (TypeMapper)
+  - Extract Data (Source Connector)
+  - Tranform Data (in batches)
+  - Load Data (Destination Connector)
+  - Manage State (StateManager)
