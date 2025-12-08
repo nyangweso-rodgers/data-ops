@@ -17,21 +17,27 @@
   - dagster_pipeline/
     - `__init__.py`
     - `definitions.py`
+    - alerts/
+      - `__init__.py`
+      - `alert_manager.py`
+      - `slack_alerts.py`
+      - `email_alerts.py`
+      - `alert_types`
     - connectors/
       - sources/ # Source connectors ← DATA EXTRACTION
-        - `base_source.py`
-        - `mysql_source.py` # MySQL extraction
-        - `postgres_source.py` # PostgreSQL extraction
-        - `s3_source.py`
-        - `api_source.py`
-        - `clickhouse_source.py` # For reverse ETL
-      - destinations/ # Destination connectors ← DATA LOADING
-        - `base_destination.py`
-        - `clickhouse_destination.py`
-        - `bigquery_destination.py`
-        - `s3_destination.py`
-        - `postgres_destination.py`
-        - `mysql_destination.py` # MySQL loading
+        - `base_source_connector.py`
+        - `mysql_source_connector.py` # MySQL extraction
+        - `postgres_source_connector.py` # PostgreSQL extraction
+        - `s3_source_connector.py`
+        - `api_source_connector.py`
+        - `clickhouse_source_connector.py` # For reverse ETL
+      - sink/ # Destination connectors ← DATA LOADING
+        - `base_sink_connector.py`
+        - `clickhouse_sink_connector.py`
+        - `bigquery_sink_connector.py`
+        - `s3_sink_connector.py`
+        - `postgres_sink_connector.py`
+        - `mysql_sink_connector.py` # MySQL loading
     - pipelines/
       - etl/
         - `mysql_to_clickhouse.py`
@@ -77,6 +83,8 @@
     - tests/
       - `test_type_mapper.py`
       - `test_schema_loader.py`
-      - `test_mysqlmysql_to_clickhouse_factory.py`
+      - `test_mysql_to_clickhouse_factory.py`
 
 # Resources and Further Reading
+
+1. [docs.dagster.io](https://docs.dagster.io/?_gl=1*1bd3xxt*_ga*Nzc4MzMwNDcxLjE3MTcxNDc3OTM.*_ga_84VRQZG7TV*MTcxNzE0Nzc5My4xLjAuMTcxNzE0Nzc5My42MC4wLjA.*_gcl_au*MTcxOTE5MzIyMS4xNzE3MTQ3Nzk0)
