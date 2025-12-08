@@ -59,15 +59,15 @@ services:
   # Dagster Services
   dagster:
     extends:
-      file: workflows/dagster/docker-compose-dagster.yml
+      file: workflows/dagster_v2/docker-compose-dagster.yml
       service: dagster
   dagster_webserver:
     extends:
-      file: workflows/dagster/docker-compose-dagster.yml
+      file: workflows/dagster_v2/docker-compose-dagster.yml
       service: dagster_webserver
   dagster_daemon:
     extends:
-      file: workflows/dagster/docker-compose-dagster.yml
+      file: workflows/dagster_v2/docker-compose-dagster.yml
       service: dagster_daemon
 
   # Prefect Services
