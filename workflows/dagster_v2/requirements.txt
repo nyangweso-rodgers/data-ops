@@ -1,7 +1,7 @@
 # Core Dagster
-dagster==1.11.9
-dagster-webserver==1.11.9
-dagster-postgres==0.27.29
+dagster==1.12.4
+dagster-webserver==1.12.4
+dagster-postgres==0.28.4
 
 # Database drivers
 psycopg2-binary==2.9.10
@@ -22,12 +22,12 @@ pydantic==2.9.2
 sqlalchemy==2.0.43
 
 # AWS
-boto3==1.35.36
+#boto3==1.35.36
 
 # Monitoring
-structlog==24.4.0
+structlog==25.5.0
 
 # Development
 pytest==8.0.0
-black==24.0.0
+black==25.11.0
 ruff==0.2.0

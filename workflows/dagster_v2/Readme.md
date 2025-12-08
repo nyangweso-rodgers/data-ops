@@ -4,7 +4,6 @@
   - Readme.md
   - Dockerfile
   - docker-compose.yml
-  - `definitions.py` # Dagster entry point
   - `pyproject.toml`
   - `requirements.txt`
   - .github/
@@ -16,44 +15,48 @@
     - `dagster.yaml`
     - `workspace.yaml`
   - dagster_pipeline/
+    - `__init__.py`
+    - `definitions.py`
     - connectors/
-      - sources/ # Source connectors
-        - `mysql_source.py` # MySQL extractor
-        - `postgres_source.py` # PostgreSQL extractor
+      - sources/ # Source connectors ← DATA EXTRACTION
+        - `base_source.py`
+        - `mysql_source.py` # MySQL extraction
+        - `postgres_source.py` # PostgreSQL extraction
         - `s3_source.py`
         - `api_source.py`
         - `clickhouse_source.py` # For reverse ETL
-      - destinations/ # Destination connectors
+      - destinations/ # Destination connectors ← DATA LOADING
+        - `base_destination.py`
         - `clickhouse_destination.py`
         - `bigquery_destination.py`
         - `s3_destination.py`
         - `postgres_destination.py`
-        - `mysql_destination.py`
+        - `mysql_destination.py` # MySQL loading
     - pipelines/
       - etl/
         - `mysql_to_clickhouse.py`
-      - analytics/
-      - data_quality/
-    - assets/
-      - schemas/
-        - mysql/
-          - amt/
-            - `accounts.yml`
-            - `customers.yml`
-          - sales_service/
-            - `leads.yml`
-        - postgres/
-          - fma/
-            - `premises.yml`
-          - sentinel/
-            - `devices.yml`
-        - templates/
-          - `table_schema.yml` # ← Template with comments
+    - resources/
+      - `__init__.py`
+      - `clickhouse_resource.py`
+      - `dagster_postgres_resource.py`
+      - `mysql_resource.py`
+      - `registry.py`
+    - schemas/
+      - apis/
+      - mysql/
+        - amtdb/
+          - `accounts.yml`
+          - `customers.yml`
+        - sales_service/
+          - `leads.yml`
+      - postgres/
+        - fma/
+          - `premises.yml`
+        - sentinel/
+          - `devices.yml`
+      - templates/
+        - `table_schema_template.yml` # ← Template with comments
     - utils/
-      - db_utils/
-        - `mysql_utils.py`
-        - `postgres_utils.py`
-        - `clickhouse_utils.py`
       - factories/
         - `__init__.py`
         - `base_factory.py` # ← Abstract base class

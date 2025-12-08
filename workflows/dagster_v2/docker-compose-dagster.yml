@@ -1,0 +1,142 @@
+services:
+  # ============================================================================
+  # DAGSTER gRPC SERVER
+  # ============================================================================
+  dagster:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dagster
+    container_name: dagster
+    command: ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-m", "dagster_pipeline"]
+    #restart: always
+    restart: no  # Disable for debugging
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; s = socket.socket(); s.connect(('localhost', 4000)); s.close()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:  
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    environment:
+      - DAGSTER_HOME=/app/dagster_home
+      - PYTHONPATH=/app
+      - DAGSTER_LOG_LEVEL=DEBUG
+      # ═══════════════════════════════════════════════════════════════════
+      # DAGSTER POSTGRES (State Management)
+      # ═══════════════════════════════════════════════════════════════════
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+    volumes:
+      # Mount workspace.yaml
+      - ./dagster_home/:/app/dagster_home
+      # Mount code for development (optional)
+      - ./dagster_pipeline:/app/dagster_pipeline
+    networks:
+      - data-ops-network
+
+  # ============================================================================
+  # DAGSTER WEBSERVER - UI
+  # ============================================================================
+  dagster_webserver:
+    image: dagster # Reuse built image
+    container_name: dagster_webserver
+    ports:
+      - "3004:3004"
+    command:
+      [
+        "dagster-webserver",
+        "-h",
+        "0.0.0.0",
+        "-p",
+        "3004",
+        "-w",
+        "/app/dagster_home/workspace.yaml",
+      ]
+    #restart: always
+    restart: no  # Disable for debugging
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      postgres:  
+        condition: service_healthy
+      dagster:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    environment:
+      - DAGSTER_HOME=/app/dagster_home
+      #- DAGSTER_GRPC_SERVER_HOST=dagster
+      #- DAGSTER_GRPC_SERVER_PORT=4000
+      - PYTHONPATH=/app
+      - DAGSTER_LOG_LEVEL=DEBUG
+      # ═══════════════════════════════════════════════════════════════════
+      # DAGSTER POSTGRES (State Management)
+      # ═══════════════════════════════════════════════════════════════════
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+    volumes:
+      # Mount workspace.yaml
+      - ./dagster_home:/app/dagster_home
+      # Mount
+      - ./dagster_pipeline:/app/dagster_pipeline
+    networks:
+      - data-ops-network
+
+  # ============================================================================
+  # DAGSTER DAEMON - Runs Schedules & Sensors
+  # ============================================================================
+  dagster_daemon:
+      image: dagster # Reuse built image
+      container_name: dagster_daemon
+      command: ["dagster-daemon", "run", "-w", "/app/dagster_home/workspace.yaml"]
+      restart: always
+      #restart: no  # Disable for debugging
+      depends_on:
+        dagster:
+          condition: service_healthy
+        postgres: 
+          condition: service_healthy
+      env_file:
+        - ../../.env
+      environment:
+        - DAGSTER_HOME=/app/dagster_home
+        - PYTHONPATH=/app
+        - DAGSTER_LOG_LEVEL=DEBUG
+        # ═══════════════════════════════════════════════════════════════════
+        # DAGSTER POSTGRES (State Management)
+        # ═══════════════════════════════════════════════════════════════════
+        - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+        - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+        - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+        - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      volumes:
+        # Mount workspace.yaml
+        - ./dagster_home:/app/dagster_home
+        # Mount code for development (optional)
+        - ./dagster_pipeline:/app/dagster_pipeline
+      networks:
+        - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
