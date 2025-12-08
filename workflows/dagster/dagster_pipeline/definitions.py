@@ -20,7 +20,6 @@ from dagster_pipeline.utils.schema_loader import SchemaLoader
 from dagster_pipeline.assets.etl import mysql_to_clickhouse
 from dagster_pipeline.assets.etl import mysql_to_mysql
 from dagster_pipeline.assets.etl import mysql_agg_to_mysql
-from dagster_pipeline.assets.data_migration import lead_migration  # NEW: For lead migration assets
 
 # ============================================================================
 # RESOURCES
@@ -88,7 +87,7 @@ all_resources = build_resources()
 # ============================================================================
 
 try:
-    all_assets = load_assets_from_modules([mysql_to_clickhouse, mysql_to_mysql, mysql_agg_to_mysql, lead_migration])  # UPDATED: Added lead_migration
+    all_assets = load_assets_from_modules([mysql_to_clickhouse, mysql_to_mysql, mysql_agg_to_mysql]) 
     print(f"Loaded {len(all_assets)} assets.")
 except Exception as e:
     print(f"Error loading assets: {e}")
