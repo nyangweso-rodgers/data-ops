@@ -11,7 +11,7 @@ from typing import Iterator, List, Dict, Any, Optional
 from datetime import datetime, date
 from decimal import Decimal
 from contextlib import contextmanager
-from .base_source import BaseSourceConnector
+from .base_source_connector import BaseSourceConnector
 import structlog
 
 logger = structlog.get_logger(__name__)

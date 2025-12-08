@@ -15,7 +15,7 @@ import clickhouse_connect
 from typing import Dict, Any, List, Optional
 import pandas as pd
 import numpy as np
-from .base_destination import BaseDestinationConnector
+from .base_sink_connector import BaseDestinationConnector
 import structlog
 
 logger = structlog.get_logger(__name__)
