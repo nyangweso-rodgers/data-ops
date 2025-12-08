@@ -1,0 +1,4 @@
+load_from:
+  - python_module:
+      module_name: dagster_pipeline.definitions # Key fix: module_name, not relative_path
+      working_directory: /app
