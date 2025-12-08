@@ -1,0 +1,38 @@
+# schemas/mysql/amtdb/accounts.yml
+metadata:
+  version: 1.0.0
+  created_by: "Rodgers Nyangweso"
+  description: "Accounts table for the AMT database"
+  created_at: "2024-01-15"
+  last_modified: "2024-01-15"
+
+source:
+  type: mysql
+  database: amtdb
+  table: accounts
+  
+  columns:
+    - name: id
+      type: bigint
+      nullable: false
+      primary_key: true
+
+    - name: customerId
+      type: int
+      nullable: false
+
+    - name: status
+      type: varchar(50)
+      nullable: false
+      default: "active"
+
+    - name: createdAt
+      type: timestamp
+      nullable: false
+      default: CURRENT_TIMESTAMP
+
+    - name: updatedAt
+      type: timestamp
+      nullable: false
+      default: CURRENT_TIMESTAMP
+      on_update: CURRENT_TIMESTAMP
