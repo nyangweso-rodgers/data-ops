@@ -1,19 +1,28 @@
-# dagster_pipeline/utils/factories/mysql_to_clickhouse_factory.py
+# dagster_pipeline/utils/factories/postgres_to_clickhouse_factory.py
 """
-Factory for MySQL → ClickHouse ETL pipelines with robust state management
+Factory for PostgreSQL → ClickHouse ETL pipelines
+
+Shares the same base factory as MySQL, only differs in connector creation.
 """
 
 from typing import Optional, Dict, Any
 from dagster import AssetExecutionContext
 from .base_factory import BaseETLFactory
-from dagster_pipeline.connectors.sources.mysql_source_connector import MySQLSourceConnector
+from dagster_pipeline.connectors.sources.postgres_source_connector import PostgresSourceConnector
 from dagster_pipeline.connectors.sink.clickhouse_sink_connector import ClickHouseSinkConnector
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 
-class MySQLToClickHouseFactory(BaseETLFactory):
+class PostgresToClickHouseFactory(BaseETLFactory):
+    """
+    Postgres → ClickHouse ETL factory
+    
+    Inherits all ETL logic from BaseETLFactory.
+    Only implements Postgres-specific connector creation.
+    """
+    
     def __init__(
         self,
         asset_name: str,
@@ -21,16 +30,16 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         source_table: str,
         destination_database: str,
         destination_table: str,
-        mysql_resource_key: str = "mysql_amt",
+        postgres_resource_key: str = "postgres_default",
         incremental_key: Optional[str] = None,
         sync_method: str = "append",
         batch_size: int = 10000,
         group_name: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
         # ClickHouse-specific controls - ALL REQUIRED
-        clickhouse_engine: str = None,  # REQUIRED - no default
-        clickhouse_order_by: list = None,  # REQUIRED - no default
-        clickhouse_partition_by: Optional[str] = None,  # Explicit None means "no partitioning"
+        clickhouse_engine: str = None,
+        clickhouse_order_by: list = None,
+        clickhouse_partition_by: Optional[str] = None,
         clickhouse_primary_key: Optional[list] = None,
         clickhouse_ttl: Optional[str] = None,
         clickhouse_settings: Optional[Dict[str, Any]] = None,
@@ -47,7 +56,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
             group_name=group_name,
             tags=tags,
         )
-        self.mysql_resource_key = mysql_resource_key
+        self.postgres_resource_key = postgres_resource_key
         
         # Validate required ClickHouse parameters
         self._validate_clickhouse_config(
@@ -70,14 +79,9 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         order_by: list,
         partition_by: Optional[str]
     ):
-        """
-        Validate required ClickHouse configuration parameters
-        
-        This ensures data engineers explicitly specify all critical settings.
-        """
+        """Validate required ClickHouse configuration parameters"""
         errors = []
         
-        # Engine is REQUIRED
         if engine is None:
             errors.append(
                 "❌ clickhouse_engine is REQUIRED. You must explicitly choose an engine.\n"
@@ -87,7 +91,6 @@ class MySQLToClickHouseFactory(BaseETLFactory):
                 "   - 'ReplacingMergeTree(version_column)' for versioned deduplication"
             )
         
-        # ORDER BY is REQUIRED
         if order_by is None:
             errors.append(
                 "❌ clickhouse_order_by is REQUIRED. You must specify how data is sorted.\n"
@@ -99,17 +102,13 @@ class MySQLToClickHouseFactory(BaseETLFactory):
                 f"   Got: {order_by}"
             )
         
-        # PARTITION BY must be explicitly set (can be None for no partitioning)
-        # We check if it was passed to __init__ by checking if it's the sentinel value
-        # This is checked in the factory function instead
-        
         if errors:
             error_msg = "\n\n".join(errors)
             error_msg += "\n\n💡 TIP: All ClickHouse table parameters must be explicitly specified."
             raise ValueError(error_msg)
 
     def source_type(self) -> str:
-        return "mysql"
+        return "postgres"
 
     def destination_type(self) -> str:
         return "clickhouse"
@@ -117,30 +116,30 @@ class MySQLToClickHouseFactory(BaseETLFactory):
     def get_required_resource_keys(self) -> set:
         """Return all required resource keys"""
         return {
-            self.mysql_resource_key,
+            self.postgres_resource_key,
             "clickhouse_resource",
             "schema_loader",
             "dagster_postgres_resource",
         }
 
     def get_source_connector(self, context: AssetExecutionContext):
-        """Create MySQL source connector"""
-        mysql_res = getattr(context.resources, self.mysql_resource_key, None)
+        """Create PostgreSQL source connector"""
+        postgres_res = getattr(context.resources, self.postgres_resource_key, None)
         
-        if mysql_res is None:
+        if postgres_res is None:
             available = [attr for attr in dir(context.resources) if not attr.startswith('_')]
             raise ValueError(
-                f"MySQL resource '{self.mysql_resource_key}' not found. "
+                f"Postgres resource '{self.postgres_resource_key}' not found. "
                 f"Available resources: {available}"
             )
 
         config = {
-            **mysql_res.get_config(),
+            **postgres_res.get_config(),
             "database": self.source_database,
             "table": self.source_table,
         }
         
-        return MySQLSourceConnector(context, config)
+        return PostgresSourceConnector(context, config)
 
     def get_destination_connector(self, context: AssetExecutionContext):
         """Create ClickHouse destination connector"""
@@ -157,12 +156,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         return ClickHouseSinkConnector(context, config)
 
     def get_clickhouse_table_options(self) -> Dict[str, Any]:
-        """
-        Get ClickHouse table creation options
-        
-        Returns dict with engine, order_by, partition_by, etc.
-        Subclass can override this or pass options in __init__
-        """
+        """Get ClickHouse table creation options"""
         return {
             "engine": self.clickhouse_engine,
             "order_by": self.clickhouse_order_by,
@@ -176,8 +170,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         """
         Validate incremental key exists in schema (exact match)
         
-        Returns:
-            The incremental key as provided (no case correction)
+        Postgres is case-sensitive by default, so we do exact matching.
         """
         if not self.incremental_key:
             return None
@@ -185,15 +178,22 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         # Get column names from schema
         column_names = schema.get_column_names(use_source_names=True)
         
-        # Check for exact match first
+        # Check for exact match
         if self.incremental_key in column_names:
             context.log.info(f"✅ Incremental key validated: {self.incremental_key}")
             return self.incremental_key
         
-        # If exact match fails, try case-insensitive search to provide helpful error
-        column_names_lower = {col.lower(): col for col in column_names}
+        # Postgres columns are often lowercase by default
+        # Try lowercase version if exact match fails
         incremental_key_lower = self.incremental_key.lower()
+        if incremental_key_lower in column_names:
+            context.log.warning(
+                f"⚠️ Incremental key found with different case: '{self.incremental_key}' → '{incremental_key_lower}'"
+            )
+            return incremental_key_lower
         
+        # If still not found, provide helpful error
+        column_names_lower = {col.lower(): col for col in column_names}
         if incremental_key_lower in column_names_lower:
             correct_case = column_names_lower[incremental_key_lower]
             raise ValueError(
@@ -211,119 +211,94 @@ class MySQLToClickHouseFactory(BaseETLFactory):
 # CONVENIENCE FUNCTION
 # ============================================================================
 
-def create_mysql_to_clickhouse_asset(
+def create_postgres_to_clickhouse_asset(
     asset_name: str,
     source_database: str,
     source_table: str,
     destination_database: str,
     destination_table: str,
-    mysql_resource_key: str = "mysql_amt",
+    postgres_resource_key: str = "postgres_default",
     incremental_key: Optional[str] = None,
     sync_method: str = "append",
     batch_size: int = 10000,
     group_name: Optional[str] = None,
     tags: Optional[Dict[str, str]] = None,
-    # ClickHouse table options
-    clickhouse_engine: Optional[str] = None,
-    clickhouse_order_by: Optional[list] = None,
+    # ClickHouse table options - REQUIRED FIELDS
+    clickhouse_engine: str = None,
+    clickhouse_order_by: list = None,
     clickhouse_partition_by: Optional[str] = None,
     clickhouse_primary_key: Optional[list] = None,
     clickhouse_ttl: Optional[str] = None,
     clickhouse_settings: Optional[Dict[str, Any]] = None,
 ):
     """
-    Create a MySQL → ClickHouse ETL asset with full ClickHouse control
+    Create a PostgreSQL → ClickHouse ETL asset with REQUIRED ClickHouse configuration
+    
+    ⚠️  REQUIRED FIELDS - MUST BE EXPLICITLY SET:
+    - clickhouse_engine: Table engine (e.g., "MergeTree", "ReplacingMergeTree")
+    - clickhouse_order_by: Sort columns (e.g., ["id"] or ["tenant_id", "created_at"])
+    - clickhouse_partition_by: Partition expression or None (e.g., "toYYYYMM(created_at)" or None)
     
     Args:
         asset_name: Unique Dagster asset name
-        source_database: MySQL database name
-        source_table: MySQL table name
+        source_database: PostgreSQL database name
+        source_table: PostgreSQL table name
         destination_database: ClickHouse database name
         destination_table: ClickHouse table name
-        mysql_resource_key: Resource key for MySQL connection
+        postgres_resource_key: Resource key for Postgres connection
         incremental_key: Column for incremental sync (None = full sync)
         sync_method: "append", "replace", or "upsert"
         batch_size: Rows per batch
         group_name: Dagster asset group
         tags: Additional tags
         
-        clickhouse_engine: ClickHouse table engine (default: auto-select based on sync_method)
-            Examples:
-            - "MergeTree" - Basic sorted storage
-            - "ReplacingMergeTree" - Deduplication by ORDER BY
-            - "ReplacingMergeTree(updatedAt)" - Dedup by version column
-            - "SummingMergeTree" - Auto-sum numeric columns
-            - "AggregatingMergeTree" - Pre-aggregated data
-            - "CollapsingMergeTree(sign)" - Cancel out rows
-        
-        clickhouse_order_by: Columns for ORDER BY (default: primary key or first column)
-            Examples:
-            - ["id"] - Simple ordering
-            - ["tenant_id", "created_date", "id"] - Multi-column for partitioning
-        
-        clickhouse_partition_by: Partition expression (default: None)
-            Examples:
-            - "toYYYYMM(created_date)" - Monthly partitions
-            - "toMonday(created_date)" - Weekly partitions
-            - "tenant_id" - By tenant
-            - "(tenant_id, toYYYYMM(created_date))" - Composite
-        
-        clickhouse_primary_key: Primary key columns (default: first ORDER BY column)
-            Examples:
-            - ["tenant_id", "id"] - Composite primary key
-        
-        clickhouse_ttl: TTL expression for automatic data expiration
-            Examples:
-            - "created_date + INTERVAL 90 DAY" - Delete after 90 days
-            - "created_date + INTERVAL 1 YEAR TO DISK 'cold'" - Move to cold storage
-        
-        clickhouse_settings: Table-level settings
-            Examples:
-            - {"index_granularity": 8192}
-            - {"ttl_only_drop_parts": 1}
+        clickhouse_engine: REQUIRED - ClickHouse table engine
+        clickhouse_order_by: REQUIRED - Columns for ORDER BY
+        clickhouse_partition_by: REQUIRED (can be None) - Partition expression
+        clickhouse_primary_key: Optional - Primary key columns
+        clickhouse_ttl: Optional - TTL expression for data expiration
+        clickhouse_settings: Optional - Table-level settings
     
     Returns:
         Dagster asset function
     
-    Example - Basic append:
-        >>> asset = create_mysql_to_clickhouse_asset(
-        ...     asset_name="logs_to_clickhouse",
-        ...     source_table="logs",
-        ...     destination_table="logs",
-        ...     incremental_key="created_at",
-        ...     clickhouse_order_by=["created_at", "id"],
-        ...     clickhouse_partition_by="toYYYYMM(created_at)"
-        ... )
-    
-    Example - Deduplication:
-        >>> asset = create_mysql_to_clickhouse_asset(
-        ...     asset_name="users_to_clickhouse",
+    Example - Small dimension table:
+        >>> asset = create_postgres_to_clickhouse_asset(
+        ...     asset_name="postgres_users_to_clickhouse",
+        ...     source_database="app_db",
         ...     source_table="users",
+        ...     destination_database="analytics",
         ...     destination_table="users",
+        ...     postgres_resource_key="postgres_app",
         ...     incremental_key="updated_at",
         ...     clickhouse_engine="ReplacingMergeTree(updated_at)",
         ...     clickhouse_order_by=["id"],
-        ...     clickhouse_partition_by="toYYYYMM(created_at)"
+        ...     clickhouse_partition_by=None,
         ... )
     
-    Example - With TTL:
-        >>> asset = create_mysql_to_clickhouse_asset(
-        ...     asset_name="events_to_clickhouse",
+    Example - Large event table:
+        >>> asset = create_postgres_to_clickhouse_asset(
+        ...     asset_name="postgres_events_to_clickhouse",
+        ...     source_database="app_db",
         ...     source_table="events",
+        ...     destination_database="analytics",
         ...     destination_table="events",
-        ...     incremental_key="event_time",
-        ...     clickhouse_order_by=["event_time", "id"],
-        ...     clickhouse_partition_by="toYYYYMM(event_time)",
-        ...     clickhouse_ttl="event_time + INTERVAL 90 DAY"
+        ...     postgres_resource_key="postgres_app",
+        ...     incremental_key="created_at",
+        ...     clickhouse_engine="MergeTree",
+        ...     clickhouse_order_by=["user_id", "created_at"],
+        ...     clickhouse_partition_by="toYYYYMM(created_at)",
+        ...     clickhouse_ttl="created_at + INTERVAL 90 DAY",
         ... )
     """
-    factory = MySQLToClickHouseFactory(
+    
+    factory = PostgresToClickHouseFactory(
         asset_name=asset_name,
         source_database=source_database,
         source_table=source_table,
         destination_database=destination_database,
         destination_table=destination_table,
-        mysql_resource_key=mysql_resource_key,
+        postgres_resource_key=postgres_resource_key,
         incremental_key=incremental_key,
         sync_method=sync_method,
         batch_size=batch_size,

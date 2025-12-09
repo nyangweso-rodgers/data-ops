@@ -27,5 +27,5 @@ source:
       description: "Record creation timestamp"
     - name: updatedAt
       type: datetime
-      nullable: true
+      nullable: false
       description: "Record last update timestamp"

@@ -9,8 +9,15 @@ from .mysql_to_clickhouse_factory import (
     create_mysql_to_clickhouse_asset
 )
 
+from .postgres_to_clickhouse_factory import (
+    PostgresToClickHouseFactory,
+    create_postgres_to_clickhouse_asset
+)
+
 __all__ = [
     "BaseETLFactory",
     "MySQLToClickHouseFactory",
     "create_mysql_to_clickhouse_asset",
+    "PostgresToClickHouseFactory",
+    "create_postgres_to_clickhouse_asset",
 ]

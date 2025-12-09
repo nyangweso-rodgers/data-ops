@@ -45,3 +45,14 @@
   - Tranform Data (in batches)
   - Load Data (Destination Connector)
   - Manage State (StateManager)
+
+# ClickHouse Partition Strategy
+
+| Table Size    |            Partition Strategy            |                Example |
+| :------------ | :--------------------------------------: | ---------------------: |
+| <1M rows      |                  `None`                  | No partitioning needed |
+| 1M - 10M rows |          `"toYYYYMM(date_col)"`          |     Monthly partitions |
+| >10M rows     |          `"toYYYYMM(date_col)"`          |      Monthly or weekly |
+| Multi-tenant  | `"(tenant_id % 10, toYYYYMM(date_col))"` |              Composite |
+
+# Resource and Further Reading

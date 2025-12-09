@@ -23,6 +23,7 @@ class DataType(Enum):
     JSON = "json"
     ARRAY = "array"
     ENUM = "enum"
+    UUID = "uuid"  # Add UUID as a distinct type
 
 
 class TypeMapper:
@@ -144,13 +145,37 @@ class TypeMapper:
             "integer" → {normalized_type: INTEGER}
             "varchar(255)" → {normalized_type: STRING, length: 255}
             "integer[]" → {normalized_type: ARRAY}
+            "uuid" → {normalized_type: UUID}
         """
         type_str = type_str.lower().strip()
         
-        # Handle array types: integer[]
-        is_array = type_str.endswith("[]")
-        if is_array:
-            type_str = type_str[:-2]
+        # Handle array types with underscore prefix: _int4, _uuid, etc.
+        is_array_underscore = type_str.startswith("_")
+        if is_array_underscore:
+            element_type_str = type_str[1:]  # Remove the underscore
+            # Parse the element type
+            element_info = TypeMapper.parse_postgres_type(element_type_str, nullable=False)
+            return {
+                "normalized_type": DataType.ARRAY,
+                "nullable": nullable,
+                "source_type": type_str,
+                "element_type": element_info["normalized_type"],
+                "is_array": True
+            }
+        
+        # Handle array types with [] suffix: integer[]
+        is_array_suffix = type_str.endswith("[]")
+        if is_array_suffix:
+            element_type_str = type_str[:-2]
+            # Parse the element type
+            element_info = TypeMapper.parse_postgres_type(element_type_str, nullable=False)
+            return {
+                "normalized_type": DataType.ARRAY,
+                "nullable": nullable,
+                "source_type": type_str,
+                "element_type": element_info["normalized_type"],
+                "is_array": True
+            }
         
         # Extract base type and parameters
         match = re.match(r"(\w+(?:\s+\w+)?)(?:\((.*?)\))?", type_str)
@@ -161,53 +186,130 @@ class TypeMapper:
         params_str = match.group(2) or ""
         
         type_mapping = {
+            # Integer types
             "smallint": DataType.INTEGER,
             "integer": DataType.INTEGER,
             "int": DataType.INTEGER,
-            "int4": DataType.INTEGER,
+            "int2": DataType.INTEGER,  # smallint
+            "int4": DataType.INTEGER,  # integer
             "bigint": DataType.BIGINT,
-            "int8": DataType.BIGINT,
+            "int8": DataType.BIGINT,   # bigint
+            "serial": DataType.INTEGER,  # auto-increment integer
+            "bigserial": DataType.BIGINT,  # auto-increment bigint
+            
+            # Decimal types
             "decimal": DataType.DECIMAL,
             "numeric": DataType.DECIMAL,
             "real": DataType.FLOAT,
-            "float4": DataType.FLOAT,
+            "float4": DataType.FLOAT,  # real
             "double precision": DataType.FLOAT,
-            "float8": DataType.FLOAT,
+            "float8": DataType.FLOAT,  # double precision
+            
+            # String types
             "char": DataType.STRING,
+            "character": DataType.STRING,
             "varchar": DataType.STRING,
             "character varying": DataType.STRING,
             "text": DataType.TEXT,
+            "uuid": DataType.UUID,  # UUID gets its own type!
+            
+            # Date/Time types
             "date": DataType.DATE,
+            "time": DataType.STRING,
+            "timetz": DataType.STRING,  # time with time zone
             "timestamp": DataType.TIMESTAMP,
             "timestamp without time zone": DataType.TIMESTAMP,
             "timestamptz": DataType.TIMESTAMP,
             "timestamp with time zone": DataType.TIMESTAMP,
+            "interval": DataType.STRING,
+            
+            # Boolean
             "boolean": DataType.BOOLEAN,
             "bool": DataType.BOOLEAN,
+            
+            # JSON/JSONB
             "json": DataType.JSON,
             "jsonb": DataType.JSON,
-            "uuid": DataType.STRING,
+            
+            # Binary/BLOB
+            "bytea": DataType.STRING,
+            
+            # Network address types
+            "inet": DataType.STRING,
+            "cidr": DataType.STRING,
+            "macaddr": DataType.STRING,
+            
+            # Geometric types (store as string or JSON)
+            "point": DataType.STRING,
+            "line": DataType.STRING,
+            "lseg": DataType.STRING,
+            "box": DataType.STRING,
+            "path": DataType.STRING,
+            "polygon": DataType.STRING,
+            "circle": DataType.STRING,
+            
+            # Bit strings
+            "bit": DataType.STRING,
+            "bit varying": DataType.STRING,
+            "varbit": DataType.STRING,
+            
+            # Text search types
+            "tsvector": DataType.STRING,
+            "tsquery": DataType.STRING,
+            
+            # XML
+            "xml": DataType.STRING,
+            
+            # Range types
+            "int4range": DataType.STRING,
+            "int8range": DataType.STRING,
+            "numrange": DataType.STRING,
+            "tsrange": DataType.STRING,
+            "tstzrange": DataType.STRING,
+            "daterange": DataType.STRING,
+            
+            # Object identifier types
+            "oid": DataType.BIGINT,
+            "regproc": DataType.STRING,
+            "regprocedure": DataType.STRING,
+            "regoper": DataType.STRING,
+            "regoperator": DataType.STRING,
+            "regclass": DataType.STRING,
+            "regtype": DataType.STRING,
+            "regrole": DataType.STRING,
+            "regnamespace": DataType.STRING,
+            "regconfig": DataType.STRING,
+            "regdictionary": DataType.STRING,
         }
         
         normalized_type = type_mapping.get(base_type, DataType.STRING)
         
-        if is_array:
-            normalized_type = DataType.ARRAY
-        
         result = {
             "normalized_type": normalized_type,
             "nullable": nullable,
-            "source_type": type_str + ("[]" if is_array else ""),
+            "source_type": type_str,
         }
         
-        # Add parameters
+        # Add parameters for specific types
         if params_str:
             params = [p.strip() for p in params_str.split(",")]
+            
             if normalized_type == DataType.STRING:
-                result["length"] = int(params[0])
+                # For varchar(255), char(10), etc.
+                if params and params[0].isdigit():
+                    result["length"] = int(params[0])
             elif normalized_type == DataType.DECIMAL:
-                result["precision"] = int(params[0])
-                result["scale"] = int(params[1]) if len(params) > 1 else 0
+                # For decimal(18,2), numeric(10,4)
+                if len(params) >= 1 and params[0].isdigit():
+                    result["precision"] = int(params[0])
+                if len(params) >= 2 and params[1].isdigit():
+                    result["scale"] = int(params[1])
+                else:
+                    result["scale"] = 0
+            elif normalized_type in [DataType.FLOAT, DataType.INTEGER, DataType.BIGINT]:
+                # For float(53), etc. - precision specification for floating point
+                if params and params[0].isdigit():
+                    result["precision"] = int(params[0])
         
         return result
     
@@ -232,8 +334,43 @@ class TypeMapper:
         """
         normalized_type = normalized_info["normalized_type"]
         nullable = normalized_info.get("nullable", True)
+
+        # Handle arrays
+        if normalized_type == DataType.ARRAY:
+            element_type = normalized_info.get("element_type")
+            if element_type:
+                # Map element type to ClickHouse type
+                element_map = {
+                    DataType.INTEGER: "Int32",
+                    DataType.BIGINT: "Int64",
+                    DataType.FLOAT: "Float64",
+                    DataType.STRING: "String",
+                    DataType.BOOLEAN: "UInt8",
+                    DataType.DATE: "Date",
+                    DataType.DATETIME: "DateTime",
+                    DataType.TIMESTAMP: "DateTime",
+                    DataType.JSON: "String",
+                    DataType.UUID: "FixedString(36)",  # UUID arrays
+                }
+                element_ch_type = element_map.get(element_type, "String")
+                base_type = f"Array({element_ch_type})"
+            else:
+                base_type = "Array(String)"
+            
+            # Arrays in ClickHouse can't be Nullable at the top level
+            return base_type
         
-        # Base type mapping
+        # Handle UUID - ALWAYS FixedString(36), never LowCardinality
+        if normalized_type == DataType.UUID:
+            # UUIDs are always 36 characters (with hyphens)
+            # Example: "550e8400-e29b-41d4-a716-446655440000"
+            base_type = "FixedString(36)"
+            # UUIDs can be nullable
+            if nullable:
+                return f"Nullable({base_type})"
+            return base_type
+        
+        # Base type mapping for non-array types
         type_map = {
             DataType.INTEGER: "Int32",
             DataType.BIGINT: "Int64",
@@ -245,12 +382,11 @@ class TypeMapper:
             DataType.DATETIME: "DateTime",
             DataType.TIMESTAMP: "DateTime",
             DataType.JSON: "String",
-            DataType.ARRAY: "Array(String)",
         }
         
         base_type = type_map.get(normalized_type, "String")
         
-        # Apply optimizations
+        # Apply optimizations (but NOT for UUIDs)
         if optimization == "speed":
             if normalized_type == DataType.ENUM:
                 base_type = "LowCardinality(String)"
@@ -285,6 +421,27 @@ class TypeMapper:
         """Map to BigQuery type"""
         normalized_type = normalized_info["normalized_type"]
         
+        # Handle arrays
+        if normalized_type == DataType.ARRAY:
+            element_type = normalized_info.get("element_type")
+            if element_type:
+                element_map = {
+                    DataType.INTEGER: "INT64",
+                    DataType.BIGINT: "INT64",
+                    DataType.FLOAT: "FLOAT64",
+                    DataType.DECIMAL: "NUMERIC",
+                    DataType.STRING: "STRING",
+                    DataType.BOOLEAN: "BOOL",
+                    DataType.DATE: "DATE",
+                    DataType.DATETIME: "DATETIME",
+                    DataType.TIMESTAMP: "TIMESTAMP",
+                    DataType.JSON: "JSON",
+                    DataType.UUID: "STRING",
+                }
+                element_bq_type = element_map.get(element_type, "STRING")
+                return f"ARRAY<{element_bq_type}>"
+            return "ARRAY<STRING>"
+        
         type_map = {
             DataType.INTEGER: "INT64",
             DataType.BIGINT: "INT64",
@@ -297,8 +454,8 @@ class TypeMapper:
             DataType.DATETIME: "DATETIME",
             DataType.TIMESTAMP: "TIMESTAMP",
             DataType.JSON: "JSON",
-            DataType.ARRAY: "ARRAY<STRING>",
             DataType.ENUM: "STRING",
+            DataType.UUID: "STRING",
         }
         
         return type_map.get(normalized_type, "STRING")

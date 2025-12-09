@@ -8,6 +8,7 @@ When you need to add a new source → add ONE line here. Nothing else changes.
 
 from dagster import EnvVar
 from .mysql_resource import MySQLResource
+from .postgres_resource import PostgreSQLResource
 from .clickhouse_resource import ClickHouseResource
 from .dagster_postgres_resource import DagsterPostgresResource
 
@@ -59,4 +60,15 @@ clickhouse_resource = ClickHouseResource(
     secure=False,
 )
 
+# ═════════════════════════════════════════════════════════════════════════════
+# PostgreSQL FMA Resource
+# ═════════════════════════════════════════════════════════════════════════════
+postgres_fma = PostgreSQLResource(
+    host=EnvVar("SC_EP_PG_DB_HOST"),
+    port=5432,
+    user=EnvVar("SC_EP_PG_DB_USER"),
+    password=EnvVar("SC_EP_PG_DB_PASSWORD"),
+    database=EnvVar("SC_EP_PG_DB_NAME"),
+    pg_schema="public",
+)
 # ← Add new sources here tomorrow. One line. Done.

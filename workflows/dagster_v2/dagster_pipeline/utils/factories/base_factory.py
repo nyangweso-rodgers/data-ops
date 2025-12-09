@@ -93,6 +93,22 @@ class BaseETLFactory(ABC):
         """
         return self.incremental_key
     
+    def get_clickhouse_table_options(self) -> Dict[str, Any]:
+        """
+        Get ClickHouse table creation options
+        
+        Subclasses can override this to provide custom options.
+        Returns None values for options that should use defaults.
+        """
+        return {
+            "engine": None,
+            "order_by": None,
+            "partition_by": None,
+            "primary_key": None,
+            "ttl": None,
+            "settings": {},
+        }
+    
     def _default_group_name(self) -> str:
         """Generate default group name"""
         source_db_safe = self.source_database.replace("-", "_")
@@ -257,15 +273,52 @@ class BaseETLFactory(ABC):
                 if not destination.table_exists(self.destination_database, self.destination_table):
                     context.log.info(f"📝 Creating table {self.destination_database}.{self.destination_table}")
                     
-                    primary_keys = schema.get_primary_keys()
-                    order_by = [primary_keys[0].name] if primary_keys else [converted_columns[0]["name"]]
+                    # Get ClickHouse options from subclass
+                    ch_options = self.get_clickhouse_table_options()
                     
+                    # Determine engine
+                    if ch_options.get("engine"):
+                        engine = ch_options["engine"]
+                        context.log.info(f"🔧 Using custom engine: {engine}")
+                    else:
+                        # Auto-select based on sync_method
+                        if self.sync_method == "upsert":
+                            engine = "ReplacingMergeTree"
+                        else:
+                            engine = "MergeTree"
+                        context.log.info(f"🔧 Using default engine: {engine}")
+                    
+                    # Determine ORDER BY
+                    if ch_options.get("order_by"):
+                        order_by = ch_options["order_by"]
+                        context.log.info(f"🔧 Using custom ORDER BY: {order_by}")
+                    else:
+                        # Default: use primary keys or first column
+                        primary_keys = schema.get_primary_keys()
+                        order_by = [primary_keys[0].name] if primary_keys else [converted_columns[0]["name"]]
+                        context.log.info(f"🔧 Using default ORDER BY: {order_by}")
+                    
+                    # Log partition and other options
+                    if ch_options.get("partition_by"):
+                        context.log.info(f"📊 Partitioning by: {ch_options['partition_by']}")
+                    
+                    if ch_options.get("primary_key"):
+                        context.log.info(f"🔑 Primary key: {ch_options['primary_key']}")
+                    
+                    if ch_options.get("ttl"):
+                        context.log.info(f"⏰ TTL: {ch_options['ttl']}")
+                    
+                    # Create table with options
                     destination.create_table(
                         self.destination_database,
                         self.destination_table,
                         converted_columns,
-                        engine="ReplacingMergeTree" if self.sync_method == "upsert" else "MergeTree",
-                        order_by=order_by
+                        engine=engine,
+                        order_by=order_by,
+                        partition_by=ch_options.get("partition_by"),
+                        primary_key=ch_options.get("primary_key"),
+                        ttl=ch_options.get("ttl"),
+                        settings=ch_options.get("settings", {})
                     )
                     context.log.info("✅ Table created")
                 else:

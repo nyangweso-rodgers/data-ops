@@ -491,17 +491,63 @@ class SchemaLoader:
         valid_type_patterns = {
             SourceType.MYSQL: ['bigint', 'int', 'varchar', 'text', 'decimal',
                               'timestamp', 'datetime', 'date', 'enum', 'json', 'boolean', 'char'],
-            SourceType.POSTGRES: ['bigint', 'integer', 'text', 'varchar', 'numeric',
-                                 'timestamp', 'date', 'jsonb', 'json', 'boolean', 'char'],
+            
+            SourceType.POSTGRES: [
+            # Integer types
+            'bigint', 'integer', 'int', 'int2', 'int4', 'int8', 'smallint',
+            'serial', 'bigserial',
+            # Decimal types
+            'decimal', 'numeric', 'real', 'float4', 'double precision', 'float8',
+            # String types
+            'text', 'varchar', 'character varying', 'char', 'character', 'uuid',
+            # Array types (both formats)
+            '_int2', '_int4', '_int8', '_text', '_varchar', '_uuid', '_bool',
+            '_float4', '_float8', '_numeric', '_decimal', '_timestamp',
+            '_timestamptz', '_date',
+            'smallint[]', 'integer[]', 'int[]', 'bigint[]', 'text[]', 'varchar[]',
+            'uuid[]', 'boolean[]', 'timestamp[]', 'timestamptz[]', 'date[]',
+            # Date/Time types
+            'timestamp', 'timestamptz', 'timestamp without time zone',
+            'timestamp with time zone', 'date', 'time', 'timetz', 'interval',
+            # JSON/B
+            'jsonb', 'json',
+            # Boolean
+            'boolean', 'bool',
+            # Binary
+            'bytea',
+            # Network
+            'inet', 'cidr', 'macaddr',
+        ],
         }
         
         patterns = valid_type_patterns.get(schema.source_type, [])
         for col in schema.columns:
-            if patterns and not any(pattern in col.type.lower() for pattern in patterns):
-                errors.append(
-                    f"Column '{col.name}' has potentially invalid type '{col.type}' "
-                    f"for {schema.source_type.value}"
-                )
+            if patterns:
+                col_type_lower = col.type.lower()
+                
+                # Check for exact match or pattern match
+                found = False
+                for pattern in patterns:
+                    # Check for exact match (for types like 'uuid')
+                    if col_type_lower == pattern:
+                        found = True
+                        break
+                    # Check for pattern match (for types like 'varchar(255)')
+                    elif pattern in col_type_lower:
+                        found = True
+                        break
+                    # Check for array types with specific element types
+                    elif col_type_lower.startswith('_') and pattern.startswith('_'):
+                        # For types like '_int4' matching '_int4'
+                        if col_type_lower.split('(')[0] == pattern:
+                            found = True
+                            break
+                
+                if not found:
+                    errors.append(
+                        f"Column '{col.name}' has potentially invalid type '{col.type}' "
+                        f"for {schema.source_type.value}"
+                    )
         
         return errors
     

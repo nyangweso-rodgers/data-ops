@@ -1,0 +1,57 @@
+# Template for table schemas
+# Copy this file to appropriate location and fill in details
+
+metadata:
+  version: 1.0.0
+  created_by: "Your Name"
+  description: "Brief description of the table"
+  created_at: "2025-12-09"
+  last_modified: "2025-12-09"
+  # Optional: Add any additional metadata
+  # owner: "team-name"
+
+source:
+  type: postgres
+  database: "sunculture_ep"
+  table: "premises"
+
+  columns:
+    # Required fields: name, type
+    # Optional fields: nullable, primary_key, description, default, source_name
+
+    - name: id
+      type: uuid
+      nullable: false
+      primary_key: true
+      description: "Primary key identifier"
+
+    - name: created_at
+      type: timestamp
+      nullable: false
+      default: CURRENT_TIMESTAMP
+
+    - name: updated_at
+      type: timestamp
+      nullable: false
+
+    - name: account_id
+      type: _int4 # array types
+      nullable: true
+
+    - name: premise_name
+      type: varchar(255)
+      nullable: true
+
+    - name: customer_id
+      type: int4
+      nullable: true
+
+    - name: premise_type_id
+      type: uuid
+      nullable: true
+
+    - name: substate_id
+      type: uuid
+      nullable: true
+
+    # Add more columns as needed...
