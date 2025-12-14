@@ -28,6 +28,20 @@
   5. Kafka UI ( Kafka Monitoring)
   6. Grafana (System Monitoring)
 
+# Project Structure
+
+- data-ops/
+  - `docker-compose.yml` # Root compose (orchestrates all services)
+  - databases/
+    - postgres/
+      - `docker-compose-postgres.yml`
+    - mysql/
+      - `docker-compose-mysql.yml`
+  - workflows/
+    - dagster/
+      - `Dockerfile`
+      - `docker-compose-dagster.yml`
+
 # Resources and Further Reading
 
 1. [github.com/nyangweso-rodgers - Docker-Commands](https://github.com/nyangweso-rodgers/My-Journey-Into-Computer-Science/blob/master/04-VMs-vs-Containers/02-Containers/01-Docker/01-Docker-Commands/Readme.md)

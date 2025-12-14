@@ -1,141 +1,195 @@
 services:
+  # ============================================================================
+  # PostgreSQL Services
+  # ============================================================================
   postgres:
     extends:
       file: 01-databases/01-postgres/docker-compose-postgres.yml
       service: postgres
-  mysql-db:
+
+  # ============================================================================
+  # MySQL Services
+  # ============================================================================
+  mysql:
     extends:
       file: 01-databases/02-mysql/docker-compose-mysql.yml
       service: mysql-db
+
+  # ============================================================================
+  # Redis Services
+  # ============================================================================
   redis:
     extends:
       file: 01-databases/redis/docker-compose-redis.yml
       service: redis
+
   redisinsight:
     extends:
       file: 01-databases/redis/docker-compose-redis.yml
       service: redisinsight
-  
-  # Elasticsearch Service
+
+  # ============================================================================
+  # Elasticsearch Services
+  # ============================================================================
   elasticsearch:
     extends:
       file: 01-databases/elasticsearch/docker-compose-elasticsearch.yml
       service: elasticsearch
 
-  # Kibana Service
+  # ============================================================================
+  # Kibana Services
+  # ============================================================================
   kibana:
     extends:
       file: 01-databases/elasticsearch/docker-compose-elasticsearch.yml
       service: kibana
-  # Neo4j Service
+
+  # ============================================================================
+  # neo4j Services
+  # ============================================================================
   neo4j:
     extends:
       file: 01-databases/neo4j/docker-compose-neo4j.yml
       service: neo4j
 
+  # ============================================================================
   # Kafka Services
+  # ============================================================================
   kafka-zookeeper:
     extends:
       file: 03-messaging/01-kafka/docker-compose-kafka.yml
       service: kafka-zookeeper
+
   kafka:
     extends:
       file: 03-messaging/01-kafka/docker-compose-kafka.yml
       service: kafka
+
   kafka-ui:
     extends:
       file: 03-messaging/01-kafka/docker-compose-kafka.yml
       service: kafka-ui
+
+  # ============================================================================
   # Airflow Services
+  # ============================================================================
   airflow-webserver:
     extends:
       file: workflows/airflow/docker-compose-airflow.yml
       service: airflow-webserver
+
   airflow-scheduler:
     extends:
       file: workflows/airflow/docker-compose-airflow.yml
       service: airflow-scheduler
 
-  # Dagster Services
+  # ============================================================================
+  # DAGSTER Services
+  # ============================================================================
   dagster:
     extends:
-      file: workflows/dagster_v2/docker-compose-dagster.yml
+      file: workflows/dagster_v2/docker-compose-dagster.base.yml
       service: dagster
+
   dagster_webserver:
     extends:
-      file: workflows/dagster_v2/docker-compose-dagster.yml
+      file: workflows/dagster_v2/docker-compose-dagster.base.yml
       service: dagster_webserver
+
   dagster_daemon:
     extends:
-      file: workflows/dagster_v2/docker-compose-dagster.yml
+      file: workflows/dagster_v2/docker-compose-dagster.base.yml
       service: dagster_daemon
 
+  # ============================================================================
   # Prefect Services
+  # ============================================================================
   prefect-server:
     extends:
       file: workflows/prefect/docker-compose-prefect.yml
       service: prefect-server
+
   prefect-services:
     extends:
       file: workflows/prefect/docker-compose-prefect.yml
       service: prefect-services
+
   prefect-worker:
     extends:
       file: workflows/prefect/docker-compose-prefect.yml
       service: prefect-worker
 
+  # ============================================================================
   # ClickHouse Services
+  # ============================================================================
   clickhouse-server:
     extends:
       file: 04-warehouse/01-clickhouse/docker-compose-clickhouse.yml
       service: clickhouse-server
+
   clickhouse-tabix-web-client:
     extends:
       file: 04-warehouse/01-clickhouse/docker-compose-clickhouse.yml
       service: clickhouse-tabix-web-client
-  
-  # Metadata
-  ## 1. Amundsen Services
+
+  # ============================================================================
+  # Amundsen Services
+  # ============================================================================
   amundsen-metadata:
     extends:
       file: metadata/amundsen/docker-compose-amundsen.yml
       service: amundsen-metadata
+
   amundsen-search:
     extends:
       file: metadata/amundsen/docker-compose-amundsen.yml
       service: amundsen-search
+
   amundsen-frontend:
     extends:
       file: metadata/amundsen/docker-compose-amundsen.yml
       service: amundsen-frontend
-  
-  ## Open Metadata Services
+
+  # ============================================================================
+  # Open Metadata Services
+  # ============================================================================
   open-metadata-server:
     extends:
       file: metadata/open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-server
+
   open-metadata-execute-migrate-all:
     extends:
       file: metadata/open-metadata/docker-compose-open-metadata.yml
       service: open-metadata-execute-migrate-all
-  
-  # Dashboards
-  
-  ## 1. Grafana Services
+
+  # ============================================================================
+  # Grafana Services
+  # ============================================================================
   grafana:
     extends:
       file: 06-dashboards/grafana/docker-compose-grafana.yml
       service: grafana
-  
-  ## 2. Taipy Services
+
+  # ============================================================================
+  # Taipy Services
+  # ============================================================================
   taipy:
     extends:
       file: 06-dashboards/taipy/sales-dashboard/docker-compose-taipy.yml
       service: taipy
+
+  # ============================================================================
+  # Prometheius Services
+  # ============================================================================
   prometheus:
     extends:
       file: 06-dashboards/grafana/docker-compose-grafana.yml
       service: prometheus
+
+  # ============================================================================
+  # Loki Services
+  # ============================================================================
   loki:
     extends:
       file: 06-dashboards/grafana/docker-compose-grafana.yml
@@ -156,34 +210,48 @@ services:
     extends:
       file: ml-models/ml-flow/docker-compose-ml-flow.yml
       service: ml-flow
-  
+
   ## Example ML Model: Diabetes Predictor
   diabetes-predictor-api:
     extends:
       file: ml-models/diabetes-predictor/docker-compose-diabetes-predictor-ml-model.yml
       service: diabetes-predictor-api
 
-  # AI MCP Services
+  # ============================================================================
+  # Ollama Services
+  # ============================================================================
   ollama:
     extends:
       file: ai/open-webui/docker-compose-open-webui.yml
       service: ollama
+
+  # ============================================================================
+  # Open WebUI Services
+  # ============================================================================
   open-webui:
     extends:
       file: ai/open-webui/docker-compose-open-webui.yml
       service: open-webui
-  # Trino Service
+
+  # ============================================================================
+  # Trino Services
+  # ============================================================================
   trino:
     extends:
       file: trino/docker-compose-trino.yml
       service: trino
-# Define Volumes
+
+# ============================================================================
+# Volumes
+# ============================================================================
 volumes:
   # Database Volumes
   postgres-data:
     external: true
+
   mysql-db-volume:
     external: true
+
   redis-data:
     external: true
 
@@ -198,23 +266,31 @@ volumes:
   # Messaging Volumes
   kafka-zookeeper-data:
     external: true
+
   kafka-data:
     external: true
+
   # Datawarehouse Volumes
   clickhouse-server-data:
     external: true
+
   # Grafana Volumes
   grafana-vol:
     external: true
+
   prometheus-vol:
     external: true
+
   loki-vol:
     external: true
+
   # AI Volumes
   ollama-data:
     external: true
 
-# Define Networks
+# ============================================================================
+# Networks
+# ============================================================================
 networks:
   data-ops-network:
     external: true
