@@ -1,6 +1,11 @@
 #IDE
 #.vscode/
 
+# local env files
+.env*.local
+.env
+.env.dagster
+
 # dependencies
 /node_modules
 
@@ -12,10 +17,6 @@ data/*
 !data/.gitkeep
 !data/generate_dummy_data.py
 !data/sales_data.csv
-
-# local env files
-.env*.local
-.env
 
 # Neo4j
 01-databases/neo4j/data/neo4j/dbms/
