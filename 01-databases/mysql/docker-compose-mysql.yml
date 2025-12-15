@@ -1,9 +1,9 @@
 services:
-  mysql-db:
+  mysql:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mysql-db
+    container_name: mysql
     restart: always
     ports:
       - "3306:3306"
@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - mysql-db-volume:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
       - ./init-scripts/:/docker-entrypoint-initdb.d
     networks:
       - data-ops-network
@@ -30,4 +30,4 @@ networks:
 ################################ Volumes ############################################
 volumes:
   mysql-db-volume:
-    name: mysql-db-volume
+    name: mysql-data
