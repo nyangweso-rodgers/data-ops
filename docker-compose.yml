@@ -12,8 +12,8 @@ services:
   # ============================================================================
   mysql:
     extends:
-      file: 01-databases/02-mysql/docker-compose-mysql.yml
-      service: mysql-db
+      file: 01-databases/mysql/docker-compose-mysql.yml
+      service: mysql
 
   # ============================================================================
   # Redis Services
@@ -199,19 +199,25 @@ services:
       file: 06-dashboards/grafana/docker-compose-grafana.yml
       service: postgres-db-exporter
 
-  # From docker-compose-docusaurus.yml
+  # ============================================================================
+  # Docusaurus Services
+  # ============================================================================
   docusaurus:
     extends:
       file: docs/docusaurus-site/docker-compose-docusaurus.yml
       service: docusaurus
 
-  # Machine Learning Services
+  # ============================================================================
+  # ML Flow Services
+  # ============================================================================
   ml-flow:
     extends:
       file: ml-models/ml-flow/docker-compose-ml-flow.yml
       service: ml-flow
 
-  ## Example ML Model: Diabetes Predictor
+  # ============================================================================
+  # ML  Model  Service - Diabetes Predictor API
+  # ============================================================================
   diabetes-predictor-api:
     extends:
       file: ml-models/diabetes-predictor/docker-compose-diabetes-predictor-ml-model.yml
@@ -249,7 +255,10 @@ volumes:
   postgres-data:
     external: true
 
-  mysql-db-volume:
+  # ============================================================================
+  # MySQL Volumes
+  # ============================================================================
+  mysql-data:
     external: true
 
   redis-data:

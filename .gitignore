@@ -5,6 +5,7 @@
 .env*.local
 .env
 .env.dagster
+.env.prefect
 
 # dependencies
 /node_modules

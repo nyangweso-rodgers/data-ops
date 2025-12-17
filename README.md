@@ -38,9 +38,14 @@
     - mysql/
       - `docker-compose-mysql.yml`
   - workflows/
-    - dagster/
+    - dagster_v2/
       - `Dockerfile`
-      - `docker-compose-dagster.yml`
+      - `Makefile`
+      - `docker-compose-dagster-base.yml`
+      - `docker-compose-dagster-local.yml`
+      - `docker-compose-dagster-prod.yml`
+  - metadata/
+  - messaging/
 
 # Resources and Further Reading
 
