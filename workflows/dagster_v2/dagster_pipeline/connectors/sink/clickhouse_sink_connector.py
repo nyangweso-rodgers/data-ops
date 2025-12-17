@@ -1,132 +1,164 @@
-# dagster_pipeline/connectors/destinations/clickhouse_destination.py
 """
 ClickHouse destination connector for data loading
 
-Supports:
-- Table creation with various engines (MergeTree, ReplacingMergeTree, etc.)
-- Batch inserts (append mode)
-- Upserts via ReplacingMergeTree
-- Schema synchronization (adding new columns)
-- Optimized for ClickHouse-specific features
-- Sanitized logging (no connection strings)
+IMPROVEMENTS:
+- Retry logic with exponential backoff
+- Better error handling
+- Connection validation
+- Query timeout protection
+- Optimized batch inserts
+- Proper resource cleanup
 """
 
 import clickhouse_connect
+from clickhouse_connect.driver.exceptions import ClickHouseError
 from typing import Dict, Any, List, Optional
-import pandas as pd
-import numpy as np
-from .base_sink_connector import BaseSinkConnector
+import time
 import structlog
+
+from .base_sink_connector import (
+    BaseSinkConnector,
+    DestinationConnectionError,
+    DestinationValidationError,
+    DestinationLoadError
+)
 
 logger = structlog.get_logger(__name__)
 
 
 class ClickHouseSinkConnector(BaseSinkConnector):
     """
-    ClickHouse destination connector
+    ClickHouse destination connector - Production-ready implementation
     
     Features:
     - Native ClickHouse protocol via clickhouse-connect
-    - Support for various table engines
-    - Batch inserts with configurable batch size
-    - Automatic type mapping
-    - Column addition for schema evolution
-    - Native Python type handling (no numpy)
+    - Retry logic for transient failures
+    - Connection pooling
+    - Batch inserts with optimization
+    - Schema evolution support
+    - Native Python type handling
     
     Config:
         {
             "host": "clickhouse.example.com",
-            "port": 8123,  # HTTP port (9000 for native)
+            "port": 8443,  # HTTPS port (9440 for native secure)
             "user": "default",
             "password": "password",
-            "database": "analytics",  # Default database
-            "secure": False,  # Use HTTPS/TLS
+            "database": "analytics",
+            "secure": True,  # Use HTTPS/TLS
             "verify": True,  # Verify SSL certificate
-            "settings": {  # Optional ClickHouse settings
+            "connect_timeout": 30,  # Seconds
+            "send_receive_timeout": 300,  # Seconds
+            "settings": {
                 "max_insert_block_size": 100000,
                 "max_execution_time": 300
             }
         }
-    
-    Example:
-        >>> config = {...}
-        >>> with ClickHouseSinkConnector(context, config) as dest:
-        ...     dest.validate()
-        ...     
-        ...     if not dest.table_exists("analytics", "accounts"):
-        ...         dest.create_table(
-        ...             "analytics", "accounts", schema,
-        ...             engine="ReplacingMergeTree",
-        ...             order_by=["id"]
-        ...         )
-        ...     
-        ...     rows = dest.load_data("analytics", "accounts", df, mode="append")
-        ...     print(f"Loaded {rows} rows")
     """
     
-    def __init__(
-        self,
-        context,
-        config: Dict[str, Any]
-    ):
+    # Connection settings
+    DEFAULT_PORT = 8443  # HTTPS
+    DEFAULT_PORT_INSECURE = 8123  # HTTP
+    DEFAULT_CONNECT_TIMEOUT = 30
+    DEFAULT_SEND_RECEIVE_TIMEOUT = 300
+    
+    # Retry settings
+    MAX_RETRIES = 3
+    RETRY_DELAY = 1  # seconds
+    RETRY_BACKOFF = 2
+    
+    def __init__(self, context, config: Dict[str, Any]):
         """Initialize ClickHouse destination connector"""
         super().__init__(context, config)
         
         # Extract connection parameters
         self.host = config["host"]
-        self.port = config.get("port", 8123)
+        self.secure = config.get("secure", True)
+        self.port = config.get("port", self.DEFAULT_PORT if self.secure else self.DEFAULT_PORT_INSECURE)
         self.user = config.get("user", "default")
         self.password = config.get("password", "")
         self.database = config.get("database", "default")
-        self.secure = config.get("secure", False)
         self.verify = config.get("verify", True)
+        self.connect_timeout = config.get("connect_timeout", self.DEFAULT_CONNECT_TIMEOUT)
+        self.send_receive_timeout = config.get("send_receive_timeout", self.DEFAULT_SEND_RECEIVE_TIMEOUT)
         self.settings = config.get("settings", {})
         
-        # Connection pool (lazy initialization)
+        # Connection client (lazy initialization)
         self._client = None
     
     def destination_type(self) -> str:
         return "clickhouse"
     
+    def required_config_keys(self) -> List[str]:
+        return ["host"]  # Password optional for localhost
+    
     def _get_client(self):
-        """Get or create ClickHouse client (lazy initialization)"""
+        """
+        Get or create ClickHouse client with retry logic
+        
+        Uses lazy initialization - client created on first use
+        """
         if self._client is None:
-            try:
-                self._client = clickhouse_connect.get_client(
-                    host=self.host,
-                    port=self.port,
-                    username=self.user,
-                    password=self.password,
-                    database=self.database,
-                    secure=self.secure,
-                    verify=self.verify,
-                    settings=self.settings
-                )
-                
-                logger.debug(
-                    "clickhouse_client_created",
-                    database=self.database,
-                    host="****",  # Sanitized
-                    port=self.port
-                )
-            except Exception as e:
-                logger.error(
-                    "clickhouse_client_creation_failed",
-                    error=str(e)
-                )
-                raise ConnectionError(f"Failed to connect to ClickHouse: {e}")
+            last_error = None
+            
+            for attempt in range(self.MAX_RETRIES):
+                try:
+                    self._client = clickhouse_connect.get_client(
+                        host=self.host,
+                        port=self.port,
+                        username=self.user,
+                        password=self.password,
+                        database=self.database,
+                        secure=self.secure,
+                        verify=self.verify,
+                        connect_timeout=self.connect_timeout,
+                        send_receive_timeout=self.send_receive_timeout,
+                        settings=self.settings
+                    )
+                    
+                    logger.debug(
+                        "clickhouse_client_created",
+                        database=self.database,
+                        host="****",  # Sanitized
+                        port=self.port
+                    )
+                    return self._client
+                    
+                except Exception as e:
+                    last_error = e
+                    if attempt < self.MAX_RETRIES - 1:
+                        delay = self.RETRY_DELAY * (self.RETRY_BACKOFF ** attempt)
+                        logger.warning(
+                            "clickhouse_connection_retry",
+                            attempt=attempt + 1,
+                            max_retries=self.MAX_RETRIES,
+                            delay=delay,
+                            error=str(e)
+                        )
+                        time.sleep(delay)
+                    else:
+                        raise DestinationConnectionError(
+                            f"Failed to connect to ClickHouse after {self.MAX_RETRIES} attempts: {e}"
+                        ) from e
+            
+            if last_error:
+                raise DestinationConnectionError(
+                    f"Failed to connect to ClickHouse: {last_error}"
+                ) from last_error
         
         return self._client
     
     def validate(self) -> bool:
-        """Validate ClickHouse connection"""
+        """Validate ClickHouse connection and permissions"""
         try:
             client = self._get_client()
             
-            # Test connection with simple query
-            result = client.query("SELECT 1")
+            # Test connection
+            result = client.query("SELECT version() as version")
+            version = result.result_rows[0][0] if result.result_rows else "unknown"
+            logger.debug("clickhouse_version", version=version)
             
-            # Check database exists
+            # Check database exists or can be created
             databases_query = "SHOW DATABASES"
             databases = client.query(databases_query)
             db_list = [row[0] for row in databases.result_rows]
@@ -134,11 +166,27 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             if self.database not in db_list:
                 logger.warning(
                     "clickhouse_database_not_found",
-                    database=self.database
+                    database=self.database,
+                    available=db_list
                 )
-                # Database doesn't exist, but connection works
-                # We can create it if needed
+                # Try to create database
+                try:
+                    client.command(f"CREATE DATABASE IF NOT EXISTS `{self.database}`")
+                    logger.info("clickhouse_database_created", database=self.database)
+                except Exception as e:
+                    raise DestinationValidationError(
+                        f"Database '{self.database}' doesn't exist and cannot be created: {e}"
+                    ) from e
             
+            # Test write permissions
+            try:
+                client.command(f"USE `{self.database}`")
+            except Exception as e:
+                raise DestinationValidationError(
+                    f"Cannot access database '{self.database}': {e}"
+                ) from e
+            
+            self._is_validated = True
             logger.info(
                 "clickhouse_destination_validated",
                 database=self.database,
@@ -146,16 +194,18 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             )
             return True
             
+        except DestinationValidationError:
+            raise
         except Exception as e:
-            logger.error(
-                "clickhouse_validation_failed",
-                database=self.database,
-                error=str(e)
-            )
-            raise ConnectionError(f"ClickHouse validation failed: {e}")
+            raise DestinationConnectionError(
+                f"ClickHouse validation failed: {e}"
+            ) from e
     
     def table_exists(self, database: str, table: str) -> bool:
         """Check if table exists in ClickHouse"""
+        if not self._is_validated:
+            self.validate()
+        
         client = self._get_client()
         
         query = """
@@ -164,48 +214,61 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             WHERE database = %(database)s AND name = %(table)s
         """
         
-        result = client.query(
-            query,
-            parameters={"database": database, "table": table}
-        )
-        
-        exists = result.result_rows[0][0] > 0
-        
-        logger.debug(
-            "clickhouse_table_exists_check",
-            database=database,
-            table=table,
-            exists=exists
-        )
-        
-        return exists
+        try:
+            result = client.query(
+                query,
+                parameters={"database": database, "table": table}
+            )
+            
+            exists = result.result_rows[0][0] > 0
+            
+            logger.debug(
+                "clickhouse_table_exists_check",
+                database=database,
+                table=table,
+                exists=exists
+            )
+            
+            return exists
+            
+        except Exception as e:
+            raise DestinationLoadError(
+                f"Failed to check if table exists: {e}"
+            ) from e
     
     def _ensure_sync_at_column(self, database: str, table: str) -> None:
         """Ensure sync_at column exists with proper default"""
         client = self._get_client()
         
-        # Check if sync_at already exists
-        result = client.query(
-            "SELECT name, type, default_expression FROM system.columns "
-            "WHERE database = %(db)s AND table = %(tbl)s AND name = 'sync_at'",
-            parameters={"db": database, "tbl": table}
-        )
-        
-        if result.result_rows:
-            logger.debug("sync_at_column_exists", database=database, table=table)
-            return
-        
-        # Add sync_at with high precision and default = now64()
-        alter_query = f"""
-            ALTER TABLE `{database}`.`{table}`
-            ADD COLUMN `sync_at` DateTime64(3) DEFAULT now64(3)
-        """
         try:
+            # Check if sync_at already exists
+            result = client.query(
+                "SELECT name, type, default_expression FROM system.columns "
+                "WHERE database = %(db)s AND table = %(tbl)s AND name = 'sync_at'",
+                parameters={"db": database, "tbl": table}
+            )
+            
+            if result.result_rows:
+                logger.debug("sync_at_column_exists", database=database, table=table)
+                return
+            
+            # Add sync_at with high precision and default = now64()
+            alter_query = f"""
+                ALTER TABLE `{database}`.`{table}`
+                ADD COLUMN IF NOT EXISTS `sync_at` DateTime64(3) DEFAULT now64(3)
+            """
+            
             client.command(alter_query)
             logger.info("sync_at_column_added", database=database, table=table)
+            
         except Exception as e:
-            if "column already exists" not in str(e).lower():
-                logger.warning("sync_at_add_failed", database=database, table=table, error=str(e))
+            # Non-fatal - log warning but don't fail
+            logger.warning(
+                "sync_at_add_failed",
+                database=database,
+                table=table,
+                error=str(e)
+            )
     
     def create_table(
         self,
@@ -220,16 +283,7 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         Args:
             database: Database name
             table: Table name
-            schema: List of column definitions with ClickHouse types:
-                [
-                    {
-                        "name": "id",
-                        "destination_type": "Int64",  # ClickHouse type
-                        "nullable": False,
-                        "primary_key": True
-                    },
-                    ...
-                ]
+            schema: List of column definitions with ClickHouse types
             **options: ClickHouse-specific options:
                 - engine: Table engine (default: "MergeTree")
                 - order_by: List of columns for ORDER BY
@@ -237,26 +291,10 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                 - primary_key: List of primary key columns
                 - ttl: TTL expression
                 - settings: Table settings
-        
-        Supported Engines:
-            - MergeTree: General purpose, fast inserts
-            - ReplacingMergeTree: Deduplication by ORDER BY key
-            - SummingMergeTree: Aggregate numeric columns
-            - AggregatingMergeTree: Pre-aggregated data
-        
-        Example:
-            >>> schema = [
-            ...     {"name": "id", "destination_type": "Int64", "nullable": False},
-            ...     {"name": "name", "destination_type": "String", "nullable": True},
-            ...     {"name": "updated_at", "destination_type": "DateTime", "nullable": False}
-            ... ]
-            >>> dest.create_table(
-            ...     "analytics", "accounts", schema,
-            ...     engine="ReplacingMergeTree(updated_at)",  # Dedup by updated_at
-            ...     order_by=["id"],
-            ...     partition_by="toYYYYMM(updated_at)"
-            ... )
         """
+        if not self._is_validated:
+            self.validate()
+        
         client = self._get_client()
         
         # Extract options
@@ -272,44 +310,38 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         for col in schema:
             col_name = col["name"]
             col_type = col.get("destination_type", col.get("type", "String"))
-            
-            # Note: ClickHouse Nullable is already in the type string
-            # e.g., "Nullable(Int64)" or "Int64"
             column_defs.append(f"`{col_name}` {col_type}")
         
         columns_str = ",\n    ".join(column_defs)
         
-        # Build ENGINE clause
+        # Build clauses
         engine_clause = f"ENGINE = {engine}"
         
-        # Build ORDER BY clause (required for MergeTree engines)
+        # ORDER BY (required for MergeTree engines)
         if order_by:
             order_by_str = ", ".join(f"`{col}`" for col in order_by)
             order_by_clause = f"ORDER BY ({order_by_str})"
+        elif schema:
+            # Default: use first column
+            order_by_clause = f"ORDER BY `{schema[0]['name']}`"
         else:
-            # Use first column as default
-            if schema:
-                order_by_clause = f"ORDER BY `{schema[0]['name']}`"
-            else:
-                raise ValueError("ORDER BY is required for MergeTree engines")
+            raise DestinationValidationError(
+                "ORDER BY is required for MergeTree engines but no columns provided"
+            )
         
-        # Build PARTITION BY clause
-        partition_clause = ""
-        if partition_by:
-            partition_clause = f"PARTITION BY {partition_by}"
+        # PARTITION BY
+        partition_clause = f"PARTITION BY {partition_by}" if partition_by else ""
         
-        # Build PRIMARY KEY clause
+        # PRIMARY KEY
         primary_key_clause = ""
         if primary_key:
             pk_str = ", ".join(f"`{col}`" for col in primary_key)
             primary_key_clause = f"PRIMARY KEY ({pk_str})"
         
-        # Build TTL clause
-        ttl_clause = ""
-        if ttl:
-            ttl_clause = f"TTL {ttl}"
+        # TTL
+        ttl_clause = f"TTL {ttl}" if ttl else ""
         
-        # Build SETTINGS clause
+        # SETTINGS
         settings_clause = ""
         if settings:
             settings_list = [f"{k} = {v}" for k, v in settings.items()]
@@ -317,7 +349,7 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         
         # Build CREATE TABLE statement
         create_query = f"""
-            CREATE TABLE `{database}`.`{table}` (
+            CREATE TABLE IF NOT EXISTS `{database}`.`{table}` (
                 {columns_str}
             )
             {engine_clause}
@@ -331,7 +363,7 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         try:
             client.command(create_query)
             
-            # AUTOMATICALLY ADD sync_at AFTER table creation
+            # Add sync_at column automatically
             self._ensure_sync_at_column(database, table)
             
             logger.info(
@@ -341,70 +373,98 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                 engine=engine,
                 columns=len(schema)
             )
+            
         except Exception as e:
-            logger.error(
-                "clickhouse_table_creation_failed",
-                database=database,
-                table=table,
-                error=str(e)
-            )
-            raise
+            raise DestinationLoadError(
+                f"Failed to create table {database}.{table}: {e}"
+            ) from e
     
     def load_data(
         self,
         database: str,
         table: str,
-        data: List[Dict[str, Any]],  # Changed from pd.DataFrame
+        data: List[Dict[str, Any]],
         mode: str = "append"
     ) -> int:
         """
-        Load data to ClickHouse - accepts list of dictionaries
+        Load data to ClickHouse
         
         Args:
             database: Database name
             table: Table name
-            data: List of dictionaries [{"id": 1, "name": "Alice"}, ...]
+            data: List of row dictionaries
             mode: "append", "replace", or "upsert"
         
         Returns:
             Number of rows loaded
         """
+        if not self._is_validated:
+            self.validate()
+        
         if not data:
             logger.warning("clickhouse_empty_data", database=database, table=table)
             return 0
-
+        
         client = self._get_client()
-
+        
+        # Handle replace mode
         if mode == "replace":
-            logger.warning("clickhouse_replace_mode", database=database, table=table)
-            client.command(f"TRUNCATE TABLE `{database}`.`{table}`")
-
-        try:
-            # Extract column names from first row
-            column_names = list(data[0].keys())
-            
-            # Convert to row format: [[val1, val2, ...], [val1, val2, ...]]
-            rows = [
-                [row[col] for col in column_names]
-                for row in data
-            ]
-            
-            # ClickHouse insert - works perfectly with native Python types!
-            client.insert(
-                table=f"`{database}`.`{table}`",
-                data=rows,
-                column_names=column_names
-            )
-            
-            rows_loaded = len(data)
-            logger.info("clickhouse_data_loaded", database=database, table=table, 
-                    rows=rows_loaded, mode=mode)
-            return rows_loaded
-
-        except Exception as e:
-            logger.error("clickhouse_data_load_failed", database=database, table=table,
-                        rows=len(data), error=str(e))
-            raise   
+            try:
+                client.command(f"TRUNCATE TABLE `{database}`.`{table}`")
+                logger.info("clickhouse_table_truncated", database=database, table=table)
+            except Exception as e:
+                raise DestinationLoadError(
+                    f"Failed to truncate table {database}.{table}: {e}"
+                ) from e
+        
+        # Load data with retry logic
+        last_error = None
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                # Extract column names from first row
+                column_names = list(data[0].keys())
+                
+                # Convert to row format
+                rows = [[row[col] for col in column_names] for row in data]
+                
+                # Insert data
+                client.insert(
+                    table=f"`{database}`.`{table}`",
+                    data=rows,
+                    column_names=column_names
+                )
+                
+                rows_loaded = len(data)
+                logger.info(
+                    "clickhouse_data_loaded",
+                    database=database,
+                    table=table,
+                    rows=rows_loaded,
+                    mode=mode
+                )
+                return rows_loaded
+                
+            except ClickHouseError as e:
+                last_error = e
+                if "Too many simultaneous queries" in str(e) and attempt < self.MAX_RETRIES - 1:
+                    delay = self.RETRY_DELAY * (self.RETRY_BACKOFF ** attempt)
+                    logger.warning(
+                        "clickhouse_load_retry",
+                        attempt=attempt + 1,
+                        delay=delay,
+                        error=str(e)
+                    )
+                    time.sleep(delay)
+                else:
+                    break
+            except Exception as e:
+                last_error = e
+                break
+        
+        # All retries failed
+        raise DestinationLoadError(
+            f"Failed to load data to {database}.{table} after {self.MAX_RETRIES} attempts: {last_error}"
+        ) from last_error
     
     def sync_schema(
         self,
@@ -415,45 +475,42 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         """
         Sync schema changes (add new columns)
         
-        ClickHouse supports adding columns but NOT modifying/dropping
-        in certain table engines.
-        
-        Args:
-            database: Database name
-            table: Table name
-            schema: New schema (must include all columns)
+        ClickHouse supports adding columns but not modifying/dropping
         """
+        if not self._is_validated:
+            self.validate()
+        
         client = self._get_client()
         
-        # Get existing columns
-        existing_query = f"""
-            SELECT name, type
-            FROM system.columns
-            WHERE database = %(database)s AND table = %(table)s
-        """
-        
-        result = client.query(
-            existing_query,
-            parameters={"database": database, "table": table}
-        )
-        
-        existing_columns = {row[0]: row[1] for row in result.result_rows}
-        
-        # Find new columns
-        new_columns = []
-        for col in schema:
-            col_name = col["name"]
-            col_type = col.get("destination_type", col.get("type", "String"))
+        try:
+            # Get existing columns
+            existing_query = """
+                SELECT name, type
+                FROM system.columns
+                WHERE database = %(database)s AND table = %(table)s
+            """
             
-            if col_name not in existing_columns:
-                new_columns.append((col_name, col_type))
-        
-        # Add new columns
-        if new_columns:
+            result = client.query(
+                existing_query,
+                parameters={"database": database, "table": table}
+            )
+            
+            existing_columns = {row[0]: row[1] for row in result.result_rows}
+            
+            # Find new columns
+            new_columns = []
+            for col in schema:
+                col_name = col["name"]
+                col_type = col.get("destination_type", col.get("type", "String"))
+                
+                if col_name not in existing_columns:
+                    new_columns.append((col_name, col_type))
+            
+            # Add new columns
             for col_name, col_type in new_columns:
                 alter_query = f"""
                     ALTER TABLE `{database}`.`{table}`
-                    ADD COLUMN `{col_name}` {col_type}
+                    ADD COLUMN IF NOT EXISTS `{col_name}` {col_type}
                 """
                 
                 try:
@@ -466,44 +523,53 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                         type=col_type
                     )
                 except Exception as e:
-                    logger.error(
+                    logger.warning(
                         "clickhouse_add_column_failed",
                         database=database,
                         table=table,
                         column=col_name,
                         error=str(e)
                     )
-                    # Continue adding other columns even if one fails
-        else:
-            logger.debug(
-                "clickhouse_schema_already_synced",
-                database=database,
-                table=table
-            )
-        self._ensure_sync_at_column(database, table)
+            
+            if not new_columns:
+                logger.debug(
+                    "clickhouse_schema_already_synced",
+                    database=database,
+                    table=table
+                )
+            
+            # Ensure sync_at column exists
+            self._ensure_sync_at_column(database, table)
+            
+        except Exception as e:
+            raise DestinationLoadError(
+                f"Failed to sync schema for {database}.{table}: {e}"
+            ) from e
     
     def get_row_count(self, database: str, table: str) -> int:
-        """
-        Get row count from ClickHouse table
+        """Get row count from ClickHouse table"""
+        if not self._is_validated:
+            self.validate()
         
-        Note: For ReplacingMergeTree, this includes duplicates.
-        Use COUNT() with FINAL for deduplicated count.
-        """
         client = self._get_client()
         
-        query = f"SELECT count() as cnt FROM `{database}`.`{table}`"
-        
-        result = client.query(query)
-        count = result.result_rows[0][0]
-        
-        logger.debug(
-            "clickhouse_row_count",
-            database=database,
-            table=table,
-            count=count
-        )
-        
-        return count
+        try:
+            query = f"SELECT count() as cnt FROM `{database}`.`{table}`"
+            result = client.query(query)
+            count = result.result_rows[0][0]
+            
+            logger.debug(
+                "clickhouse_row_count",
+                database=database,
+                table=table,
+                count=count
+            )
+            return count
+            
+        except Exception as e:
+            raise DestinationLoadError(
+                f"Failed to get row count from {database}.{table}: {e}"
+            ) from e
     
     def optimize_table(
         self,
@@ -517,16 +583,11 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         Args:
             database: Database name
             table: Table name
-            final: Use OPTIMIZE FINAL (aggressive merge, slower)
-        
-        Use cases:
-            - After bulk inserts to trigger merges
-            - For ReplacingMergeTree to deduplicate
-            - To reduce number of parts
-        
-        Note:
-            OPTIMIZE is asynchronous and may take time for large tables
+            final: Use OPTIMIZE FINAL (aggressive merge)
         """
+        if not self._is_validated:
+            self.validate()
+        
         client = self._get_client()
         
         final_clause = "FINAL" if final else ""
@@ -552,7 +613,7 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         """Get table engine type"""
         client = self._get_client()
         
-        query = f"""
+        query = """
             SELECT engine
             FROM system.tables
             WHERE database = %(database)s AND name = %(table)s
@@ -563,26 +624,13 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             parameters={"database": database, "table": table}
         )
         
-        if result.result_rows:
-            return result.result_rows[0][0]
-        return "Unknown"
+        return result.result_rows[0][0] if result.result_rows else "Unknown"
     
     def get_table_size(self, database: str, table: str) -> Dict[str, Any]:
-        """
-        Get table size statistics
-        
-        Returns:
-            {
-                "rows": 1000000,
-                "bytes": 5242880,
-                "bytes_human": "5.00 MB",
-                "parts": 12,
-                "compressed_bytes": 1048576
-            }
-        """
+        """Get table size statistics"""
         client = self._get_client()
         
-        query = f"""
+        query = """
             SELECT
                 sum(rows) as rows,
                 sum(bytes) as bytes,
@@ -601,11 +649,11 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         if result.result_rows:
             row = result.result_rows[0]
             return {
-                "rows": row[0],
-                "bytes": row[1],
-                "bytes_human": row[2],
-                "parts": row[3],
-                "compressed_bytes": row[4]
+                "rows": row[0] or 0,
+                "bytes": row[1] or 0,
+                "bytes_human": row[2] or "0 B",
+                "parts": row[3] or 0,
+                "compressed_bytes": row[4] or 0
             }
         return {}
     
@@ -616,9 +664,6 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                 self._client.close()
                 logger.debug("clickhouse_client_closed")
             except Exception as e:
-                logger.warning(
-                    "clickhouse_close_error",
-                    error=str(e)
-                )
+                logger.warning("clickhouse_close_error", error=str(e))
             finally:
                 self._client = None

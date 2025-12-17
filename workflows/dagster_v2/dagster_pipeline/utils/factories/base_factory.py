@@ -13,6 +13,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, Callable, List
 from dagster import asset, AssetExecutionContext, Output, MetadataValue
 
+from dagster_pipeline.connectors.sources.base_source_connector import IncrementalConfig
+
 from dagster_pipeline.utils.schema_loader import (
     SchemaLoader,
     SchemaNotFoundError,
@@ -410,8 +412,10 @@ class BaseETLFactory(ABC):
         self,
         context: AssetExecutionContext,
         validated_incremental_key: str
-    ) -> Optional[Dict[str, Any]]:
-        """Load previous incremental state"""
+    ) -> Optional[IncrementalConfig]:  # ✅ Changed from Dict to IncrementalConfig
+        """Load previous incremental state as IncrementalConfig object"""
+        
+        from dagster_pipeline.connectors.sources.base_source_connector import IncrementalConfig
         
         dagster_postgres = getattr(context.resources, "dagster_postgres_resource", None)
         
@@ -438,11 +442,13 @@ class BaseETLFactory(ABC):
                     )
                     return None
                 
-                return {
-                    "key": validated_incremental_key,
-                    "last_value": previous_state["last_value"],
-                    "operator": ">"
-                }
+                # ✅ Return IncrementalConfig object, NOT dict
+                return IncrementalConfig(
+                    key=validated_incremental_key,
+                    last_value=previous_state["last_value"],
+                    operator=previous_state.get("operator", ">"),
+                    order_by=previous_state.get("order_by")
+                )
             
             return None
             
@@ -563,7 +569,7 @@ class BaseETLFactory(ABC):
                     
                     if incremental_config:
                         context.log.info(
-                            f"📌 Incremental from: {validated_incremental_key} > {incremental_config['last_value']}"
+                            f"📌 Incremental from: {validated_incremental_key} > {incremental_config.last_value}"
                         )
                     else:
                         context.log.info("📌 First run - full sync with incremental tracking")
