@@ -2,8 +2,11 @@
 
 - dagster-project/
   - Readme.md
-  - Dockerfile
-  - docker-compose.yml
+  - `Dockerfile`
+  - `Makefile`
+  - `docker-compose-dagster.base.yml`
+  - `docker-compose-dagster.local.yml`
+  - `docker-compose-dagster.prod.yml`
   - `pyproject.toml`
   - `requirements.txt`
   - .github/

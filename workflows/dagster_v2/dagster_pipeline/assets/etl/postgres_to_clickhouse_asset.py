@@ -30,6 +30,20 @@ postgres_fma_premises = create_postgres_to_clickhouse_asset(
     
     group_name="postgres_fma_to_clickhouse"
 )
+
+postgres_fma_premise_details = create_postgres_to_clickhouse_asset(
+    asset_name="postgres_fma_premise_details_to_clickhouse",
+    source_database="sunculture_ep",
+    source_table="premise_details",
+    destination_database="fma",
+    destination_table="premise_details_test",
+    postgres_resource_key="postgres_fma",
+    incremental_key="updated_at",
+    clickhouse_engine="ReplacingMergeTree(updated_at)",
+    clickhouse_order_by=["id"],
+    clickhouse_partition_by=None,
+    group_name="postgres_fma_to_clickhouse"
+)
 # Add more tables...
 
 # ============================================================================
@@ -37,4 +51,5 @@ postgres_fma_premises = create_postgres_to_clickhouse_asset(
 # ============================================================================
 assets = [
     postgres_fma_premises,
+    postgres_fma_premise_details,
 ]

@@ -3,9 +3,14 @@ Type mapper for converting source database types to destination types
 Supports MySQL, Postgres → ClickHouse, BigQuery, Snowflake
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from enum import Enum
 import re
+import csv
+from io import StringIO
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class DataType(Enum):
@@ -23,12 +28,12 @@ class DataType(Enum):
     JSON = "json"
     ARRAY = "array"
     ENUM = "enum"
-    UUID = "uuid"  # Add UUID as a distinct type
+    UUID = "uuid"
 
 
 class TypeMapper:
     """
-    Intelligent type mapper with smart defaults
+    Intelligent type mapper with smart defaults and robust parsing
     
     Usage:
         # Convert single column
@@ -38,6 +43,92 @@ class TypeMapper:
         # Convert entire schema
         columns = TypeMapper.convert_schema(schema, "clickhouse")
     """
+    
+    # ========================================================================
+    # HELPER METHODS
+    # ========================================================================
+    
+    @staticmethod
+    def _parse_type_with_params(type_str: str) -> Tuple[str, Optional[str]]:
+        """
+        Extract base type and parameters from type string
+        
+        FIXED: Now handles types without parentheses correctly
+        
+        Returns: (base_type, params_str)
+        Examples:
+            "varchar(255)" → ("varchar", "255")
+            "decimal(18,2)" → ("decimal", "18,2")
+            "uuid" → ("uuid", None)  # FIXED: was "u", "uid"
+            "timestamp" → ("timestamp", None)  # FIXED: was "t", "imestamp"
+            "timestamp without time zone" → ("timestamp without time zone", None)
+            "character varying" → ("character varying", None)
+        """
+        type_str = type_str.strip()
+        
+        # Check if there are parentheses
+        if '(' in type_str:
+            # Type with parameters: base_type(params) optional_suffix
+            # Match: word characters until '(', params inside '()', optional suffix after ')'
+            match = re.match(r'^([^(]+)\((.*?)\)(.*)$', type_str)
+            
+            if match:
+                base_type = match.group(1).strip()
+                params_str = match.group(2).strip()
+                suffix = match.group(3).strip()
+                
+                # Append suffix if it exists (e.g., "without time zone")
+                if suffix:
+                    base_type = f"{base_type} {suffix}"
+                
+                return base_type, params_str if params_str else None
+            else:
+                # Malformed type with parentheses
+                logger.warning("type_parse_failed_malformed", type_str=type_str)
+                return type_str, None
+        else:
+            # No parentheses - just return the whole string as base_type
+            # This fixes the "uuid" → "u" bug!
+            return type_str, None
+    
+    @staticmethod
+    def _parse_mysql_unsigned(type_str: str) -> Tuple[str, bool]:
+        """
+        Check if MySQL type has UNSIGNED modifier
+        Returns: (type_without_unsigned, is_unsigned)
+        """
+        type_lower = type_str.lower()
+        is_unsigned = 'unsigned' in type_lower
+        
+        if is_unsigned:
+            # Remove unsigned keyword
+            type_clean = re.sub(r'\s*unsigned\s*', '', type_lower, flags=re.IGNORECASE)
+            return type_clean.strip(), True
+        
+        return type_str, False
+    
+    @staticmethod
+    def _parse_enum_values(params_str: str) -> List[str]:
+        """
+        Safely parse ENUM values handling embedded quotes and commas
+        
+        Examples:
+            "'active','inactive'" → ["active", "inactive"]
+            "'O''Reilly','Smith, Jr.'" → ["O'Reilly", "Smith, Jr."]
+        """
+        try:
+            # Use CSV reader with single quote as quote char
+            reader = csv.reader(StringIO(params_str), quotechar="'")
+            values = next(reader)
+            return [v.strip() for v in values]
+        except Exception as e:
+            # Fallback to simple split
+            logger.warning(
+                "enum_parse_fallback",
+                params_str=params_str,
+                error=str(e)
+            )
+            return [v.strip().strip("'\"") for v in params_str.split(",")]
     
     # ========================================================================
     # MYSQL TYPE PARSER
@@ -52,24 +143,21 @@ class TypeMapper:
             "varchar(255)" → {normalized_type: STRING, length: 255}
             "decimal(18,2)" → {normalized_type: DECIMAL, precision: 18, scale: 2}
             "enum('active','inactive')" → {normalized_type: ENUM, values: ['active','inactive']}
+            "int(11) unsigned" → {normalized_type: INTEGER, unsigned: True}
         """
         type_str = type_str.lower().strip()
         
-        # Extract base type and parameters using regex
-        match = re.match(r"(\w+)(?:\((.*?)\))?", type_str)
-        if not match:
-            raise ValueError(f"Cannot parse MySQL type: {type_str}")
+        # Check for UNSIGNED modifier (MySQL-specific)
+        type_str, is_unsigned = TypeMapper._parse_mysql_unsigned(type_str)
         
-        base_type = match.group(1)
-        params_str = match.group(2) or ""
+        # Parse base type and parameters
+        base_type, params_str = TypeMapper._parse_type_with_params(type_str)
         
         # Parse parameters
         params = {}
         if params_str:
-            if base_type == "enum" or base_type == "set":
-                # Parse enum/set values: 'active','inactive','suspended'
-                enum_values = [v.strip().strip("'\"") for v in params_str.split(",")]
-                params["enum_values"] = enum_values
+            if base_type in ("enum", "set"):
+                params["enum_values"] = TypeMapper._parse_enum_values(params_str)
             else:
                 # Parse numeric parameters: 18,2 or 255
                 param_list = [p.strip() for p in params_str.split(",")]
@@ -117,22 +205,46 @@ class TypeMapper:
             "set": DataType.ARRAY,
         }
         
-        normalized_type = type_mapping.get(base_type, DataType.STRING)
+        normalized_type = type_mapping.get(base_type)
+        
+        if normalized_type is None:
+            logger.warning(
+                "unknown_mysql_type",
+                base_type=base_type,
+                full_type=type_str,
+                defaulting_to="STRING"
+            )
+            normalized_type = DataType.STRING
         
         result = {
             "normalized_type": normalized_type,
             "nullable": nullable,
             "source_type": type_str,
+            "unsigned": is_unsigned,
         }
         
         # Add type-specific parameters
         if normalized_type == DataType.STRING and "params" in params:
-            result["length"] = int(params["params"][0])
+            try:
+                result["length"] = int(params["params"][0])
+            except (ValueError, IndexError):
+                logger.warning("invalid_length", params=params["params"])
         elif normalized_type == DataType.DECIMAL and "params" in params:
-            result["precision"] = int(params["params"][0])
-            result["scale"] = int(params["params"][1]) if len(params["params"]) > 1 else 0
+            try:
+                result["precision"] = int(params["params"][0])
+                result["scale"] = int(params["params"][1]) if len(params["params"]) > 1 else 0
+            except (ValueError, IndexError) as e:
+                logger.warning("invalid_decimal_params", params=params["params"], error=str(e))
+                result["precision"] = 18
+                result["scale"] = 2
         elif normalized_type == DataType.ENUM:
             result["enum_values"] = params.get("enum_values", [])
+        elif normalized_type == DataType.DATETIME and "params" in params:
+            # MySQL datetime(6) - fractional seconds precision
+            try:
+                result["precision"] = int(params["params"][0])
+            except (ValueError, IndexError):
+                result["precision"] = 0
         
         return result
     
@@ -144,8 +256,9 @@ class TypeMapper:
         Examples:
             "integer" → {normalized_type: INTEGER}
             "varchar(255)" → {normalized_type: STRING, length: 255}
-            "integer[]" → {normalized_type: ARRAY}
+            "integer[]" → {normalized_type: ARRAY, element_type: INTEGER}
             "uuid" → {normalized_type: UUID}
+            "decimal(18,2)[]" → {normalized_type: ARRAY, element_type: DECIMAL, element_precision: 18, element_scale: 2}
         """
         type_str = type_str.lower().strip()
         
@@ -153,57 +266,54 @@ class TypeMapper:
         is_array_underscore = type_str.startswith("_")
         if is_array_underscore:
             element_type_str = type_str[1:]  # Remove the underscore
-            # Parse the element type
+            # Parse the element type recursively
             element_info = TypeMapper.parse_postgres_type(element_type_str, nullable=False)
-            return {
+            result = {
                 "normalized_type": DataType.ARRAY,
                 "nullable": nullable,
                 "source_type": type_str,
-                "element_type": element_info["normalized_type"],
-                "is_array": True
+                "is_array": True,
+                "element_info": element_info  # Store full element info
             }
+            return result
         
         # Handle array types with [] suffix: integer[]
         is_array_suffix = type_str.endswith("[]")
         if is_array_suffix:
             element_type_str = type_str[:-2]
-            # Parse the element type
+            # Parse the element type recursively
             element_info = TypeMapper.parse_postgres_type(element_type_str, nullable=False)
-            return {
+            result = {
                 "normalized_type": DataType.ARRAY,
                 "nullable": nullable,
                 "source_type": type_str,
-                "element_type": element_info["normalized_type"],
-                "is_array": True
+                "is_array": True,
+                "element_info": element_info  # Store full element info
             }
+            return result
         
-        # Extract base type and parameters
-        match = re.match(r"(\w+(?:\s+\w+)?)(?:\((.*?)\))?", type_str)
-        if not match:
-            raise ValueError(f"Cannot parse Postgres type: {type_str}")
-        
-        base_type = match.group(1)
-        params_str = match.group(2) or ""
+        # Parse base type and parameters
+        base_type, params_str = TypeMapper._parse_type_with_params(type_str)
         
         type_mapping = {
             # Integer types
             "smallint": DataType.INTEGER,
             "integer": DataType.INTEGER,
             "int": DataType.INTEGER,
-            "int2": DataType.INTEGER,  # smallint
-            "int4": DataType.INTEGER,  # integer
+            "int2": DataType.INTEGER,
+            "int4": DataType.INTEGER,
             "bigint": DataType.BIGINT,
-            "int8": DataType.BIGINT,   # bigint
-            "serial": DataType.INTEGER,  # auto-increment integer
-            "bigserial": DataType.BIGINT,  # auto-increment bigint
+            "int8": DataType.BIGINT,
+            "serial": DataType.INTEGER,
+            "bigserial": DataType.BIGINT,
             
             # Decimal types
             "decimal": DataType.DECIMAL,
             "numeric": DataType.DECIMAL,
             "real": DataType.FLOAT,
-            "float4": DataType.FLOAT,  # real
+            "float4": DataType.FLOAT,
             "double precision": DataType.FLOAT,
-            "float8": DataType.FLOAT,  # double precision
+            "float8": DataType.FLOAT,
             
             # String types
             "char": DataType.STRING,
@@ -211,12 +321,14 @@ class TypeMapper:
             "varchar": DataType.STRING,
             "character varying": DataType.STRING,
             "text": DataType.TEXT,
-            "uuid": DataType.UUID,  # UUID gets its own type!
+            "uuid": DataType.UUID,
             
             # Date/Time types
             "date": DataType.DATE,
             "time": DataType.STRING,
-            "timetz": DataType.STRING,  # time with time zone
+            "time without time zone": DataType.STRING,
+            "timetz": DataType.STRING,
+            "time with time zone": DataType.STRING,
             "timestamp": DataType.TIMESTAMP,
             "timestamp without time zone": DataType.TIMESTAMP,
             "timestamptz": DataType.TIMESTAMP,
@@ -234,12 +346,10 @@ class TypeMapper:
             # Binary/BLOB
             "bytea": DataType.STRING,
             
-            # Network address types
+            # Network/Other
             "inet": DataType.STRING,
             "cidr": DataType.STRING,
             "macaddr": DataType.STRING,
-            
-            # Geometric types (store as string or JSON)
             "point": DataType.STRING,
             "line": DataType.STRING,
             "lseg": DataType.STRING,
@@ -247,28 +357,18 @@ class TypeMapper:
             "path": DataType.STRING,
             "polygon": DataType.STRING,
             "circle": DataType.STRING,
-            
-            # Bit strings
             "bit": DataType.STRING,
             "bit varying": DataType.STRING,
             "varbit": DataType.STRING,
-            
-            # Text search types
             "tsvector": DataType.STRING,
             "tsquery": DataType.STRING,
-            
-            # XML
             "xml": DataType.STRING,
-            
-            # Range types
             "int4range": DataType.STRING,
             "int8range": DataType.STRING,
             "numrange": DataType.STRING,
             "tsrange": DataType.STRING,
             "tstzrange": DataType.STRING,
             "daterange": DataType.STRING,
-            
-            # Object identifier types
             "oid": DataType.BIGINT,
             "regproc": DataType.STRING,
             "regprocedure": DataType.STRING,
@@ -282,7 +382,16 @@ class TypeMapper:
             "regdictionary": DataType.STRING,
         }
         
-        normalized_type = type_mapping.get(base_type, DataType.STRING)
+        normalized_type = type_mapping.get(base_type)
+        
+        if normalized_type is None:
+            logger.warning(
+                "unknown_postgres_type",
+                base_type=base_type,
+                full_type=type_str,
+                defaulting_to="STRING"
+            )
+            normalized_type = DataType.STRING
         
         result = {
             "normalized_type": normalized_type,
@@ -295,21 +404,32 @@ class TypeMapper:
             params = [p.strip() for p in params_str.split(",")]
             
             if normalized_type == DataType.STRING:
-                # For varchar(255), char(10), etc.
-                if params and params[0].isdigit():
-                    result["length"] = int(params[0])
+                try:
+                    if params and params[0].replace('.','',1).isdigit():
+                        result["length"] = int(float(params[0]))
+                except (ValueError, IndexError):
+                    logger.warning("invalid_string_length", params=params)
+                    
             elif normalized_type == DataType.DECIMAL:
-                # For decimal(18,2), numeric(10,4)
-                if len(params) >= 1 and params[0].isdigit():
-                    result["precision"] = int(params[0])
-                if len(params) >= 2 and params[1].isdigit():
-                    result["scale"] = int(params[1])
-                else:
-                    result["scale"] = 0
-            elif normalized_type in [DataType.FLOAT, DataType.INTEGER, DataType.BIGINT]:
-                # For float(53), etc. - precision specification for floating point
-                if params and params[0].isdigit():
-                    result["precision"] = int(params[0])
+                try:
+                    if len(params) >= 1:
+                        result["precision"] = int(params[0])
+                    if len(params) >= 2:
+                        result["scale"] = int(params[1])
+                    else:
+                        result["scale"] = 0
+                except (ValueError, IndexError):
+                    logger.warning("invalid_decimal_params", params=params)
+                    result["precision"] = 18
+                    result["scale"] = 2
+                    
+            elif normalized_type == DataType.TIMESTAMP:
+                # timestamp(6) - fractional seconds precision
+                try:
+                    if params and params[0].isdigit():
+                        result["precision"] = min(int(params[0]), 6)
+                except (ValueError, IndexError):
+                    result["precision"] = 6
         
         return result
     
@@ -334,64 +454,67 @@ class TypeMapper:
         """
         normalized_type = normalized_info["normalized_type"]
         nullable = normalized_info.get("nullable", True)
+        is_unsigned = normalized_info.get("unsigned", False)
 
         # Handle arrays
         if normalized_type == DataType.ARRAY:
-            element_type = normalized_info.get("element_type")
-            if element_type:
-                # Map element type to ClickHouse type
-                element_map = {
-                    DataType.INTEGER: "Int32",
-                    DataType.BIGINT: "Int64",
-                    DataType.FLOAT: "Float64",
-                    DataType.STRING: "String",
-                    DataType.BOOLEAN: "UInt8",
-                    DataType.DATE: "Date",
-                    DataType.DATETIME: "DateTime",
-                    DataType.TIMESTAMP: "DateTime",
-                    DataType.JSON: "String",
-                    DataType.UUID: "FixedString(36)",  # UUID arrays
-                }
-                element_ch_type = element_map.get(element_type, "String")
+            element_info = normalized_info.get("element_info", {})
+            if element_info:
+                # Recursively convert element type
+                element_ch_type = TypeMapper.to_clickhouse_type(element_info, optimization)
+                # Remove Nullable wrapper from element type (arrays handle nulls differently)
+                if element_ch_type.startswith("Nullable("):
+                    element_ch_type = element_ch_type[9:-1]  # Strip Nullable()
                 base_type = f"Array({element_ch_type})"
             else:
                 base_type = "Array(String)"
             
-            # Arrays in ClickHouse can't be Nullable at the top level
+            # Arrays themselves can't be Nullable in ClickHouse
             return base_type
         
-        # Handle UUID - ALWAYS FixedString(36), never LowCardinality
+        # Handle UUID - ALWAYS FixedString(36) or UUID type
         if normalized_type == DataType.UUID:
-            # UUIDs are always 36 characters (with hyphens)
-            # Example: "550e8400-e29b-41d4-a716-446655440000"
-            base_type = "FixedString(36)"
-            # UUIDs can be nullable
+            if optimization == "storage":
+                base_type = "UUID"
+            else:
+                base_type = "FixedString(36)"
+            
             if nullable:
                 return f"Nullable({base_type})"
             return base_type
         
-        # Base type mapping for non-array types
-        type_map = {
-            DataType.INTEGER: "Int32",
-            DataType.BIGINT: "Int64",
-            DataType.FLOAT: "Float64",
-            DataType.STRING: "String",
-            DataType.TEXT: "String",
-            DataType.BOOLEAN: "UInt8",
-            DataType.DATE: "Date",
-            DataType.DATETIME: "DateTime",
-            DataType.TIMESTAMP: "DateTime",
-            DataType.JSON: "String",
-        }
-        
-        base_type = type_map.get(normalized_type, "String")
+        # Handle INTEGER with UNSIGNED modifier
+        if normalized_type == DataType.INTEGER:
+            if is_unsigned:
+                base_type = "UInt32"
+            else:
+                base_type = "Int32"
+        elif normalized_type == DataType.BIGINT:
+            if is_unsigned:
+                base_type = "UInt64"
+            else:
+                base_type = "Int64"
+        else:
+            # Base type mapping for non-integer types
+            type_map = {
+                DataType.FLOAT: "Float64",
+                DataType.STRING: "String",
+                DataType.TEXT: "String",
+                DataType.BOOLEAN: "UInt8",
+                DataType.DATE: "Date",
+                DataType.DATETIME: "DateTime",
+                DataType.TIMESTAMP: "DateTime",
+                DataType.JSON: "String",
+            }
+            base_type = type_map.get(normalized_type, "String")
         
         # Apply optimizations (but NOT for UUIDs)
         if optimization == "speed":
             if normalized_type == DataType.ENUM:
                 base_type = "LowCardinality(String)"
             elif normalized_type == DataType.TIMESTAMP:
-                base_type = "DateTime64(3)"  # Millisecond precision
+                precision = normalized_info.get("precision", 3)
+                base_type = f"DateTime64({min(precision, 9)})"  # Max 9 for ClickHouse
         elif optimization == "balanced":
             if normalized_type == DataType.ENUM:
                 enum_values = normalized_info.get("enum_values", [])
@@ -400,15 +523,32 @@ class TypeMapper:
                 else:
                     base_type = "String"
         
-        # Handle DECIMAL
+        # Handle DECIMAL with validation
         if normalized_type == DataType.DECIMAL:
             precision = normalized_info.get("precision", 18)
             scale = normalized_info.get("scale", 2)
-            base_type = f"Decimal({min(precision, 76)}, {scale})"
+            
+            # ClickHouse Decimal limits
+            if precision > 76:
+                logger.warning(
+                    "decimal_precision_exceeded",
+                    requested=precision,
+                    clamped_to=76
+                )
+                precision = 76
+            
+            base_type = f"Decimal({precision}, {scale})"
         
         # Wrap with Nullable if needed
-        if nullable and normalized_type not in [DataType.STRING, DataType.TEXT]:
-            return f"Nullable({base_type})"
+        # In ClickHouse, we can make any type nullable
+        if nullable:
+            # Special handling for LowCardinality
+            if base_type.startswith("LowCardinality("):
+                # Nullable(LowCardinality(String))
+                inner = base_type[15:-1]  # Extract inner type
+                return f"Nullable(LowCardinality({inner}))"
+            else:
+                return f"Nullable({base_type})"
         
         return base_type
     
@@ -423,22 +563,10 @@ class TypeMapper:
         
         # Handle arrays
         if normalized_type == DataType.ARRAY:
-            element_type = normalized_info.get("element_type")
-            if element_type:
-                element_map = {
-                    DataType.INTEGER: "INT64",
-                    DataType.BIGINT: "INT64",
-                    DataType.FLOAT: "FLOAT64",
-                    DataType.DECIMAL: "NUMERIC",
-                    DataType.STRING: "STRING",
-                    DataType.BOOLEAN: "BOOL",
-                    DataType.DATE: "DATE",
-                    DataType.DATETIME: "DATETIME",
-                    DataType.TIMESTAMP: "TIMESTAMP",
-                    DataType.JSON: "JSON",
-                    DataType.UUID: "STRING",
-                }
-                element_bq_type = element_map.get(element_type, "STRING")
+            element_info = normalized_info.get("element_info", {})
+            if element_info:
+                # Recursively convert element type
+                element_bq_type = TypeMapper.to_bigquery_type(element_info)
                 return f"ARRAY<{element_bq_type}>"
             return "ARRAY<STRING>"
         
@@ -458,7 +586,19 @@ class TypeMapper:
             DataType.UUID: "STRING",
         }
         
-        return type_map.get(normalized_type, "STRING")
+        bq_type = type_map.get(normalized_type, "STRING")
+        
+        # BigQuery NUMERIC has precision limits
+        if normalized_type == DataType.DECIMAL:
+            precision = normalized_info.get("precision", 18)
+            scale = normalized_info.get("scale", 2)
+            
+            # NUMERIC: precision 38, scale 9
+            # BIGNUMERIC: precision 76.76, scale 38
+            if precision > 38 or scale > 9:
+                bq_type = "BIGNUMERIC"
+        
+        return bq_type
     
     # ========================================================================
     # HIGH-LEVEL API
@@ -548,12 +688,22 @@ class TypeMapper:
         
         converted_columns = []
         for column in schema["source"]["columns"]:
-            converted = cls.convert_column(
-                column,
-                source_db_type,
-                destination_db_type,
-                optimization
-            )
-            converted_columns.append(converted)
+            try:
+                converted = cls.convert_column(
+                    column,
+                    source_db_type,
+                    destination_db_type,
+                    optimization
+                )
+                converted_columns.append(converted)
+            except Exception as e:
+                logger.error(
+                    "column_conversion_failed",
+                    column_name=column.get("name"),
+                    column_type=column.get("type"),
+                    error=str(e)
+                )
+                # Continue processing other columns
+                continue
         
         return converted_columns

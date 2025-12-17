@@ -20,6 +20,7 @@ pyyaml==6.0.2
 python-dotenv==1.0.1
 pydantic==2.9.2
 sqlalchemy==2.0.43
+tenacity==9.1.2
 
 # AWS
 #boto3==1.35.36

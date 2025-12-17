@@ -11,11 +11,12 @@ Features:
 """
 
 from typing import Dict, Any, Optional, Union
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 import json
 from dagster import AssetExecutionContext
 import structlog
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = structlog.get_logger(__name__)
 
@@ -55,6 +56,7 @@ class StateManager:
     
     # Key prefix for all ETL states
     STATE_PREFIX = "etl_sync_state"
+    STATE_VERSION = "1.0"  # For future migrations
     
     @staticmethod
     def _get_state_key(source_type: str, source_database: str, source_table: str) -> str:
@@ -71,22 +73,30 @@ class StateManager:
         Serialize value to string for storage in kvs
         
         Handles:
-        - datetime objects
-        - date objects
-        - Decimal objects
-        - int, float, str
-        - None
+        - datetime objects (stored as JSON with type info)
+        - date objects (stored as ISO string)
+        - Decimal objects (stored as string)
+        - int, float, str (stored as string)
+        - None (stored as "null")
         """
         if value is None:
             return "null"
         elif isinstance(value, datetime):
-            return value.isoformat()
+            # Always store with timezone info
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            return json.dumps({"type": "datetime", "value": value.isoformat()})
         elif isinstance(value, date):
-            return value.isoformat()
+            # Store date as JSON with type info for clarity
+            return json.dumps({"type": "date", "value": value.isoformat()})
         elif isinstance(value, Decimal):
-            return str(value)
-        elif isinstance(value, (int, float, str)):
-            return str(value)
+            return json.dumps({"type": "decimal", "value": str(value)})
+        elif isinstance(value, int):
+            return json.dumps({"type": "int", "value": value})
+        elif isinstance(value, float):
+            return json.dumps({"type": "float", "value": value})
+        elif isinstance(value, str):
+            return json.dumps({"type": "str", "value": value})
         else:
             # Fallback to string representation
             logger.warning(
@@ -94,24 +104,51 @@ class StateManager:
                 type=type(value).__name__,
                 value=str(value)
             )
-            return str(value)
+            return json.dumps({"type": "unknown", "value": str(value)})
     
     @staticmethod
-    def _deserialize_value(value_str: str, value_type: Optional[str] = None) -> Any:
+    def _deserialize_value(value_str: str) -> Any:
         """
         Deserialize value from string
         
         Args:
-            value_str: Serialized value
-            value_type: Hint about original type (optional)
+            value_str: Serialized value (either JSON-wrapped or plain)
         
         Returns:
-            Deserialized value (attempts to infer correct type)
+            Deserialized value with correct type
         """
         if value_str == "null":
             return None
         
+        # Try to parse as JSON first (new format with type info)
+        try:
+            data = json.loads(value_str)
+            if isinstance(data, dict) and "type" in data and "value" in data:
+                value_type = data["type"]
+                value = data["value"]
+                
+                if value_type == "datetime":
+                    return datetime.fromisoformat(value)
+                elif value_type == "date":
+                    return datetime.strptime(value, '%Y-%m-%d').date()
+                elif value_type == "decimal":
+                    return Decimal(value)
+                elif value_type == "int":
+                    return int(value)
+                elif value_type == "float":
+                    return float(value)
+                elif value_type == "str":
+                    return value
+                else:
+                    # Unknown type, return as-is
+                    return value
+        except (json.JSONDecodeError, ValueError, KeyError):
+            # Not JSON or invalid format, fall through to legacy parsing
+            pass
+        
+        # Legacy format support (for backward compatibility)
         # Try to infer type from string format
+        
         # ISO datetime: 2024-12-06T10:30:00
         if 'T' in value_str and ':' in value_str:
             try:
@@ -138,8 +175,13 @@ class StateManager:
         
         # Return as string
         return value_str
-    
+
     @staticmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        reraise=True
+    )
     def load_incremental_state(
         context: AssetExecutionContext,
         dagster_postgres_resource,
@@ -165,6 +207,7 @@ class StateManager:
                 - source_database: Source database
                 - source_table: Source table
                 - synced_at: When this state was saved
+                - version: State format version
             
             Returns None if no state exists (first run)
         
@@ -186,6 +229,11 @@ class StateManager:
         try:
             with dagster_postgres_resource.get_connection() as conn:
                 with conn.cursor() as cursor:
+                    logger.debug(
+                        "loading_state",
+                        query=query,
+                        key=key
+                    )
                     cursor.execute(query, (key,))
                     result = cursor.fetchone()
                     
@@ -201,6 +249,15 @@ class StateManager:
                     
                     # Parse JSON
                     state = json.loads(result[0])
+                    
+                    # Validate state structure
+                    if not StateManager._validate_state(state):
+                        logger.error(
+                            "invalid_state_structure",
+                            key=key,
+                            state_keys=list(state.keys())
+                        )
+                        return None
                     
                     # Deserialize last_value
                     if 'last_value' in state:
@@ -220,7 +277,8 @@ class StateManager:
                         database=source_database,
                         table=source_table,
                         last_value=state.get('last_value'),
-                        incremental_key=state.get('key')
+                        incremental_key=state.get('key'),
+                        version=state.get('version', 'legacy')
                     )
                     
                     return state
@@ -243,6 +301,11 @@ class StateManager:
             return None
     
     @staticmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        reraise=True
+    )
     def save_incremental_state(
         context: AssetExecutionContext,
         dagster_postgres_resource,
@@ -285,12 +348,13 @@ class StateManager:
         
         # Build state dictionary
         state = {
+            'version': StateManager.STATE_VERSION,
             'last_value': StateManager._serialize_value(last_value),
             'key': incremental_key,
             'source_type': source_type,
             'source_database': source_database,
             'source_table': source_table,
-            'synced_at': StateManager._serialize_value(datetime.now()),
+            'synced_at': StateManager._serialize_value(datetime.now(timezone.utc)),
         }
         
         # Add additional metadata if provided
@@ -310,6 +374,11 @@ class StateManager:
         try:
             with dagster_postgres_resource.get_connection() as conn:
                 with conn.cursor() as cursor:
+                    logger.debug(
+                        "saving_state",
+                        query=upsert_query,
+                        key=key
+                    )
                     cursor.execute(upsert_query, (key, state_json))
                     conn.commit()
                     
@@ -319,7 +388,8 @@ class StateManager:
                         database=source_database,
                         table=source_table,
                         incremental_key=incremental_key,
-                        last_value=last_value
+                        last_value=last_value,
+                        metadata=additional_metadata
                     )
                     
                     return True
@@ -332,6 +402,57 @@ class StateManager:
                 error_type=type(e).__name__
             )
             return False
+    
+    @staticmethod
+    def _validate_state(state: Dict[str, Any]) -> bool:
+        """
+        Validate that state has required fields
+        
+        Args:
+            state: State dictionary to validate
+        
+        Returns:
+            True if valid, False otherwise
+        """
+        required_fields = ['last_value', 'key', 'source_type', 'source_database', 'source_table']
+        missing_fields = [field for field in required_fields if field not in state]
+        
+        if missing_fields:
+            logger.warning(
+                "invalid_state_missing_fields",
+                missing=missing_fields,
+                present=list(state.keys())
+            )
+            return False
+        
+        return True
+    
+    @staticmethod
+    def needs_full_refresh(
+        context: AssetExecutionContext,
+        dagster_postgres_resource,
+        source_type: str,
+        source_database: str,
+        source_table: str
+    ) -> bool:
+        """
+        Check if table needs full refresh (no state exists)
+        
+        Returns:
+            True if no state exists (first run or cleared), False otherwise
+        
+        Example:
+            >>> if StateManager.needs_full_refresh(context, postgres_resource, 
+            ...                                      "mysql", "amt", "accounts"):
+            ...     print("Performing full refresh")
+            ... else:
+            ...     print("Performing incremental sync")
+        """
+        state = StateManager.load_incremental_state(
+            context, dagster_postgres_resource, 
+            source_type, source_database, source_table
+        )
+        return state is None
     
     @staticmethod
     def clear_incremental_state(

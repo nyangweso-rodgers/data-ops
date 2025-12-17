@@ -1,13 +1,24 @@
-# dagster_pipeline/utils/factories/base_factory.py
 """
 Abstract base factory for ETL pipelines with enhanced state management
+
+Architecture:
+- Uses SchemaLoader as resource (not creating new instance)
+- Better error handling (raises exceptions instead of returning error Output)
+- Validates incremental key earlier in process
+- Cleaner separation of concerns
+- More robust state management
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 from dagster import asset, AssetExecutionContext, Output, MetadataValue
 
-from dagster_pipeline.utils.schema_loader import SchemaLoader
+from dagster_pipeline.utils.schema_loader import (
+    SchemaLoader,
+    SchemaNotFoundError,
+    SchemaValidationError,
+    TableSchema
+)
 from dagster_pipeline.utils.type_mapper import TypeMapper
 from dagster_pipeline.utils.state_manager import StateManager
 
@@ -21,11 +32,34 @@ class BaseETLFactory(ABC):
     """
     Abstract base class for ETL factories with robust state management
     
-    Key improvements:
-    - Validates incremental keys before use
-    - Retries state saves on failure
-    - Better error handling and logging
-    - Single Output per asset (no duplicates)
+    Key Features:
+    - Schema validation before execution
+    - Incremental key validation with case-insensitive matching
+    - Robust state management with retries
+    - Proper error handling (raises exceptions)
+    - Single Output per asset
+    - Uses resources efficiently
+    
+    Usage:
+        class MySQLToClickHouseFactory(BaseETLFactory):
+            def source_type(self) -> str:
+                return "mysql"
+            
+            def destination_type(self) -> str:
+                return "clickhouse"
+            
+            # ... implement other methods
+        
+        factory = MySQLToClickHouseFactory(
+            asset_name="mysql_accounts_to_clickhouse",
+            source_database="amtdb",
+            source_table="accounts",
+            destination_database="amt",
+            destination_table="accounts_test",
+            incremental_key="updatedAt"
+        )
+        
+        asset = factory.build()
     """
     
     def __init__(
@@ -52,6 +86,7 @@ class BaseETLFactory(ABC):
         self.group_name = group_name or self._default_group_name()
         self.tags = tags or {}
         
+        # Update tags with metadata
         self.tags.update({
             "source_type": self.source_type(),
             "destination_type": self.destination_type(),
@@ -59,46 +94,92 @@ class BaseETLFactory(ABC):
             "sync_method": sync_method
         })
     
+    # ========================================================================
+    # ABSTRACT METHODS - Must be implemented by subclasses
+    # ========================================================================
+    
     @abstractmethod
     def source_type(self) -> str:
-        """Return source type identifier"""
+        """Return source type identifier (e.g., 'mysql', 'postgres')"""
         pass
     
     @abstractmethod
     def destination_type(self) -> str:
-        """Return destination type identifier"""
+        """Return destination type identifier (e.g., 'clickhouse')"""
         pass
     
     @abstractmethod
     def get_source_connector(self, context: AssetExecutionContext):
-        """Create source connector"""
+        """Create and return source connector instance"""
         pass
     
     @abstractmethod
     def get_destination_connector(self, context: AssetExecutionContext):
-        """Create destination connector"""
+        """Create and return destination connector instance"""
         pass
     
     @abstractmethod
     def get_required_resource_keys(self) -> set:
-        """Return required resource keys"""
+        """
+        Return set of required resource keys
+        
+        IMPORTANT: Must include 'schema_loader'!
+        
+        Example:
+            return {"schema_loader", "mysql_source", "clickhouse_resource"}
+        """
         pass
     
-    def validate_and_correct_incremental_key(self, context: AssetExecutionContext, schema) -> Optional[str]:
+    # ========================================================================
+    # OPTIONAL METHODS - Can be overridden by subclasses
+    # ========================================================================
+    
+    def validate_and_correct_incremental_key(
+        self,
+        context: AssetExecutionContext,
+        schema: TableSchema
+    ) -> Optional[str]:
         """
-        Validate incremental key - can be overridden by subclasses
+        Validate and potentially correct incremental key
         
-        Default implementation just returns the key as-is.
-        MySQL factory overrides this to do case-insensitive matching.
+        Default: Returns key as-is if it exists in schema, None otherwise
+        
+        Override in subclasses for custom behavior (e.g., case-insensitive matching)
+        
+        Args:
+            context: Dagster execution context
+            schema: Loaded TableSchema
+        
+        Returns:
+            Validated incremental key or None if invalid
         """
-        return self.incremental_key
+        if not self.incremental_key:
+            return None
+        
+        # Check if key exists in schema
+        if schema.has_column(self.incremental_key):
+            return self.incremental_key
+        
+        context.log.error(
+            f"Incremental key '{self.incremental_key}' not found in schema. "
+            f"Available columns: {schema.get_column_names()}"
+        )
+        return None
     
     def get_clickhouse_table_options(self) -> Dict[str, Any]:
         """
         Get ClickHouse table creation options
         
-        Subclasses can override this to provide custom options.
-        Returns None values for options that should use defaults.
+        Override to customize table creation.
+        
+        Returns:
+            Dictionary with table options:
+            - engine: Table engine (None = auto-select)
+            - order_by: ORDER BY columns (None = use primary keys)
+            - partition_by: PARTITION BY expression (None = no partitioning)
+            - primary_key: PRIMARY KEY columns (None = same as ORDER BY)
+            - ttl: TTL expression (None = no TTL)
+            - settings: Additional table settings dict
         """
         return {
             "engine": None,
@@ -108,6 +189,33 @@ class BaseETLFactory(ABC):
             "ttl": None,
             "settings": {},
         }
+    
+    def transform_batch(
+        self,
+        batch: List[Dict[str, Any]],
+        schema: TableSchema
+    ) -> List[Dict[str, Any]]:
+        """
+        Transform batch data before loading
+        
+        Override to add custom transformations:
+        - Rename columns
+        - Add computed columns
+        - Filter rows
+        - Data type conversions
+        
+        Args:
+            batch: List of row dictionaries
+            schema: TableSchema for reference
+        
+        Returns:
+            Transformed batch
+        """
+        return batch  # Default: no transformation
+    
+    # ========================================================================
+    # INTERNAL HELPER METHODS
+    # ========================================================================
     
     def _default_group_name(self) -> str:
         """Generate default group name"""
@@ -123,6 +231,47 @@ class BaseETLFactory(ABC):
             f"({sync_type}, {self.sync_method})"
         )
     
+    def _load_and_validate_schema(
+        self,
+        context: AssetExecutionContext
+    ) -> TableSchema:
+        """
+        Load and validate schema using SchemaLoader resource
+        
+        Raises:
+            ValueError: If schema not found or invalid
+        """
+        # Get SchemaLoader from resources
+        schema_loader = context.resources.schema_loader
+        
+        try:
+            schema = schema_loader.get_schema(
+                self.source_type(),
+                self.source_database,
+                self.source_table
+            )
+        except SchemaNotFoundError as e:
+            raise ValueError(
+                f"Schema not found: {self.source_type()}/{self.source_database}/{self.source_table}.yml. "
+                f"Create schema file or check path. Error: {e}"
+            ) from e
+        except SchemaValidationError as e:
+            raise ValueError(f"Schema validation failed: {e}") from e
+        
+        if schema is None:
+            raise ValueError(
+                f"Schema not found: {self.source_type()}/{self.source_database}/{self.source_table}.yml"
+            )
+        
+        # Additional validation
+        validation_errors = schema_loader.validate_schema(schema)
+        if validation_errors:
+            raise ValueError(
+                f"Schema validation failed:\n" + "\n".join(f"  - {err}" for err in validation_errors)
+            )
+        
+        return schema
+    
     def _save_state_with_retry(
         self,
         context: AssetExecutionContext,
@@ -133,6 +282,13 @@ class BaseETLFactory(ABC):
     ) -> bool:
         """
         Save incremental state with retry logic
+        
+        Args:
+            context: Dagster execution context
+            validated_incremental_key: Validated incremental key
+            max_value: Maximum value to save as watermark
+            total_rows: Total rows synced
+            max_retries: Maximum retry attempts
         
         Returns:
             True if saved successfully, False otherwise
@@ -181,8 +337,130 @@ class BaseETLFactory(ABC):
         )
         return False
     
+    def _setup_destination_table(
+        self,
+        context: AssetExecutionContext,
+        destination,
+        schema: TableSchema,
+        converted_columns: List[Dict[str, Any]]
+    ):
+        """Setup destination table (create or sync schema)"""
+        
+        if not destination.table_exists(self.destination_database, self.destination_table):
+            context.log.info(f"📝 Creating table {self.destination_database}.{self.destination_table}")
+            
+            # Get ClickHouse options from subclass
+            ch_options = self.get_clickhouse_table_options()
+            
+            # Determine engine
+            if ch_options.get("engine"):
+                engine = ch_options["engine"]
+                context.log.info(f"🔧 Using custom engine: {engine}")
+            else:
+                # Auto-select based on sync_method
+                if self.sync_method == "upsert":
+                    engine = "ReplacingMergeTree"
+                else:
+                    engine = "MergeTree"
+                context.log.info(f"🔧 Using default engine: {engine}")
+            
+            # Determine ORDER BY
+            if ch_options.get("order_by"):
+                order_by = ch_options["order_by"]
+                context.log.info(f"🔧 Using custom ORDER BY: {order_by}")
+            else:
+                # Default: use primary keys or first column
+                primary_keys = schema.get_primary_keys()
+                order_by = [primary_keys[0].name] if primary_keys else [converted_columns[0]["name"]]
+                context.log.info(f"🔧 Using default ORDER BY: {order_by}")
+            
+            # Log additional options
+            if ch_options.get("partition_by"):
+                context.log.info(f"📊 Partitioning by: {ch_options['partition_by']}")
+            
+            if ch_options.get("primary_key"):
+                context.log.info(f"🔑 Primary key: {ch_options['primary_key']}")
+            
+            if ch_options.get("ttl"):
+                context.log.info(f"⏰ TTL: {ch_options['ttl']}")
+            
+            # Create table
+            destination.create_table(
+                self.destination_database,
+                self.destination_table,
+                converted_columns,
+                engine=engine,
+                order_by=order_by,
+                partition_by=ch_options.get("partition_by"),
+                primary_key=ch_options.get("primary_key"),
+                ttl=ch_options.get("ttl"),
+                settings=ch_options.get("settings", {})
+            )
+            context.log.info("✅ Table created")
+        else:
+            context.log.info("🔄 Table exists, syncing schema...")
+            destination.sync_schema(
+                self.destination_database,
+                self.destination_table,
+                converted_columns
+            )
+            context.log.info("✅ Schema synced")
+    
+    def _load_incremental_state(
+        self,
+        context: AssetExecutionContext,
+        validated_incremental_key: str
+    ) -> Optional[Dict[str, Any]]:
+        """Load previous incremental state"""
+        
+        dagster_postgres = getattr(context.resources, "dagster_postgres_resource", None)
+        
+        if not dagster_postgres:
+            context.log.warning("⚠️ No state manager configured")
+            return None
+        
+        try:
+            previous_state = StateManager.load_incremental_state(
+                context,
+                dagster_postgres,
+                self.source_type(),
+                self.source_database,
+                self.source_table
+            )
+            
+            if previous_state:
+                # Verify state key matches
+                state_key = previous_state.get('key')
+                if state_key != validated_incremental_key:
+                    context.log.warning(
+                        f"⚠️ State key mismatch! State: '{state_key}', "
+                        f"Config: '{validated_incremental_key}'. Ignoring state."
+                    )
+                    return None
+                
+                return {
+                    "key": validated_incremental_key,
+                    "last_value": previous_state["last_value"],
+                    "operator": ">"
+                }
+            
+            return None
+            
+        except Exception as e:
+            context.log.error(f"❌ Failed to load state: {e}")
+            return None
+    
+    # ========================================================================
+    # MAIN BUILD METHOD
+    # ========================================================================
+    
     def build(self) -> Callable:
-        """Build and return Dagster asset function"""
+        """
+        Build and return Dagster asset function
+        
+        Returns:
+            Decorated Dagster asset function
+        """
         
         def _etl_asset(context: AssetExecutionContext) -> Output:
             """Generated ETL asset with enhanced state management"""
@@ -204,22 +482,8 @@ class BaseETLFactory(ABC):
                 # STEP 1: LOAD SCHEMA
                 # ============================================================
                 context.log.info("📋 STEP 1: Loading schema...")
-                schema_loader = SchemaLoader()
                 
-                schema = schema_loader.get_schema(
-                    self.source_type(),
-                    self.source_database,
-                    self.source_table
-                )
-                
-                if schema is None:
-                    raise ValueError(
-                        f"Schema not found: {self.source_type()}/{self.source_database}/{self.source_table}.yml"
-                    )
-                
-                validation_errors = schema_loader.validate_schema(schema)
-                if validation_errors:
-                    raise ValueError(f"Schema validation failed: {validation_errors}")
+                schema = self._load_and_validate_schema(context)
                 
                 source_columns = schema.get_column_names(use_source_names=True)
                 context.log.info(f"✅ Schema loaded: {len(source_columns)} columns")
@@ -236,7 +500,14 @@ class BaseETLFactory(ABC):
                     )
                     
                     if not validated_incremental_key:
-                        raise ValueError(f"Incremental key validation failed: {self.incremental_key}")
+                        raise ValueError(
+                            f"Incremental key '{self.incremental_key}' not found in schema. "
+                            f"Available columns: {schema.get_column_names()}"
+                        )
+                    
+                    context.log.info(f"✅ Incremental key validated: {validated_incremental_key}")
+                else:
+                    context.log.info("ℹ️ No incremental key configured - full sync mode")
                 
                 # ============================================================
                 # STEP 3: MAP TYPES
@@ -270,111 +541,32 @@ class BaseETLFactory(ABC):
                 # ============================================================
                 context.log.info("🎯 STEP 5: Setting up destination table...")
                 
-                if not destination.table_exists(self.destination_database, self.destination_table):
-                    context.log.info(f"📝 Creating table {self.destination_database}.{self.destination_table}")
-                    
-                    # Get ClickHouse options from subclass
-                    ch_options = self.get_clickhouse_table_options()
-                    
-                    # Determine engine
-                    if ch_options.get("engine"):
-                        engine = ch_options["engine"]
-                        context.log.info(f"🔧 Using custom engine: {engine}")
-                    else:
-                        # Auto-select based on sync_method
-                        if self.sync_method == "upsert":
-                            engine = "ReplacingMergeTree"
-                        else:
-                            engine = "MergeTree"
-                        context.log.info(f"🔧 Using default engine: {engine}")
-                    
-                    # Determine ORDER BY
-                    if ch_options.get("order_by"):
-                        order_by = ch_options["order_by"]
-                        context.log.info(f"🔧 Using custom ORDER BY: {order_by}")
-                    else:
-                        # Default: use primary keys or first column
-                        primary_keys = schema.get_primary_keys()
-                        order_by = [primary_keys[0].name] if primary_keys else [converted_columns[0]["name"]]
-                        context.log.info(f"🔧 Using default ORDER BY: {order_by}")
-                    
-                    # Log partition and other options
-                    if ch_options.get("partition_by"):
-                        context.log.info(f"📊 Partitioning by: {ch_options['partition_by']}")
-                    
-                    if ch_options.get("primary_key"):
-                        context.log.info(f"🔑 Primary key: {ch_options['primary_key']}")
-                    
-                    if ch_options.get("ttl"):
-                        context.log.info(f"⏰ TTL: {ch_options['ttl']}")
-                    
-                    # Create table with options
-                    destination.create_table(
-                        self.destination_database,
-                        self.destination_table,
-                        converted_columns,
-                        engine=engine,
-                        order_by=order_by,
-                        partition_by=ch_options.get("partition_by"),
-                        primary_key=ch_options.get("primary_key"),
-                        ttl=ch_options.get("ttl"),
-                        settings=ch_options.get("settings", {})
-                    )
-                    context.log.info("✅ Table created")
-                else:
-                    context.log.info("🔄 Table exists, syncing schema...")
-                    destination.sync_schema(
-                        self.destination_database,
-                        self.destination_table,
-                        converted_columns
-                    )
-                    context.log.info("✅ Schema synced")
+                self._setup_destination_table(
+                    context,
+                    destination,
+                    schema,
+                    converted_columns
+                )
                 
                 # ============================================================
                 # STEP 6: LOAD PREVIOUS STATE
                 # ============================================================
-                context.log.info("⚙️ STEP 6: Preparing incremental state...")
+                context.log.info("⚙️ STEP 6: Loading incremental state...")
                 
                 incremental_config = None
                 
                 if validated_incremental_key:
-                    dagster_postgres = getattr(context.resources, "dagster_postgres_resource", None)
+                    incremental_config = self._load_incremental_state(
+                        context,
+                        validated_incremental_key
+                    )
                     
-                    if dagster_postgres:
-                        try:
-                            previous_state = StateManager.load_incremental_state(
-                                context,
-                                dagster_postgres,
-                                self.source_type(),
-                                self.source_database,
-                                self.source_table
-                            )
-                            
-                            if previous_state:
-                                # Verify state key matches
-                                state_key = previous_state.get('key')
-                                if state_key != validated_incremental_key:
-                                    context.log.warning(
-                                        f"⚠️ State key mismatch! State: '{state_key}', "
-                                        f"Config: '{validated_incremental_key}'. Ignoring state."
-                                    )
-                                else:
-                                    incremental_config = {
-                                        "key": validated_incremental_key,
-                                        "last_value": previous_state["last_value"],
-                                        "operator": ">"
-                                    }
-                                    context.log.info(
-                                        f"📌 Incremental from: {validated_incremental_key} > {previous_state['last_value']}"
-                                    )
-                            else:
-                                context.log.info("📌 First run - full sync with incremental tracking")
-                                
-                        except Exception as e:
-                            context.log.error(f"❌ Failed to load state: {e}")
-                            context.log.info("📌 Continuing with full sync")
+                    if incremental_config:
+                        context.log.info(
+                            f"📌 Incremental from: {validated_incremental_key} > {incremental_config['last_value']}"
+                        )
                     else:
-                        context.log.warning("⚠️ No state manager configured")
+                        context.log.info("📌 First run - full sync with incremental tracking")
                 else:
                     context.log.info("📌 Full sync mode")
                 
@@ -399,13 +591,16 @@ class BaseETLFactory(ABC):
                     if not batch_data:
                         continue
                     
-                    context.log.info(f"📦 Batch {batch_num}: {len(batch_data)} rows")
+                    # Apply transformations
+                    transformed_batch = self.transform_batch(batch_data, schema)
+                    
+                    context.log.info(f"📦 Batch {batch_num}: {len(transformed_batch)} rows")
                     
                     # Track max incremental value
                     if validated_incremental_key:
                         batch_values = [
                             row.get(validated_incremental_key) 
-                            for row in batch_data 
+                            for row in transformed_batch 
                             if row.get(validated_incremental_key) is not None
                         ]
                         
@@ -419,7 +614,7 @@ class BaseETLFactory(ABC):
                     rows_loaded = destination.load_data(
                         self.destination_database,
                         self.destination_table,
-                        batch_data,
+                        transformed_batch,
                         mode=self.sync_method
                     )
                     
@@ -447,7 +642,9 @@ class BaseETLFactory(ABC):
                     )
                     
                     if not state_saved:
-                        context.log.error("🚨 State save failed - next run will be full sync!")
+                        context.log.warning(
+                            "⚠️ State save failed - next run will perform full sync!"
+                        )
                 
                 # ============================================================
                 # FINALIZE
@@ -463,7 +660,6 @@ class BaseETLFactory(ABC):
                     "sync_method": MetadataValue.text(self.sync_method),
                     "source": MetadataValue.text(f"{self.source_type()} {self.source_database}.{self.source_table}"),
                     "destination": MetadataValue.text(f"{self.destination_type()} {self.destination_database}.{self.destination_table}"),
-                    "status": MetadataValue.text("success")
                 }
                 
                 if max_value_tracker is not None:
@@ -480,11 +676,10 @@ class BaseETLFactory(ABC):
                 context.log.info("=" * 80)
                 context.log.info(
                     f"🎉 ETL COMPLETE: {total_rows:,} rows in {duration:.2f}s "
-                    f"({total_rows/duration:.0f} rows/s)"
+                    f"({total_rows/duration:.0f} rows/s)" if duration > 0 else f"🎉 ETL COMPLETE: {total_rows:,} rows"
                 )
                 context.log.info("=" * 80)
                 
-                # Return single Output
                 return Output(output_value, metadata=metadata)
                 
             except Exception as e:
@@ -495,30 +690,32 @@ class BaseETLFactory(ABC):
                 context.log.error(f"❌ Error: {str(e)}")
                 context.log.error("=" * 80)
                 
-                # Return Output with error state
-                return Output(
-                    value={
-                        "rows_synced": 0,
-                        "status": "failed",
-                        "error": str(e),
-                        "duration_seconds": duration
-                    },
-                    metadata={
-                        "status": MetadataValue.text("failed"),
-                        "error": MetadataValue.text(str(e)),
-                        "duration_seconds": MetadataValue.float(duration)
-                    }
-                )
+                # Re-raise exception so Dagster marks asset as failed
+                raise
             
             finally:
                 # Cleanup
                 if source:
-                    source.close()
+                    try:
+                        source.close()
+                    except Exception as e:
+                        context.log.warning(f"Error closing source: {e}")
+                
                 if destination:
-                    destination.close()
+                    try:
+                        destination.close()
+                    except Exception as e:
+                        context.log.warning(f"Error closing destination: {e}")
         
         # Get required resource keys
         required_keys = self.get_required_resource_keys()
+        
+        # Ensure schema_loader is in required keys
+        if "schema_loader" not in required_keys:
+            raise ValueError(
+                f"Factory {self.__class__.__name__} must include 'schema_loader' "
+                f"in get_required_resource_keys()"
+            )
         
         # Apply @asset decorator
         return asset(

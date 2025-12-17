@@ -23,18 +23,16 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY dagster_pipeline/ /app/dagster_pipeline/
 
 # Create storage directories for Dagster
-# Create only the dagster_home directory (no subdirectories needed)
 RUN mkdir -p /app/dagster_home
 
 # Set Python path
 ENV PYTHONPATH=/app
 
-# Expose Dagit port
+# Expose ports
+## for Webserver
 EXPOSE 3004
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:3000/server_info || exit 1
+## for gRPC
+EXPOSE 4000 
 
 # Default command (will be overridden in docker-compose)
 CMD ["dagster-webserver", "-h", "0.0.0.0", "-p", "3004"]

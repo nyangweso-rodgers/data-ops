@@ -1,21 +1,19 @@
-# workflows/dagster_v2/dagster_pipeline/schemas/postgres/sunculture_ep/premises.yml
-
+# workflows/dagster_v2/dagster_pipeline/schemas/postgres/sunculture_ep/premises_details.yml
 metadata:
   version: 1.0.0
   created_by: "Rodgers Nyangweso"
   description: "Brief description of the table"
-  created_at: "2025-12-09"
-  last_modified: "2025-12-09"
+  created_at: "2025-12-16"
+  last_modified: "2025-12-16"
   # Optional: Add any additional metadata
   # owner: "team-name"
 
 source:
   type: postgres
   database: "sunculture_ep"
-  table: "premises"
+  table: "premise_details"
 
   columns:
-
     - name: id
       type: uuid
       nullable: false
@@ -31,22 +29,19 @@ source:
       type: timestamp
       nullable: false
 
-    - name: account_id
-      type: _int4 # array types
+    - name: premise_id
+      type: uuid
       nullable: true
 
-    - name: premise_name
+    - name: district
       type: varchar(255)
       nullable: true
-
-    - name: customer_id
-      type: int4
+    - name: county
+      type: varchar(255)
       nullable: true
-
-    - name: premise_type_id
-      type: uuid
+    - name: subcounty
+      type: varchar(255)
       nullable: true
-
-    - name: substate_id
-      type: uuid
+    - name: village
+      type: varchar(255)
       nullable: true
