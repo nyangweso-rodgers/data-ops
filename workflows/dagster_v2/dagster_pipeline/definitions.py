@@ -9,6 +9,7 @@ from dagster import Definitions
 from dagster_pipeline.resources.registry import (
     mysql_amt,
     mysql_sales_service_dev,
+    mysql_sales_service,
     clickhouse_resource,
     dagster_postgres_resource,
     postgres_fma,
@@ -36,6 +37,7 @@ defs = Definitions(
         # MySQL
         "mysql_amt": mysql_amt,
         "mysql_sales_service_dev": mysql_sales_service_dev,
+        "mysql_sales_service": mysql_sales_service,
         
         # PostgreSQL
         "postgres_fma": postgres_fma,
