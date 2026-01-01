@@ -17,7 +17,7 @@ from .postgres_to_clickhouse_factory import (
 __all__ = [
     "BaseETLFactory",
     "MySQLToClickHouseFactory",
-    "create_mysql_to_clickhouse_asset",
     "PostgresToClickHouseFactory",
+    "create_mysql_to_clickhouse_asset",
     "create_postgres_to_clickhouse_asset",
 ]
