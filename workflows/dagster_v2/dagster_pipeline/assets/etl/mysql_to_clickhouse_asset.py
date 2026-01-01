@@ -48,9 +48,32 @@ mysql_sales_service_leadsources = create_mysql_to_clickhouse_asset(
     
     group_name="mysql_sales_service_to_clickhouse"
 )
-# Add more tables...
-
+# ============================================================================
+# Sync Leads From Sales Service → CLICKHOUSE
+# ============================================================================
+mysql_sales_service_leads = create_mysql_to_clickhouse_asset(
+    asset_name="mysql_sales_service_leads_to_clickhouse",
+    source_database="sales-service",
+    source_table="leads",
+    destination_database="sales-service",
+    destination_table="leads_v2",
+    mysql_resource_key="mysql_sales_service",
+    incremental_key="updatedAt", # Track by updatedAt for incremental sync
+    
+    # ClickHouse table settings
+    clickhouse_engine="ReplacingMergeTree(updatedAt)",  # Deduplicate by id, keep latest updatedAt 
+    #clickhouse_order_by=["leadId", "updatedAt"],  # Order by leadId first, then version
+    clickhouse_order_by=["createdAt", "leadId", "updatedAt"],  # ← Daily granularity in ordering
+   #clickhouse_partition_by="toYYYYMMDD(createdAt)",  # Daily partitions by creation date (for reporting)
+   clickhouse_partition_by="toYYYYMM(createdAt)",  # ← Monthly instead of daily
+    
+    group_name="mysql_sales_service_to_clickhouse"
+)
 # ============================================================================
 # ASSET COLLECTION
 # ============================================================================
-assets = [mysql_amt_accounts, mysql_sales_service_leadsources]
+assets = [
+    mysql_amt_accounts, 
+    mysql_sales_service_leadsources, 
+    mysql_sales_service_leads
+    ]
