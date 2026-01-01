@@ -37,7 +37,7 @@ mysql_amt = MySQLResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# SOURCE DATABASES (where we extract data FROM)
+# MYSQL SALES SERVICE DEV RESOURCE
 # ═════════════════════════════════════════════════════════════════════════════
 mysql_sales_service_dev = MySQLResource(
     host=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_HOST"),
@@ -46,12 +46,20 @@ mysql_sales_service_dev = MySQLResource(
     password=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_PASSWORD"),
     database=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_NAME")
 )
-# ← Add more MySQL sources here: mysql_sales, mysql_inventory, etc.
+# ═════════════════════════════════════════════════════════════════════════════
+# MYSQL SALES SERVICE PROD RESOURCE
+# ═════════════════════════════════════════════════════════════════════════════
+mysql_sales_service = MySQLResource(
+    host=EnvVar("SC_SALES_SERVICE_MYSQL_DB_HOST"),
+    port=3306,
+    user=EnvVar("SC_SALES_SERVICE_MYSQL_DB_USER"),
+    password=EnvVar("SC_SALES_SERVICE_MYSQL_DB_PASSWORD"),
+    database=EnvVar("SC_SALES_SERVICE_MYSQL_DB_NAME")
+)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# DESTINATION DATABASES (where we load data TO)
+# ClickHouse Resource
 # ═════════════════════════════════════════════════════════════════════════════
-
 clickhouse_resource = ClickHouseResource(
     host=EnvVar("SC_CH_DB_HOST"),
     port=8443,
