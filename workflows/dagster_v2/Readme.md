@@ -1,32 +1,39 @@
 # Project
 
-- dagster-project/
-  - Readme.md
-  - `Dockerfile`
-  - `Makefile`
-  - `docker-compose-dagster.base.yml`
-  - `docker-compose-dagster.local.yml`
-  - `docker-compose-dagster.prod.yml`
-  - `pyproject.toml`
-  - `requirements.txt`
+## Table Of Contents
+
+- [Project Structure](#project-structure)
+
+# Project Structure
+
+- dagster_v2/
+
   - .github/
+
     - workflows/
       - `validate-pr.yml`
       - `test.yml` # Run tests
       - `deploy.yml` # Build & Deploy
+
   - dagster_home/
+
     - `dagster.yaml`
     - `workspace.yaml`
+
   - dagster_pipeline/
+
     - `__init__.py`
     - `definitions.py`
     - alerts/
+
       - `__init__.py`
       - `alert_manager.py`
       - `slack_alerts.py`
       - `email_alerts.py`
       - `alert_types`
+
     - connectors/
+
       - sources/ # Source connectors ← DATA EXTRACTION
         - `base_source_connector.py`
         - `mysql_source_connector.py` # MySQL extraction
@@ -41,16 +48,22 @@
         - `s3_sink_connector.py`
         - `postgres_sink_connector.py`
         - `mysql_sink_connector.py` # MySQL loading
+
     - assets/
+
       - etl/
         - `mysql_to_clickhouse_asset.py`
+
     - resources/
+
       - `__init__.py`
       - `clickhouse_resource.py`
       - `dagster_postgres_resource.py`
       - `mysql_resource.py`
       - `registry.py`
+
     - schemas/
+
       - apis/
       - mysql/
         - amtdb/
@@ -65,6 +78,7 @@
           - `devices.yml`
       - templates/
         - `table_schema_template.yml` # ← Template with comments
+
     - utils/
       - factories/
         - `__init__.py`
@@ -87,6 +101,18 @@
       - `test_type_mapper.py`
       - `test_schema_loader.py`
       - `test_mysql_to_clickhouse_factory.py`
+    - `.dockerignore`
+    - `.env.dagster`
+    - `.gitignore`
+    - `CHANGELOG.md`
+    - `docker-compose-dagster.base.yml`
+    - `docker-compose-dagster.local.yml`
+    - `docker-compose-dagster.prod.yml`
+    - `Dockerfile`
+    - `Makefile`
+    - `pyproject.toml`
+    - `README.md`
+    - `requirements.txt`
 
 # Resources and Further Reading
 
