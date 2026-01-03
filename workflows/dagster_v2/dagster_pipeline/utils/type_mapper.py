@@ -539,16 +539,21 @@ class TypeMapper:
             
             base_type = f"Decimal({precision}, {scale})"
         
-        # Wrap with Nullable if needed
-        # In ClickHouse, we can make any type nullable
-        if nullable:
-            # Special handling for LowCardinality
-            if base_type.startswith("LowCardinality("):
-                # Nullable(LowCardinality(String))
-                inner = base_type[15:-1]  # Extract inner type
-                return f"Nullable(LowCardinality({inner}))"
+        # Handle LowCardinality wrapping
+        if base_type.startswith("LowCardinality("):
+            # Extract the inner type: LowCardinality(String) → String
+            inner_type = base_type[15:-1]  # Remove "LowCardinality(" and ")"
+            
+            if nullable:
+                # Wrap inner type with Nullable first, then LowCardinality
+                return f"LowCardinality(Nullable({inner_type}))"
             else:
-                return f"Nullable({base_type})"
+                # Keep as is
+                return base_type
+        # For all other types, wrap with Nullable if needed
+        if nullable:
+            return f"Nullable({base_type})"
+
         
         return base_type
     
