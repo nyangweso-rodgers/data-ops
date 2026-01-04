@@ -3,21 +3,34 @@
 ETL factories for creating Dagster assets
 """
 
-from .base_factory import BaseETLFactory
-from .mysql_to_clickhouse_factory import (
+from .etl_base_factory import BaseETLFactory
+from .etl_mysql_to_clickhouse_factory import (
     MySQLToClickHouseFactory,
     create_mysql_to_clickhouse_asset
 )
 
-from .postgres_to_clickhouse_factory import (
+from .etl_postgres_to_clickhouse_factory import (
     PostgresToClickHouseFactory,
     create_postgres_to_clickhouse_asset
 )
 
+from .optimize_clickhouse_factory import (
+    OptimizeClickHouseFactory,
+    create_clickhouse_optimize_asset
+)
+
 __all__ = [
     "BaseETLFactory",
+    
+    # MySQL to ClickHouse
     "MySQLToClickHouseFactory",
-    "PostgresToClickHouseFactory",
     "create_mysql_to_clickhouse_asset",
+    
+    # Postgres to ClickHouse
+    "PostgresToClickHouseFactory",
     "create_postgres_to_clickhouse_asset",
+    
+    # ClickHouse Cleanup
+    "OptimizeClickHouseFactory",
+    "create_clickhouse_optimize_asset",
 ]
