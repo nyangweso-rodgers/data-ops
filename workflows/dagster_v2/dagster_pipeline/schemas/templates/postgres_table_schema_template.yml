@@ -1,4 +1,3 @@
-# Template for table schemas
 metadata:
   version: 1.0.0
   created_by: "Your Name"
@@ -9,30 +8,22 @@ metadata:
   # owner: "team-name"
 
 source:
-  type: mysql 
+  type: postgres
   database: "database_name"
   table: "table_name"
-  
+
   columns:
     - name: createdAt
       type: timestamp
       nullable: false
       default: CURRENT_TIMESTAMP
       description: "Record creation timestamp"
-    
+
     - name: updatedAt
       type: timestamp
       nullable: false
       default: CURRENT_TIMESTAMP
-      on_update: CURRENT_TIMESTAMP 
+      on_update: CURRENT_TIMESTAMP
       description: "Record last update timestamp"
-    
-    - name: id
-      type: bigint
-      nullable: false
-      primary_key: true
-      description: "Primary key identifier"
 
-
-    
     # Add more columns
