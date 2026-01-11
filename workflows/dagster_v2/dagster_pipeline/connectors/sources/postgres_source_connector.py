@@ -372,8 +372,28 @@ class PostgresSourceConnector(BaseSourceConnector):
             except UnicodeDecodeError:
                 return value.hex()
                 
-        elif isinstance(value, (datetime, date)):
-            return value  # Keep as Python datetime/date
+        # ===== ZERO DATE HANDLING =====
+        elif isinstance(value, datetime):
+            # Check for zero datetime (shouldn't happen in PostgreSQL, but be safe)
+            if value.year == 0:
+                logger.warning(
+                    "zero_datetime_converted_to_null",
+                    value=str(value),
+                    hint="Zero datetime converted to NULL"
+                )
+                return None
+            return value
+        
+        elif isinstance(value, date):
+            # Check for zero date (shouldn't happen in PostgreSQL, but be safe)
+            if value.year == 0:
+                logger.warning(
+                    "zero_date_converted_to_null",
+                    value=str(value),
+                    hint="Zero date converted to NULL"
+                )
+                return None
+            return value
             
         elif isinstance(value, list):
             # PostgreSQL arrays - recursively normalize

@@ -1,18 +1,14 @@
 """
 ClickHouse destination connector for data loading
 
-IMPROVEMENTS:
-- Retry logic with exponential backoff
-- Better error handling
-- Connection validation
-- Query timeout protection
-- Optimized batch inserts
-- Proper resource cleanup
+RESPONSIBILITIES:
+- ETL data loading operations (insert, replace)
+- Schema creation and synchronization
+- Pre-load validation and checks
 """
 
-import clickhouse_connect
 from clickhouse_connect.driver.exceptions import ClickHouseError
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import time
 import structlog
 
@@ -22,138 +18,165 @@ from .base_sink_connector import (
     DestinationValidationError,
     DestinationLoadError
 )
+from dagster_pipeline.resources.clickhouse_resource import ClickHouseResource
 
 logger = structlog.get_logger(__name__)
 
 
 class ClickHouseSinkConnector(BaseSinkConnector):
     """
-    ClickHouse destination connector - Production-ready implementation
+    ClickHouse destination connector - Focused ETL sink
+    
+    Uses ClickHouseResource for all connection management.
+    Focuses exclusively on ETL operations: extract → transform → load.
     
     Features:
-    - Native ClickHouse protocol via clickhouse-connect
-    - Retry logic for transient failures
-    - Connection pooling
+    - Delegates connection to ClickHouseResource
+    - ETL-specific retry logic for load operations
     - Batch inserts with optimization
     - Schema evolution support
-    - Native Python type handling
     
     Config:
         {
             "host": "clickhouse.example.com",
-            "port": 8443,  # HTTPS port (9440 for native secure)
+            "port": 8443,  # HTTPS port
             "user": "default",
             "password": "password",
             "database": "analytics",
-            "secure": True,  # Use HTTPS/TLS
-            "verify": True,  # Verify SSL certificate
-            "connect_timeout": 30,  # Seconds
-            "send_receive_timeout": 300,  # Seconds
+            "secure": True,
+            "connect_timeout": 30,
+            "send_receive_timeout": 300,
             "settings": {
                 "max_insert_block_size": 100000,
                 "max_execution_time": 300
             }
         }
+    
+    Usage:
+        # In your ETL factory
+        connector = ClickHouseSinkConnector(context, config)
+        connector.validate()
+        
+        # Create table if needed
+        if not connector.table_exists(database, table):
+            connector.create_table(database, table, schema, order_by=["id"])
+        
+        # Sync schema for new columns
+        connector.sync_schema(database, table, schema)
+        
+        # Load data
+        rows_loaded = connector.load_data(database, table, data, mode="append")
+        
+        # For optimization, use OptimizeClickHouseFactory instead
     """
     
-    # Connection settings
-    DEFAULT_PORT = 8443  # HTTPS
-    DEFAULT_PORT_INSECURE = 8123  # HTTP
-    DEFAULT_CONNECT_TIMEOUT = 30
-    DEFAULT_SEND_RECEIVE_TIMEOUT = 300
-    
-    # Retry settings
-    MAX_RETRIES = 3
+    # ETL-specific retry settings (for load operations, not connections)
+    MAX_LOAD_RETRIES = 3
     RETRY_DELAY = 1  # seconds
     RETRY_BACKOFF = 2
     
     def __init__(self, context, config: Dict[str, Any]):
-        """Initialize ClickHouse destination connector"""
+        """
+        Initialize ClickHouse sink connector with resource-based connection
+        
+        Args:
+            context: Dagster context (for logging)
+            config: Connection configuration dict
+        """
         super().__init__(context, config)
         
-        # Extract connection parameters
-        self.host = config["host"]
-        self.secure = config.get("secure", True)
-        self.port = config.get("port", self.DEFAULT_PORT if self.secure else self.DEFAULT_PORT_INSECURE)
-        self.user = config.get("user", "default")
-        self.password = config.get("password", "")
+        # Create ClickHouseResource instance from config
+        self.ch_resource = ClickHouseResource(
+            host=config["host"],
+            port=config.get("port", 8443 if config.get("secure", True) else 8123),
+            user=config.get("user", "default"),
+            password=config.get("password", ""),
+            database=config.get("database", "default"),
+            secure=config.get("secure", True),
+            connect_timeout=config.get("connect_timeout", 30),
+            send_receive_timeout=config.get("send_receive_timeout", 300)
+        )
+        
+        # Store additional ETL-specific settings
         self.database = config.get("database", "default")
-        self.verify = config.get("verify", True)
-        self.connect_timeout = config.get("connect_timeout", self.DEFAULT_CONNECT_TIMEOUT)
-        self.send_receive_timeout = config.get("send_receive_timeout", self.DEFAULT_SEND_RECEIVE_TIMEOUT)
         self.settings = config.get("settings", {})
         
-        # Connection client (lazy initialization)
-        self._client = None
+        logger.info(
+            "clickhouse_sink_initialized",
+            database=self.database,
+            host="****"  # Sanitized for security
+        )
     
     def destination_type(self) -> str:
+        """Return destination type identifier"""
         return "clickhouse"
     
     def required_config_keys(self) -> List[str]:
+        """Required configuration keys"""
         return ["host"]  # Password optional for localhost
     
-    def _get_client(self):
+    def _get_client_with_retry(self):
         """
-        Get or create ClickHouse client with retry logic
+        Get ClickHouse client with ETL-specific retry logic
         
-        Uses lazy initialization - client created on first use
+        Wraps resource's get_client() with additional retry logic
+        for handling transient ETL failures (connection pool exhaustion, etc.)
+        
+        Returns:
+            ClickHouse client instance
+            
+        Raises:
+            DestinationConnectionError: If connection fails after retries
         """
-        if self._client is None:
-            last_error = None
-            
-            for attempt in range(self.MAX_RETRIES):
-                try:
-                    self._client = clickhouse_connect.get_client(
-                        host=self.host,
-                        port=self.port,
-                        username=self.user,
-                        password=self.password,
-                        database=self.database,
-                        secure=self.secure,
-                        verify=self.verify,
-                        connect_timeout=self.connect_timeout,
-                        send_receive_timeout=self.send_receive_timeout,
-                        settings=self.settings
-                    )
-                    
-                    logger.debug(
-                        "clickhouse_client_created",
-                        database=self.database,
-                        host="****",  # Sanitized
-                        port=self.port
-                    )
-                    return self._client
-                    
-                except Exception as e:
-                    last_error = e
-                    if attempt < self.MAX_RETRIES - 1:
-                        delay = self.RETRY_DELAY * (self.RETRY_BACKOFF ** attempt)
-                        logger.warning(
-                            "clickhouse_connection_retry",
-                            attempt=attempt + 1,
-                            max_retries=self.MAX_RETRIES,
-                            delay=delay,
-                            error=str(e)
-                        )
-                        time.sleep(delay)
-                    else:
-                        raise DestinationConnectionError(
-                            f"Failed to connect to ClickHouse after {self.MAX_RETRIES} attempts: {e}"
-                        ) from e
-            
-            if last_error:
-                raise DestinationConnectionError(
-                    f"Failed to connect to ClickHouse: {last_error}"
-                ) from last_error
+        last_error = None
         
-        return self._client
+        for attempt in range(self.MAX_LOAD_RETRIES):
+            try:
+                client = self.ch_resource.get_client()
+                return client
+                
+            except Exception as e:
+                last_error = e
+                
+                if attempt < self.MAX_LOAD_RETRIES - 1:
+                    delay = self.RETRY_DELAY * (self.RETRY_BACKOFF ** attempt)
+                    logger.warning(
+                        "clickhouse_etl_connection_retry",
+                        attempt=attempt + 1,
+                        max_retries=self.MAX_LOAD_RETRIES,
+                        delay=delay,
+                        error=str(e)
+                    )
+                    time.sleep(delay)
+        
+        raise DestinationConnectionError(
+            f"Failed to get ClickHouse client after {self.MAX_LOAD_RETRIES} attempts: {last_error}"
+        ) from last_error
     
     def validate(self) -> bool:
-        """Validate ClickHouse connection and permissions"""
-        try:
-            client = self._get_client()
+        """
+        Validate ClickHouse connection and permissions
+        
+        Checks:
+        - Connection is alive
+        - Database exists or can be created
+        - Write permissions are available
+        
+        Returns:
+            True if validation succeeds
             
-            # Test connection
+        Raises:
+            DestinationValidationError: If validation fails
+            DestinationConnectionError: If connection fails
+        """
+        try:
+            # Test connection via resource
+            if not self.ch_resource.ping():
+                raise DestinationConnectionError("ClickHouse ping failed")
+            
+            client = self._get_client_with_retry()
+            
+            # Get ClickHouse version for logging
             result = client.query("SELECT version() as version")
             version = result.result_rows[0][0] if result.result_rows else "unknown"
             logger.debug("clickhouse_version", version=version)
@@ -188,13 +211,13 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             
             self._is_validated = True
             logger.info(
-                "clickhouse_destination_validated",
+                "clickhouse_sink_validated",
                 database=self.database,
-                host="****"  # Sanitized
+                version=version
             )
             return True
             
-        except DestinationValidationError:
+        except (DestinationValidationError, DestinationConnectionError):
             raise
         except Exception as e:
             raise DestinationConnectionError(
@@ -202,11 +225,22 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             ) from e
     
     def table_exists(self, database: str, table: str) -> bool:
-        """Check if table exists in ClickHouse"""
+        """
+        Check if table exists in ClickHouse
+        
+        Used for pre-load validation to decide whether to create table.
+        
+        Args:
+            database: Database name
+            table: Table name
+            
+        Returns:
+            True if table exists, False otherwise
+        """
         if not self._is_validated:
             self.validate()
         
-        client = self._get_client()
+        client = self._get_client_with_retry()
         
         query = """
             SELECT count() as cnt
@@ -237,8 +271,17 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             ) from e
     
     def _ensure_sync_at_column(self, database: str, table: str) -> None:
-        """Ensure sync_at column exists with proper default"""
-        client = self._get_client()
+        """
+        Ensure sync_at timestamp column exists for ETL tracking
+        
+        Adds a sync_at column with microsecond precision if it doesn't exist.
+        This column tracks when each row was last synced by the ETL process.
+        
+        Args:
+            database: Database name
+            table: Table name
+        """
+        client = self._get_client_with_retry()
         
         try:
             # Check if sync_at already exists
@@ -262,7 +305,7 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             logger.info("sync_at_column_added", database=database, table=table)
             
         except Exception as e:
-            # Non-fatal - log warning but don't fail
+            # Non-fatal - log warning but don't fail the ETL process
             logger.warning(
                 "sync_at_add_failed",
                 database=database,
@@ -278,24 +321,36 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         **options
     ) -> None:
         """
-        Create ClickHouse table
+        Create ClickHouse table with optimal settings for ETL
         
         Args:
             database: Database name
             table: Table name
             schema: List of column definitions with ClickHouse types
+                    [{"name": "id", "type": "UInt64"}, ...]
             **options: ClickHouse-specific options:
                 - engine: Table engine (default: "MergeTree")
-                - order_by: List of columns for ORDER BY
-                - partition_by: Partition expression
+                - order_by: List of columns for ORDER BY (required for MergeTree)
+                - partition_by: Partition expression (e.g., "toYYYYMM(created_at)")
                 - primary_key: List of primary key columns
-                - ttl: TTL expression
-                - settings: Table settings
+                - ttl: TTL expression (e.g., "created_at + INTERVAL 90 DAY")
+                - settings: Table settings dict
+                
+        Raises:
+            DestinationValidationError: If required options are missing
+            DestinationLoadError: If table creation fails
         """
         if not self._is_validated:
             self.validate()
         
-        client = self._get_client()
+        # Validate schema is not empty
+        if not schema or len(schema) == 0:
+            raise DestinationValidationError(
+                f"Cannot create table {database}.{table}: schema is empty. "
+                f"All columns may have failed conversion."
+            )
+        
+        client = self._get_client_with_retry()
         
         # Extract options
         engine = options.get("engine", "MergeTree")
@@ -310,14 +365,15 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         for col in schema:
             col_name = col["name"]
             col_type = col.get("destination_type", col.get("type", "String"))
+            
             column_defs.append(f"`{col_name}` {col_type}")
         
         columns_str = ",\n    ".join(column_defs)
         
-        # Build clauses
+        # Build ENGINE clause
         engine_clause = f"ENGINE = {engine}"
         
-        # ORDER BY (required for MergeTree engines)
+        # Build ORDER BY (required for MergeTree engines)
         if order_by:
             order_by_str = ", ".join(f"`{col}`" for col in order_by)
             order_by_clause = f"ORDER BY ({order_by_str})"
@@ -329,19 +385,19 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                 "ORDER BY is required for MergeTree engines but no columns provided"
             )
         
-        # PARTITION BY
+        # Build PARTITION BY
         partition_clause = f"PARTITION BY {partition_by}" if partition_by else ""
         
-        # PRIMARY KEY
+        # Build PRIMARY KEY
         primary_key_clause = ""
         if primary_key:
             pk_str = ", ".join(f"`{col}`" for col in primary_key)
             primary_key_clause = f"PRIMARY KEY ({pk_str})"
         
-        # TTL
+        # Build TTL
         ttl_clause = f"TTL {ttl}" if ttl else ""
         
-        # SETTINGS
+        # Build SETTINGS
         settings_clause = ""
         if settings:
             settings_list = [f"{k} = {v}" for k, v in settings.items()]
@@ -361,9 +417,17 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         """
         
         try:
+            # Log the query for debugging
+            logger.debug(
+                "clickhouse_create_table_query",
+                database=database,
+                table=table,
+                query=create_query[:500]  # First 500 chars
+            )
+            
             client.command(create_query)
             
-            # Add sync_at column automatically
+            # Add sync_at column automatically for ETL tracking
             self._ensure_sync_at_column(database, table)
             
             logger.info(
@@ -375,6 +439,14 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             )
             
         except Exception as e:
+            # Log full query on error
+            logger.error(
+                "clickhouse_create_table_failed",
+                database=database,
+                table=table,
+                query=create_query,
+                error=str(e)
+            )
             raise DestinationLoadError(
                 f"Failed to create table {database}.{table}: {e}"
             ) from e
@@ -387,16 +459,22 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         mode: str = "append"
     ) -> int:
         """
-        Load data to ClickHouse
+        Load data to ClickHouse with retry logic
         
         Args:
             database: Database name
             table: Table name
             data: List of row dictionaries
-            mode: "append", "replace", or "upsert"
+            mode: Load mode:
+                - "append": Add rows to existing data (default)
+                - "replace": Truncate table then insert
+                - "upsert": Not supported by ClickHouse (use ReplacingMergeTree)
         
         Returns:
             Number of rows loaded
+            
+        Raises:
+            DestinationLoadError: If load fails after retries
         """
         if not self._is_validated:
             self.validate()
@@ -405,7 +483,7 @@ class ClickHouseSinkConnector(BaseSinkConnector):
             logger.warning("clickhouse_empty_data", database=database, table=table)
             return 0
         
-        client = self._get_client()
+        client = self._get_client_with_retry()
         
         # Handle replace mode
         if mode == "replace":
@@ -416,18 +494,25 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                 raise DestinationLoadError(
                     f"Failed to truncate table {database}.{table}: {e}"
                 ) from e
+        elif mode == "upsert":
+            logger.warning(
+                "clickhouse_upsert_not_supported",
+                database=database,
+                table=table,
+                hint="Use ReplacingMergeTree engine for deduplication"
+            )
         
         # Load data with retry logic
         last_error = None
-        for attempt in range(self.MAX_RETRIES):
+        for attempt in range(self.MAX_LOAD_RETRIES):
             try:
                 # Extract column names from first row
                 column_names = list(data[0].keys())
                 
-                # Convert to row format
-                rows = [[row[col] for col in column_names] for row in data]
+                # Convert to row format (list of lists)
+                rows = [[row.get(col) for col in column_names] for row in data]
                 
-                # Insert data
+                # Insert data using clickhouse-connect
                 client.insert(
                     table=f"`{database}`.`{table}`",
                     data=rows,
@@ -446,7 +531,9 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                 
             except ClickHouseError as e:
                 last_error = e
-                if "Too many simultaneous queries" in str(e) and attempt < self.MAX_RETRIES - 1:
+                
+                # Retry on specific transient errors
+                if "Too many simultaneous queries" in str(e) and attempt < self.MAX_LOAD_RETRIES - 1:
                     delay = self.RETRY_DELAY * (self.RETRY_BACKOFF ** attempt)
                     logger.warning(
                         "clickhouse_load_retry",
@@ -457,13 +544,14 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                     time.sleep(delay)
                 else:
                     break
+                    
             except Exception as e:
                 last_error = e
                 break
         
         # All retries failed
         raise DestinationLoadError(
-            f"Failed to load data to {database}.{table} after {self.MAX_RETRIES} attempts: {last_error}"
+            f"Failed to load data to {database}.{table} after {self.MAX_LOAD_RETRIES} attempts: {last_error}"
         ) from last_error
     
     def sync_schema(
@@ -475,12 +563,18 @@ class ClickHouseSinkConnector(BaseSinkConnector):
         """
         Sync schema changes (add new columns)
         
-        ClickHouse supports adding columns but not modifying/dropping
+        ClickHouse supports adding columns but not modifying/dropping existing ones.
+        This method adds any missing columns from the schema.
+        
+        Args:
+            database: Database name
+            table: Table name
+            schema: List of column definitions
         """
         if not self._is_validated:
             self.validate()
         
-        client = self._get_client()
+        client = self._get_client_with_retry()
         
         try:
             # Get existing columns
@@ -546,124 +640,15 @@ class ClickHouseSinkConnector(BaseSinkConnector):
                 f"Failed to sync schema for {database}.{table}: {e}"
             ) from e
     
-    def get_row_count(self, database: str, table: str) -> int:
-        """Get row count from ClickHouse table"""
-        if not self._is_validated:
-            self.validate()
-        
-        client = self._get_client()
-        
-        try:
-            query = f"SELECT count() as cnt FROM `{database}`.`{table}`"
-            result = client.query(query)
-            count = result.result_rows[0][0]
-            
-            logger.debug(
-                "clickhouse_row_count",
-                database=database,
-                table=table,
-                count=count
-            )
-            return count
-            
-        except Exception as e:
-            raise DestinationLoadError(
-                f"Failed to get row count from {database}.{table}: {e}"
-            ) from e
-    
-    def optimize_table(
-        self,
-        database: str,
-        table: str,
-        final: bool = False
-    ) -> None:
-        """
-        Optimize ClickHouse table (force merge)
-        
-        Args:
-            database: Database name
-            table: Table name
-            final: Use OPTIMIZE FINAL (aggressive merge)
-        """
-        if not self._is_validated:
-            self.validate()
-        
-        client = self._get_client()
-        
-        final_clause = "FINAL" if final else ""
-        query = f"OPTIMIZE TABLE `{database}`.`{table}` {final_clause}"
-        
-        try:
-            client.command(query)
-            logger.info(
-                "clickhouse_table_optimized",
-                database=database,
-                table=table,
-                final=final
-            )
-        except Exception as e:
-            logger.warning(
-                "clickhouse_optimize_failed",
-                database=database,
-                table=table,
-                error=str(e)
-            )
-    
-    def get_table_engine(self, database: str, table: str) -> str:
-        """Get table engine type"""
-        client = self._get_client()
-        
-        query = """
-            SELECT engine
-            FROM system.tables
-            WHERE database = %(database)s AND name = %(table)s
-        """
-        
-        result = client.query(
-            query,
-            parameters={"database": database, "table": table}
-        )
-        
-        return result.result_rows[0][0] if result.result_rows else "Unknown"
-    
-    def get_table_size(self, database: str, table: str) -> Dict[str, Any]:
-        """Get table size statistics"""
-        client = self._get_client()
-        
-        query = """
-            SELECT
-                sum(rows) as rows,
-                sum(bytes) as bytes,
-                formatReadableSize(sum(bytes)) as bytes_human,
-                count() as parts,
-                sum(data_compressed_bytes) as compressed_bytes
-            FROM system.parts
-            WHERE database = %(database)s AND table = %(table)s AND active
-        """
-        
-        result = client.query(
-            query,
-            parameters={"database": database, "table": table}
-        )
-        
-        if result.result_rows:
-            row = result.result_rows[0]
-            return {
-                "rows": row[0] or 0,
-                "bytes": row[1] or 0,
-                "bytes_human": row[2] or "0 B",
-                "parts": row[3] or 0,
-                "compressed_bytes": row[4] or 0
-            }
-        return {}
-    
     def close(self) -> None:
-        """Close ClickHouse client"""
-        if self._client:
+        """
+        Close ClickHouse connection
+        
+        Delegates to resource's close method for proper cleanup.
+        """
+        if self.ch_resource:
             try:
-                self._client.close()
-                logger.debug("clickhouse_client_closed")
+                self.ch_resource.close()
+                logger.debug("clickhouse_sink_closed")
             except Exception as e:
-                logger.warning("clickhouse_close_error", error=str(e))
-            finally:
-                self._client = None
+                logger.warning("clickhouse_sink_close_error", error=str(e))

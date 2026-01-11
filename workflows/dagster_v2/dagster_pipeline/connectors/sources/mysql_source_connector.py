@@ -12,6 +12,8 @@ IMPROVEMENTS:
 
 import pymysql
 from pymysql.cursors import SSDictCursor
+from pymysql.constants import FIELD_TYPE
+from pymysql.converters import conversions
 from typing import Iterator, List, Dict, Any, Optional
 from datetime import datetime, date
 from decimal import Decimal
@@ -72,6 +74,27 @@ class MySQLSourceConnector(BaseSourceConnector):
     def required_config_keys(self) -> List[str]:
         return ["host", "user", "password", "database", "table"]
     
+    @staticmethod
+    def _create_safe_date_converters():
+        """
+        Override PyMySQL's default date converters to return strings
+        
+        This prevents PyMySQL from crashing on invalid dates like:
+        - 0000-00-00 (zero dates)
+        - 0184-08-10 (year out of Python's date range)
+        - Other malformed dates
+        
+        Your _normalize_value() will then handle these strings safely.
+        """
+        conv = conversions.copy()
+        
+        # Return dates as strings instead of trying to parse them
+        conv[FIELD_TYPE.DATE] = lambda x: x.decode('utf-8') if isinstance(x, bytes) else x
+        conv[FIELD_TYPE.DATETIME] = lambda x: x.decode('utf-8') if isinstance(x, bytes) else x
+        conv[FIELD_TYPE.TIMESTAMP] = lambda x: x.decode('utf-8') if isinstance(x, bytes) else x
+        
+        return conv
+    
     def _build_connection_params(self) -> Dict[str, Any]:
         """Build connection parameters from config"""
         return {
@@ -83,8 +106,9 @@ class MySQLSourceConnector(BaseSourceConnector):
             "charset": self.config.get("charset", self.DEFAULT_CHARSET),
             "connect_timeout": self.config.get("connect_timeout", self.DEFAULT_CONNECT_TIMEOUT),
             "read_timeout": self.config.get("read_timeout", self.DEFAULT_READ_TIMEOUT),
-            "autocommit": True,  # We're only reading
-            "cursorclass": SSDictCursor  # Server-side dict cursor
+            "autocommit": True,
+            "cursorclass": SSDictCursor,
+            "conv": self._create_safe_date_converters()  # THE FIX: Use safe converters
         }
     
     @contextmanager
@@ -253,7 +277,11 @@ class MySQLSourceConnector(BaseSourceConnector):
             raise SourceExtractionError(f"Failed to get schema: {e}") from e
     
     @staticmethod
-    def _normalize_value(value: Any) -> Any:
+    def _normalize_value(
+        value: Any,
+        mysql_type: str = "",
+        column_name: str = ""
+    ) -> Any:
         """
         Convert MySQL types to Python native types
         
@@ -261,25 +289,99 @@ class MySQLSourceConnector(BaseSourceConnector):
         - Decimal → float
         - bytes → str (with fallback to hex)
         - datetime/date → keep as-is
+        - Zero dates (0000-00-00) → None
+        - String dates → date/datetime objects **only if column type is date-like**
         - JSON strings → keep as strings (let destination parse)
         """
         if value is None:
             return None
-        elif isinstance(value, Decimal):
-            # Convert to float for JSON serialization
+        
+        mysql_type_lower = mysql_type.lower().strip()
+        
+        # ── 1. Handle already-parsed native date/datetime coming from MySQL ──
+        if isinstance(value, datetime):
+            if value.year == 0:
+                logger.warning("zero_datetime_converted_to_null", column=column_name, value=str(value))
+                return None
+            return value
+        
+        if isinstance(value, date):
+            if value.year == 0:
+                logger.warning("zero_date_converted_to_null", column=column_name, value=str(value))
+                return None
+            return value
+
+        # ── 2. Decimal / bytes ──
+        if isinstance(value, Decimal):
             return float(value)
-        elif isinstance(value, bytes):
-            # Try UTF-8 decode, fallback to hex for binary data
+
+        if isinstance(value, bytes):
             try:
                 return value.decode('utf-8')
             except UnicodeDecodeError:
                 return value.hex()
-        elif isinstance(value, (datetime, date)):
-            # Keep as Python datetime/date objects
-            return value
-        else:
-            # int, float, str, bool all stay as-is
-            return value
+            
+        # ── 3. Only attempt string parsing if MySQL column type INDICATES date/time ──
+        is_date_like_column = any(t in mysql_type_lower for t in [
+            'date', 'datetime', 'timestamp', 'year'
+        ])
+
+        if isinstance(value, str) and is_date_like_column:
+            # Zero / invalid date strings → None
+            if value.startswith('0000-00-00'):
+                logger.warning("zero_date_string_converted_to_null", column=column_name, value=value)
+                return None
+
+            # Parse date (YYYY-MM-DD)
+            if len(value) == 10 and value[4] == '-' and value[7] == '-':
+                try:
+                    # Extract year first to check range before parsing
+                    year = int(value[0:4])
+                    
+                    # ClickHouse Date supports 1970-2149, Date32 supports 1900-2299
+                    # To be safe for both, reject anything outside 1900-2149
+                    if year < 1900 or year > 2149:
+                        logger.warning(
+                            "date_out_of_range_converted_to_null",
+                            column=column_name,
+                            value=value,
+                            year=year
+                        )
+                        return None
+                    
+                    parsed = datetime.strptime(value, '%Y-%m-%d').date()
+                    return parsed
+                except ValueError:
+                    logger.warning("invalid_date_string_in_date_column", column=column_name, value=value)
+                    return None   # safer than keeping invalid string in Date column
+
+            # Parse datetime (YYYY-MM-DD HH:MM:SS)
+            if len(value) >= 19 and value[4] == '-' and value[10] == ' ':
+                try:
+                    # Extract year first to check range
+                    year = int(value[0:4])
+                    
+                    if year < 1900 or year > 2149:
+                        logger.warning(
+                            "datetime_out_of_range_converted_to_null",
+                            column=column_name,
+                            value=value,
+                            year=year
+                        )
+                        return None
+                    
+                    parsed = datetime.strptime(value[:19], '%Y-%m-%d %H:%M:%S')
+                    return parsed
+                except ValueError:
+                    logger.warning("invalid_datetime_string_in_datetime_column", column=column_name, value=value)
+                    return None
+
+            # If it didn't parse but column expects date → None
+            logger.warning("unparsable_value_in_date_column", column=column_name, value=value)
+            return None
+        
+        # ── 4. Default: keep everything else as-is (especially VARCHAR strings) ──
+        return value
     
     def extract_data(
         self,
@@ -289,12 +391,6 @@ class MySQLSourceConnector(BaseSourceConnector):
     ) -> Iterator[List[Dict[str, Any]]]:
         """
         Extract data from MySQL - returns list of dictionaries
-        
-        Yields:
-            [
-                {"id": 1, "name": "Alice", ...},
-                {"id": 2, "name": "Bob", ...},
-            ]
         """
         if not self._is_validated:
             self.validate()
@@ -328,7 +424,6 @@ class MySQLSourceConnector(BaseSourceConnector):
         params = []
         
         if incremental_config:
-            # Validate incremental config
             schema = self.get_schema()
             schema_columns = {col.name for col in schema}
             if incremental_config.key not in schema_columns:
@@ -371,18 +466,19 @@ class MySQLSourceConnector(BaseSourceConnector):
             incremental=bool(incremental_config)
         )
         
+        # Cache MySQL column types once (required for type-aware normalization)
+        schema = self.get_schema()
+        mysql_types = {col.name: col.type for col in schema}
+        
         total_rows = 0
         batch_num = 0
         
         try:
-            # Use server-side cursor for large datasets
             with self._get_connection(use_server_cursor=True) as conn:
                 with conn.cursor() as cursor:
-                    # Execute query
                     cursor.execute(query, params)
                     
                     while True:
-                        # Fetch batch
                         rows = cursor.fetchmany(batch_size)
                         
                         if not rows:
@@ -391,11 +487,15 @@ class MySQLSourceConnector(BaseSourceConnector):
                         batch_num += 1
                         total_rows += len(rows)
                         
-                        # Normalize all values in batch
+                        # Pass mysql_type and column_name to _normalize_value
                         normalized_batch = []
                         for row in rows:
                             normalized_row = {
-                                col: self._normalize_value(row[col])
+                                col: self._normalize_value(
+                                    row[col],
+                                    mysql_type=mysql_types.get(col, ""),
+                                    column_name=col
+                                )
                                 for col in column_list
                             }
                             normalized_batch.append(normalized_row)
@@ -418,7 +518,6 @@ class MySQLSourceConnector(BaseSourceConnector):
                                 }
                             )
                         
-                        # Log progress every 10 batches
                         if batch_num % 10 == 0:
                             logger.info(
                                 "mysql_extraction_progress",
@@ -493,8 +592,10 @@ class MySQLSourceConnector(BaseSourceConnector):
         database = self.config["database"]
         table = self.config["table"]
         
-        # Validate column exists
+        # Cache types here too (for normalization)
         schema = self.get_schema()
+        mysql_types = {col.name: col.type for col in schema}
+        
         schema_columns = {col.name for col in schema}
         if column not in schema_columns:
             raise SourceValidationError(
@@ -517,7 +618,13 @@ class MySQLSourceConnector(BaseSourceConnector):
                         column=column,
                         max_value=str(max_val)[:50] if max_val else None
                     )
-                    return self._normalize_value(max_val)
+                    
+                    # Pass type for proper normalization
+                    return self._normalize_value(
+                        max_val,
+                        mysql_type=mysql_types.get(column, ""),
+                        column_name=column
+                    )
                     
         except pymysql.Error as e:
             raise SourceExtractionError(f"Failed to get max value: {e}") from e
@@ -537,11 +644,18 @@ class MySQLSourceConnector(BaseSourceConnector):
                     cursor.execute(query, params or [])
                     results = cursor.fetchall()
                     
-                    # Normalize values
+                    # Cache types for test_query normalization too
+                    schema = self.get_schema()
+                    mysql_types = {col.name: col.type for col in schema}
+                    
                     normalized = []
                     for row in results:
                         normalized.append({
-                            k: self._normalize_value(v)
+                            k: self._normalize_value(
+                                v,
+                                mysql_type=mysql_types.get(k, ""),
+                                column_name=k
+                            )
                             for k, v in row.items()
                         })
                     
