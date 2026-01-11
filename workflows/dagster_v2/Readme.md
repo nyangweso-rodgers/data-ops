@@ -4,6 +4,33 @@
 
 - [Project Structure](#project-structure)
 
+# Architecture Overview
+
+- Three types of data operations:
+
+  1. ETL Assets (`assets/etl/`)
+
+     - Purpose: Keep destination in sync with source
+     - Pattern: Continuous sync with incremental tracking
+     - Schedule: Frequent (15-20 mins)
+     - Example: MySQL accounts → ClickHouse accounts (live data)
+
+  2. Maintenance Assets (`assets/maintenance/`)
+
+     - Purpose: Optimize and clean existing data
+     - Pattern: Analyze → Clean → Optimize
+     - Schedule: Periodic (daily/weekly)
+     - Example: Deduplicate ClickHouse partitions
+
+  3. Snapshot Assets (`assets/snapshots/`)
+
+     - Purpose: Capture point-in-time state for history
+     - Pattern: Query → Timestamp → Append
+     - Schedule: Periodic (daily/monthly)
+     - Example: Account status at end of month
+
+  4. Data Quality (`assets/data_quality`)
+
 # Project Structure
 
 - dagster_v2/
@@ -41,7 +68,7 @@
         - `s3_source_connector.py`
         - `api_source_connector.py`
         - `clickhouse_source_connector.py` # For reverse ETL
-      - sink/ # Sink connectors ← DATA LOADING
+      - sink/ # Sink connectors - Handles ETL operations (load, schema sync, optimize)
         - `base_sink_connector.py`
         - `clickhouse_sink_connector.py`
         - `bigquery_sink_connector.py`
@@ -51,13 +78,17 @@
 
     - assets/
 
-      - etl/
+      - data_quality/ # Data Quality
+      - etl/ # ETL Assets
         - `mysql_to_clickhouse_asset.py`
+        - `postgres_to_clickhouse_asset.py`
+      - maintenance/ # Cleanups and Optimizations
+      - snapshots/ # Point-in-time data capture
 
     - resources/
 
       - `__init__.py`
-      - `clickhouse_resource.py`
+      - `clickhouse_resource.py` # Manages connections, pooling, basic health checks
       - `dagster_postgres_resource.py`
       - `mysql_resource.py`
       - `registry.py`
@@ -71,9 +102,11 @@
           - `customers.yml`
         - sales_service/
           - `leads.yml`
+          - `leadsources.yml`
       - postgres/
         - fma/
           - `premises.yml`
+          - `premise_details.yml`
         - sentinel/
           - `devices.yml`
       - templates/
@@ -82,10 +115,10 @@
     - utils/
       - factories/
         - `__init__.py`
-        - `base_factory.py` # ← Abstract base class
-        - `mysql_to_clickhouse_factory.py` # ← MySQL-specific
-        - `postgres_to_clickhouse_factory.py` # ← Postgres-specific
-        - `s3_to_clickhouse_factory.py` ← S3/Parquet files
+        - `etl_base_factory.py` # ← Abstract base class
+        - `etl_mysql_to_clickhouse_factory.py` # ← MySQL-specific
+        - `etl_postgres_to_clickhouse_factory.py` # ← Postgres-specific
+        - `optimize_clickhouse_factory.py` # ClickHouse Table Optimizations, Deduplications
       - `schema_loader.py`
       - `state_manager.py`
       - `type_mapper.py`
