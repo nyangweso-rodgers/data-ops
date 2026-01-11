@@ -501,7 +501,7 @@ class TypeMapper:
                 DataType.STRING: "String",
                 DataType.TEXT: "String",
                 DataType.BOOLEAN: "UInt8",
-                DataType.DATE: "Date",
+                DataType.DATE: "Date32",
                 DataType.DATETIME: "DateTime",
                 DataType.TIMESTAMP: "DateTime",
                 DataType.JSON: "String",
@@ -560,55 +560,16 @@ class TypeMapper:
     # ========================================================================
     # BIGQUERY MAPPER
     # ========================================================================
-    
-    @staticmethod
-    def to_bigquery_type(normalized_info: Dict[str, Any]) -> str:
-        """Map to BigQuery type"""
-        normalized_type = normalized_info["normalized_type"]
-        
-        # Handle arrays
-        if normalized_type == DataType.ARRAY:
-            element_info = normalized_info.get("element_info", {})
-            if element_info:
-                # Recursively convert element type
-                element_bq_type = TypeMapper.to_bigquery_type(element_info)
-                return f"ARRAY<{element_bq_type}>"
-            return "ARRAY<STRING>"
-        
-        type_map = {
-            DataType.INTEGER: "INT64",
-            DataType.BIGINT: "INT64",
-            DataType.FLOAT: "FLOAT64",
-            DataType.DECIMAL: "NUMERIC",
-            DataType.STRING: "STRING",
-            DataType.TEXT: "STRING",
-            DataType.BOOLEAN: "BOOL",
-            DataType.DATE: "DATE",
-            DataType.DATETIME: "DATETIME",
-            DataType.TIMESTAMP: "TIMESTAMP",
-            DataType.JSON: "JSON",
-            DataType.ENUM: "STRING",
-            DataType.UUID: "STRING",
-        }
-        
-        bq_type = type_map.get(normalized_type, "STRING")
-        
-        # BigQuery NUMERIC has precision limits
-        if normalized_type == DataType.DECIMAL:
-            precision = normalized_info.get("precision", 18)
-            scale = normalized_info.get("scale", 2)
-            
-            # NUMERIC: precision 38, scale 9
-            # BIGNUMERIC: precision 76.76, scale 38
-            if precision > 38 or scale > 9:
-                bq_type = "BIGNUMERIC"
-        
-        return bq_type
+    # Add BigQuery mapping methods here if needed
     
     # ========================================================================
-    # HIGH-LEVEL API
+    # API Mapper METHODS
     # ========================================================================
+    # Add App Level Methods Here
     
+    # ========================================================================
+    # Convert Column Method 
+    # ========================================================================
     @classmethod
     def convert_column(
         cls,
@@ -671,6 +632,9 @@ class TypeMapper:
             "description": column_def.get("description", ""),
         }
     
+    # ========================================================================
+    # Convert Schema Method 
+    # ========================================================================
     @classmethod
     def convert_schema(
         cls,

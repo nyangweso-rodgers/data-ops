@@ -5,7 +5,7 @@ Factory for MySQL → ClickHouse ETL pipelines with robust state management
 
 from typing import Optional, Dict, Any
 from dagster import AssetExecutionContext
-from .base_etl_factory import BaseETLFactory
+from .etl_base_factory import BaseETLFactory
 from dagster_pipeline.connectors.sources.mysql_source_connector import MySQLSourceConnector
 from dagster_pipeline.connectors.sink.clickhouse_sink_connector import ClickHouseSinkConnector
 import structlog
@@ -27,6 +27,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         batch_size: int = 10000,
         group_name: Optional[str] = None,
         tags: Optional[Dict[str, str]] = None,
+        
         # ClickHouse-specific controls - ALL REQUIRED
         clickhouse_engine: str = None,  # REQUIRED - no default
         clickhouse_order_by: list = None,  # REQUIRED - no default

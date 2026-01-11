@@ -520,14 +520,42 @@ class BaseETLFactory(ABC):
                 # ============================================================
                 context.log.info("🔄 STEP 3: Mapping types to destination...")
                 
+                # Create schema dictionary from TableSchema
                 schema_dict = schema.to_dict()
+                
+                # DEBUG: Log schema details
+                context.log.info(f"🔍 Schema loaded from: {schema.full_name}")
+                context.log.info(f"   Total columns: {len(schema.columns)}")
+                context.log.info(f"   Source type: {schema.source_type.value}")
+                context.log.info(f"   Database: {schema.database}")
+                context.log.info(f"   Table: {schema.table}")
+                
+                columns = schema_dict.get('source', {}).get('columns', [])
+                context.log.info(f"Number of columns in schema_dict: {len(columns)}")
+                
+                # List all columns
+                for i, col in enumerate(columns):
+                    context.log.info(f"Column {i}: {col.get('name')} -> {col.get('type')}")
+
                 converted_columns = TypeMapper.convert_schema(
                     schema_dict,
                     self.destination_type(),
                     optimization="balanced"
                 )
                 
+                schema_dict = schema.to_dict()
+                # DEBUG: Log the result
                 context.log.info(f"✅ Types mapped: {len(converted_columns)} columns")
+                
+                if len(converted_columns) == 0:
+                    context.log.error("❌ CRITICAL: TypeMapper returned empty converted_columns list!")
+                    context.log.error(f"Schema that was passed to TypeMapper:")
+                    context.log.error(f"Source: {schema_dict.get('source', {}).get('type')}.{schema_dict.get('source', {}).get('database')}.{schema_dict.get('source', {}).get('table')}")
+                    context.log.error(f"Columns in schema: {len(columns)}")
+                    for col in columns:
+                        context.log.error(f"  - {col.get('name')}: {col.get('type')} (nullable: {col.get('nullable', True)})")
+                    
+                    raise ValueError("Type conversion failed - all columns may have unsupported types")
                 
                 # ============================================================
                 # STEP 4: INITIALIZE CONNECTORS

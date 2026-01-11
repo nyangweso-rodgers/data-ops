@@ -7,7 +7,7 @@ Shares the same base factory as MySQL, only differs in connector creation.
 
 from typing import Optional, Dict, Any
 from dagster import AssetExecutionContext
-from .base_etl_factory import BaseETLFactory
+from .etl_base_factory import BaseETLFactory
 from dagster_pipeline.connectors.sources.postgres_source_connector import PostgresSourceConnector
 from dagster_pipeline.connectors.sink.clickhouse_sink_connector import ClickHouseSinkConnector
 import structlog
