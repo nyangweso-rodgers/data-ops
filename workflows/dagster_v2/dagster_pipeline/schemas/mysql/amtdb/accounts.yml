@@ -3,8 +3,8 @@ metadata:
   version: 1.0.0
   created_by: "Rodgers Nyangweso"
   description: "Accounts table for the AMT database"
-  created_at: "2024-01-15"
-  last_modified: "2024-01-15"
+  created_at: "2025-01-15"
+  last_modified: "2025-01-15"
 
 source:
   type: mysql
@@ -16,23 +16,51 @@ source:
       type: bigint
       nullable: false
       primary_key: true
-
+    - name: accountTypeId
+      type: int
+      nullable: true
     - name: customerId
       type: int
       nullable: false
-
+    - name: paygContractNumber
+      type: varchar(255)
+      nullable: true
+    - name: accountRef
+      type: varchar(100)
+      nullable: true
     - name: status
-      type: varchar(50)
+      type: varchar(255)
       nullable: false
-      default: "active"
-
+    - name: parentAccountId
+      type: int
+      nullable: true
+    - name: salesAgents
+      type: int
+      nullable: true
+    - name: dispatchDate
+      type: datetime
+      nullable: true
+    - name: firstInstallmentDate
+      type: date
+      nullable: true
+    - name: fullDepositDate
+      type: date
+      nullable: true
     - name: createdAt
       type: timestamp
       nullable: false
       default: CURRENT_TIMESTAMP
-
     - name: updatedAt
       type: timestamp
       nullable: false
       default: CURRENT_TIMESTAMP
       on_update: CURRENT_TIMESTAMP
+    - name: netSuiteAccountId
+      type: varchar(255)
+      nullable: true
+    - name: isMigrated
+      type: tinyint(1)
+      nullable: true
+    - name: isWalletActive
+      type: tinyint(1)
+      nullable: true

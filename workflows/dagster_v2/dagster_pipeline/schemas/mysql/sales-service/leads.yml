@@ -25,8 +25,44 @@ source:
     - name: companyRegionId
       type: int
       nullable: true
+    - name: agentProviderId
+      type: varchar(64)
+      nullable: true
+    - name: status
+      type: enum('NEW', 'IN_PROGRESS', 'QUALIFIED', 'CONVERTED', 'ARCHIVED')
+      nullable: true
+    - name: leadStatus
+      type: enum('LEAD_CREATION', 'TDH_SUBMISSION', 'KYC_COMPLETED', 'CDS 1', 'QUALIFIED', 'CONVERTED', 'DEPOSIT', 'CDS 2')
+      nullable: true
+    - name: leadCategory
+      type: enum('HOT', 'WARM', 'COLD')
+      nullable: true
+    - name: referralId
+      type: varchar(64)
+      nullable: true
+    - name: productOfInterest
+      type: varchar(255)
+      nullable: true
     - name: agentId
       type: varchar(64)
+      nullable: true
+    - name: throughPartnerLeadId
+      type: varchar(64)
+      nullable: true
+    - name: name
+      type: varchar(255)
+      nullable: true
+    - name: leadAmtCustomerId
+      type: bigint
+      nullable: true
+    - name: leadChannelId
+      type: bigint
+      nullable: true
+    - name: leadSourceId
+      type: bigint
+      nullable: true
+    - name: is_migrated
+      type: tinyint(1)
       nullable: true
     - name: createdAt
       type: datetime
