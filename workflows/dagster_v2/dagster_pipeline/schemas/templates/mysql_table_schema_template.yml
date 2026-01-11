@@ -18,20 +18,18 @@ source:
       type: timestamp
       nullable: false
       default: CURRENT_TIMESTAMP
-      description: "Record creation timestamp"
     
     - name: updatedAt
       type: timestamp
       nullable: false
       default: CURRENT_TIMESTAMP
       on_update: CURRENT_TIMESTAMP 
-      description: "Record last update timestamp"
+      description: ""
     
     - name: id
       type: bigint
       nullable: false
       primary_key: true
-      description: "Primary key identifier"
 
 
     
