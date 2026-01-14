@@ -24,7 +24,6 @@ source:
       nullable: false
       default: CURRENT_TIMESTAMP
       on_update: CURRENT_TIMESTAMP 
-      description: ""
     
     - name: id
       type: bigint

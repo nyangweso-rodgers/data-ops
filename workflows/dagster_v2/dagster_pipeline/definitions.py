@@ -9,10 +9,15 @@ from dagster import ScheduleDefinition
 
 # Import ALL resources from the central registry
 from dagster_pipeline.resources.registry import (
-    # MySQL
-    mysql_amt,
+    # MySQL - Sales Service
     mysql_sales_service_dev,
     mysql_sales_service,
+    
+    # MySQL - AMT
+    mysql_amt,
+    
+    # MySQL - Soil Testing Prod
+    mysql_soil_testing_prod_db,
     
     # ClickHouse
     clickhouse_resource,
@@ -54,6 +59,14 @@ mysql_amt_to_clickhouse_job = define_asset_job(
     name="mysql_amt_to_clickhouse_job",
     selection=[
         "mysql_amt_accounts_to_clickhouse",
+    ],
+)
+
+# MySQL - Soil Testing Prod Job
+mysql_soil_testing_prod_to_clickhouse_job = define_asset_job(
+    name="mysql_soil_testing_prod_to_clickhouse_job",
+    selection=[
+        "mysql_soil_testing_prod_policies_to_clickhouse"
     ],
 )
 
@@ -101,6 +114,13 @@ mysql_amt_to_clickhouse_schedule = ScheduleDefinition(
     name="mysql_amt_to_clickhouse_schedule",
 )
 
+# MySQL - Soil Testing Prod Schedule (Every 20 minutes, 6 AM - 8 PM)
+mysql_soil_testing_prod_to_clickhouse_schedule = ScheduleDefinition(
+    job=mysql_soil_testing_prod_to_clickhouse_job,
+    cron_schedule="*/20 6-20 * * *",
+    name="mysql_soil_testing_prod_to_clickhouse_schedule",
+)
+
 # PostgreSQL FMA Schedule (Every 30 minutes, 6 AM - 8 PM)
 postgres_fma_to_clickhouse_schedule = ScheduleDefinition(
     job=postgres_fma_to_clickhouse_job,
@@ -140,10 +160,15 @@ defs = Definitions(
         *optimize_clickhouse_asset,
     ],
     resources={
-        # MySQL
+        # MySQL - AMT
         "mysql_amt": mysql_amt,
+        
+        # MySQL - Sales Service
         "mysql_sales_service_dev": mysql_sales_service_dev,
         "mysql_sales_service": mysql_sales_service,
+        
+        # MySQL - Soil Testing Prod
+        "mysql_soil_testing_prod_db": mysql_soil_testing_prod_db,
         
         # PostgreSQL
         "postgres_fma": postgres_fma,
@@ -163,6 +188,9 @@ defs = Definitions(
         mysql_amt_to_clickhouse_job,
         postgres_fma_to_clickhouse_job,
         
+        # ETL Jobs - Soil Testing Prod
+        mysql_soil_testing_prod_to_clickhouse_job,
+        
         # Maintenance Jobs
         clickhouse_cleanup_job, 
         
@@ -174,6 +202,7 @@ defs = Definitions(
         # ETL Schedules
         mysql_sales_service_to_clickhouse_schedule,
         mysql_amt_to_clickhouse_schedule,
+        mysql_soil_testing_prod_to_clickhouse_schedule,
         postgres_fma_to_clickhouse_schedule,
         
         # Maintenance Schedules

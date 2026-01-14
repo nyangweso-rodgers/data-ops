@@ -58,6 +58,17 @@ mysql_sales_service = MySQLResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
+# MYSQL - Soil Testing Prod Resource
+# ═════════════════════════════════════════════════════════════════════════════
+mysql_soil_testing_prod_db = MySQLResource(
+    host=EnvVar("SC_SOIL_TESTING_PROD_MYSQL_DB_HOST"),
+    port=3306,
+    user=EnvVar("SC_SOIL_TESTING_PROD_MYSQL_DB_USER"),
+    password=EnvVar("SC_SOIL_TESTING_PROD_MYSQL_DB_PASSWORD"),
+    database=EnvVar("SC_SOIL_TESTING_PROD_MYSQL_DB_NAME")
+)
+
+# ═════════════════════════════════════════════════════════════════════════════
 # ClickHouse Resource
 # ═════════════════════════════════════════════════════════════════════════════
 clickhouse_resource = ClickHouseResource(

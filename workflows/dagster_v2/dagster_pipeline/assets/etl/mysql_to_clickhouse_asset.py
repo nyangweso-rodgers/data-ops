@@ -164,6 +164,27 @@ mysql_sales_service_forms = create_mysql_to_clickhouse_asset(
     clickhouse_partition_by=None,
 )
 # ============================================================================
+# Sync MySQL Soil Testing Prod DB Tables → ClickHouse
+# ============================================================================
+mysql_soil_testing_prod_policies = create_mysql_to_clickhouse_asset(
+    # Asset Identity
+    asset_name="mysql_soil_testing_prod_policies_to_clickhouse",
+    group_name="mysql_soil_testing_prod_to_clickhouse",
+    
+    # Source Config
+    mysql_resource_key="mysql_soil_testing_prod_db",
+    source_database="soil_testing_prod",
+    source_table="policies",
+    incremental_key="updatedAt",
+    
+    # Destination Config (ClickHouse)
+    destination_database="soil_testing_prod",
+    destination_table="policies_v1",
+    clickhouse_engine="ReplacingMergeTree(updatedAt)",
+    clickhouse_order_by=["id", "updatedAt"],
+    clickhouse_partition_by=None,
+)
+# ============================================================================
 # ASSET COLLECTION
 # ============================================================================
 assets = [
@@ -177,5 +198,8 @@ assets = [
     mysql_sales_service_cds,
     mysql_sales_service_form_answers,
     mysql_sales_service_kyc_requests,
-    mysql_sales_service_forms
+    mysql_sales_service_forms,
+    
+    # MySQL Soil Testing Prod DB Tables
+    mysql_soil_testing_prod_policies
     ]
