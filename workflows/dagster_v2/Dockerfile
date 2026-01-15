@@ -12,20 +12,25 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (for Docker layer caching)
-COPY requirements.txt .
+# Copy pyproject.toml first (for Docker layer caching)
+# This layer will only rebuild if pyproject.toml changes
+COPY pyproject.toml README.md ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+# Note: We need to copy a minimal package structure for pip to recognize it
+COPY dagster_pipeline/__init__.py /app/dagster_pipeline/__init__.py
 
-# Copy pipeline code
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -e .
+
+# Now copy the full pipeline code
+# This layer rebuilds whenever code changes, but dependencies are cached
 COPY dagster_pipeline/ /app/dagster_pipeline/
 
 # Create storage directories for Dagster
 RUN mkdir -p /app/dagster_home
 
-# Set Python path
+# Set Python path (redundant with editable install, but kept for clarity)
 ENV PYTHONPATH=/app
 
 # Expose ports

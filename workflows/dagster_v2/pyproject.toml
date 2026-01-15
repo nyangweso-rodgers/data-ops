@@ -5,67 +5,96 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dagster-pipeline"
 version = "0.1.0"
-description = "Production ETL pipeline with Dagster for MySQL/Postgres → ClickHouse"
+description = "Data orchestration pipeline with Dagster for ETL, maintenance, and snapshots"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [
-    {name = "Rodgers Nyangweso", email = "rodgers@example.com"}
+    {name = "Rodgers Nyangweso", email = "team@example.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3.10"
 ]
 
+# Core dependencies (production)
 dependencies = [
-    # Dagster core
-    "dagster==1.8.7",
-    "dagster-webserver==1.8.7",
-    "dagster-postgres==0.24.7",
+    # Core Dagster
+    "dagster==1.12.4",
+    "dagster-webserver==1.12.4",
+    "dagster-postgres==0.28.4",
     
     # Database drivers
-    "psycopg2-binary==2.9.9",
+    "psycopg2-binary==2.9.10",
     "pymysql==1.1.1",
     "clickhouse-driver==0.2.9",
-    "clickhouse-connect==0.7.19",  # Alternative ClickHouse driver
+    "clickhouse-connect==0.8.18",
+    "mysql-connector-python==8.0.33",
     
     # Data processing
-    "pandas==2.2.2",
-    "polars==1.9.0",  # Memory-efficient alternative to pandas
-    "pyarrow==17.0.0",  # For Parquet support
+    "pyarrow==17.0.0",
     
     # Utilities
     "pyyaml==6.0.2",
     "python-dotenv==1.0.1",
-    "pydantic==2.9.2",  # For data validation
+    "pydantic==2.9.2",
+    "sqlalchemy==2.0.43",
+    "tenacity==9.1.2",
     
-    # AWS (for S3, future)
-    "boto3==1.35.36",
+    # Monitoring
+    "structlog==25.5.0",
     
-    # Monitoring & Logging
-    "structlog==24.4.0",
+    # Caching (example of adding a new package)
+    #"redis==5.0.1",
 ]
 
 [project.optional-dependencies]
+# Development dependencies
 dev = [
-    "pytest==8.3.3",
-    "pytest-cov==5.0.0",
-    "black==24.8.0",
-    "ruff==0.6.9",
-    "mypy==1.11.2",
-    "pre-commit==3.8.0",
+    "pytest==8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "black==25.11.0",
+    "ruff==0.2.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
 ]
 
-test = [
-    "pytest==8.3.3",
-    "pytest-mock==3.14.0",
-    "faker==30.3.0",
+# AWS dependencies (optional, enable when needed)
+aws = [
+    #"boto3>=1.35.36",
+    #"s3fs>=2024.2.0",
 ]
 
-[tool.setuptools]
-packages = ["dagster_pipeline"]
+# All optional dependencies
+all = [
+    "dagster-pipeline[dev,aws]",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourorg/dagster-pipeline"
+Repository = "https://github.com/yourorg/dagster-pipeline"
+Documentation = "https://github.com/yourorg/dagster-pipeline/tree/main/docs"
+
+# ============================================================================
+# Tool Configurations
+# ============================================================================
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dagster_pipeline*"]
+exclude = ["tests*", "docs*"]
 
 [tool.black]
 line-length = 100
-target-version = ['py311']
-exclude = '''
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''
 /(
-    \.git
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
   | \.venv
   | build
   | dist
@@ -74,18 +103,70 @@ exclude = '''
 
 [tool.ruff]
 line-length = 100
-select = ["E", "F", "I", "N", "W"]
-ignore = ["E501"]  # Line too long (handled by black)
+target-version = "py310"
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # unused imports in __init__.py
+
+[tool.ruff.lint.isort]
+known-first-party = ["dagster_pipeline"]
 
 [tool.pytest.ini_options]
-testpaths = ["dagster_pipeline/tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
-addopts = "--verbose --cov=dagster_pipeline --cov-report=html --cov-report=term"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=dagster_pipeline",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start permissive, tighten over time
+ignore_missing_imports = true
+files = ["dagster_pipeline"]
+
+[tool.coverage.run]
+source = ["dagster_pipeline"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

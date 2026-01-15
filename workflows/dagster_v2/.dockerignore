@@ -1,16 +1,32 @@
+# Python cache
 __pycache__
 *.pyc
 *.pyo
 *.pyd
+*.egg-info
+
+# Testing
 .pytest_cache
 .ruff_cache
+
+# Virtual environments
 .venv
 venv/
-*.egg-info
+
+# Git
 .git
 .github
+
+# Testing and docs
 tests/
 docs/
+
+# Markdown files (but NOT README.md - see below)
 *.md
+!README.md
+
+# Environment files
 .env
+
+# OS files
 .DS_Store
