@@ -10,26 +10,31 @@
 
   1. ETL Assets (`assets/etl/`)
 
-     - Purpose: Keep destination in sync with source
+     - **Purpose**: Keep destination in sync with source
      - Pattern: Continuous sync with incremental tracking
      - Schedule: Frequent (15-20 mins)
      - Example: MySQL accounts → ClickHouse accounts (live data)
 
   2. Maintenance Assets (`assets/maintenance/`)
 
-     - Purpose: Optimize and clean existing data
+     - **Purpose**: Optimize and clean existing data
      - Pattern: Analyze → Clean → Optimize
      - Schedule: Periodic (daily/weekly)
      - Example: Deduplicate ClickHouse partitions
 
   3. Snapshot Assets (`assets/snapshots/`)
 
-     - Purpose: Capture point-in-time state for history
+     - **Purpose**: Capture point-in-time state for history
      - Pattern: Query → Timestamp → Append
      - Schedule: Periodic (daily/monthly)
      - Example: Account status at end of month
 
-  4. Data Quality (`assets/data_quality`)
+  4. Data Quality Assets (`assets/data_quality`)
+
+     - **Purpose**: Data Quality Checks
+
+  5. Reverse ETL Assets (`assets/reverse_etl`)
+     - **Purpose**: Extract, Tranform and Load data from data warehouse to a Production DB (MySQL, PostgreSQL, e.t.c.,)
 
 # Project Structure
 
