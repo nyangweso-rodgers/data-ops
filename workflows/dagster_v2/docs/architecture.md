@@ -128,6 +128,15 @@
   3.  Failure resilience - If something breaks midway, you've already committed batches 1-10 to ClickHouse. With the second approach, you'd have wasted time fetching everything only to fail at the concatenation step.
   4.  Predictable performance - No garbage collection spikes or memory thrashing when dealing with large result sets.
 
+# Files
+
+## `pyproject.toml`
+
+- Used for:
+  - Declares what dependencies the project needs
+  - Organizes project metadata and tool configs
+  - Defines the package structure
+
 # Setup
 
 ## Step : Setup PostgreSQL DB For Dagster
