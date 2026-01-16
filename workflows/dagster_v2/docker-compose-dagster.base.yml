@@ -1,9 +1,9 @@
 # Base Dagster configuration - shared across all environments
 #
 # Usage:
-#   Local: docker-compose -f docker-compose-dagster.base.yml -f docker-compose-dagster.local.yml up
-#   Dev:   docker-compose -f docker-compose-dagster.base.yml -f docker-compose-dagster.dev.yml up
-#   Prod:  docker-compose -f docker-compose-dagster.base.yml -f docker-compose-dagster.prod.yml up
+#   Local: docker-compose --env-file ../../.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.local.yml up
+#   RDS:   docker-compose --env-file ../../.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.local-rds.yml up
+#   Prod:  docker-compose --env-file ../../.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.prod.yml up
 
 services:
   # ============================================================================
@@ -27,23 +27,11 @@ services:
         "-m",
         "dagster_pipeline",
       ]
-    env_file:
-      - ../../.env # Global env vars
-      - .env.dagster # Dagster-specific env vars
     environment:
       # Core Dagster settings
       - DAGSTER_HOME=/app/dagster_home
       - PYTHONPATH=/app
-
-      # ═══════════════════════════════════════════════════════════════════
-      # DAGSTER POSTGRES (State Management)
-      # These will be overridden by docker-compose-dagster.local.yml or .prod.yml
-      # ═══════════════════════════════════════════════════════════════════
-      #- DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
-      #- DAGSTER_POSTGRES_PORT=${DAGSTER_PG_DB_PORT:-5432}
-      #- DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
-      #- DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
-      #- DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      # DB settings will be set in override files (local.yml, local-rds.yml, prod.yml)
     volumes:
       - ./dagster_home/:/app/dagster_home
       - ./dagster_pipeline:/app/dagster_pipeline
@@ -78,22 +66,10 @@ services:
         "-w",
         "/app/dagster_home/workspace.yaml",
       ]
-    env_file:
-      - ../../.env
-      - .env.dagster
     environment:
       - DAGSTER_HOME=/app/dagster_home
       - PYTHONPATH=/app
-
-      # ═══════════════════════════════════════════════════════════════════
-      # DAGSTER POSTGRES (State Management)
-      # These will be overridden by docker-compose-dagster.local.yml or .prod.yml
-      # ═══════════════════════════════════════════════════════════════════
-      #- DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
-      #- DAGSTER_POSTGRES_PORT=${DAGSTER_PG_DB_PORT:-5432}
-      #- DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
-      #- DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
-      #- DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      # DB settings will be set in override files
     volumes:
       - ./dagster_home:/app/dagster_home
       - ./dagster_pipeline:/app/dagster_pipeline
@@ -110,25 +86,13 @@ services:
   # DAGSTER DAEMON - Runs Schedules & Sensors
   # ============================================================================
   dagster_daemon:
-    image: dagster # Reuse built image
+    image: dagster
     container_name: dagster_daemon
     command: ["dagster-daemon", "run", "-w", "/app/dagster_home/workspace.yaml"]
-    env_file:
-      - ../../.env
-      - .env.dagster
     environment:
       - DAGSTER_HOME=/app/dagster_home
       - PYTHONPATH=/app
-
-      # ═══════════════════════════════════════════════════════════════════
-      # DAGSTER POSTGRES (State Management)
-      # These will be overridden by docker-compose-dagster.local.yml or .prod.yml
-      # ═══════════════════════════════════════════════════════════════════
-      #- DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
-      #- DAGSTER_POSTGRES_PORT=${DAGSTER_PG_DB_PORT:-5432}
-      #- DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
-      #- DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
-      #- DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      # DB settings will be set in override files
     volumes:
       - ./dagster_home:/app/dagster_home
       - ./dagster_pipeline:/app/dagster_pipeline

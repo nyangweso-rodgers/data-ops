@@ -10,7 +10,7 @@ Features:
 - Monitoring capabilities
 """
 
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional
 from datetime import datetime, date, timezone
 from decimal import Decimal
 import json

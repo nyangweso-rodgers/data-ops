@@ -322,9 +322,10 @@ class MySQLSourceConnector(BaseSourceConnector):
                 return value.hex()
             
         # ── 3. Only attempt string parsing if MySQL column type INDICATES date/time ──
-        is_date_like_column = any(t in mysql_type_lower for t in [
-            'date', 'datetime', 'timestamp', 'year'
-        ])
+        mysql_type_lower = mysql_type.lower().strip()
+        base_type = mysql_type_lower.split('(')[0].strip()          # 'date', 'datetime', 'varchar', 'enum', etc.
+
+        is_date_like_column = base_type in {'date', 'datetime', 'timestamp', 'time'}
 
         if isinstance(value, str) and is_date_like_column:
             # Zero / invalid date strings → None

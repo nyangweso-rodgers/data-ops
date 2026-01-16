@@ -1,6 +1,6 @@
 # dagster_pipeline/resources/registry.py
 """
-Central registry of all MySQL source instances.
+Central registry of all MySQL, PostgreSQL, and ClickHouse source instances.
 
 This file is the SINGLE source of truth for every MySQL cluster we read from.
 When you need to add a new source → add ONE line here. Nothing else changes.
@@ -25,7 +25,7 @@ dagster_postgres_resource = DagsterPostgresResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# SOURCE DATABASES (where we extract data FROM)
+# MySQL - AMT 
 # ═════════════════════════════════════════════════════════════════════════════
 
 mysql_amt = MySQLResource(
@@ -37,7 +37,7 @@ mysql_amt = MySQLResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# MYSQL SALES SERVICE DEV RESOURCE
+# MySQL - SALES SERVICE DEV RESOURCE
 # ═════════════════════════════════════════════════════════════════════════════
 mysql_sales_service_dev = MySQLResource(
     host=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_HOST"),
@@ -47,7 +47,7 @@ mysql_sales_service_dev = MySQLResource(
     database=EnvVar("SC_SALES_SERVICE_DEV_MYSQL_DB_NAME")
 )
 # ═════════════════════════════════════════════════════════════════════════════
-# MYSQL SALES SERVICE PROD RESOURCE
+# MySQL - SALES SERVICE PROD RESOURCE
 # ═════════════════════════════════════════════════════════════════════════════
 mysql_sales_service = MySQLResource(
     host=EnvVar("SC_SALES_SERVICE_MYSQL_DB_HOST"),
@@ -58,7 +58,7 @@ mysql_sales_service = MySQLResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# MYSQL - Soil Testing Prod Resource
+# MySQL - Soil Testing Prod
 # ═════════════════════════════════════════════════════════════════════════════
 mysql_soil_testing_prod_db = MySQLResource(
     host=EnvVar("SC_SOIL_TESTING_PROD_MYSQL_DB_HOST"),
@@ -69,7 +69,7 @@ mysql_soil_testing_prod_db = MySQLResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# ClickHouse Resource
+# ClickHouse Cloud
 # ═════════════════════════════════════════════════════════════════════════════
 clickhouse_resource = ClickHouseResource(
     host=EnvVar("SC_CH_DB_HOST"),
@@ -80,7 +80,7 @@ clickhouse_resource = ClickHouseResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# PostgreSQL FMA Resource
+# PostgreSQL - FMA
 # ═════════════════════════════════════════════════════════════════════════════
 postgres_fma = PostgreSQLResource(
     host=EnvVar("SC_EP_PG_DB_HOST"),
@@ -90,4 +90,3 @@ postgres_fma = PostgreSQLResource(
     database=EnvVar("SC_EP_PG_DB_NAME"),
     pg_schema="public",
 )
-# ← Add new sources here tomorrow. One line. Done.
