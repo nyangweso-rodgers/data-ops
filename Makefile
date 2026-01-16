@@ -2,9 +2,15 @@
 # Root Makefile for the entire data-ops monorepo
 
 DAGSTER_DIR := workflows/dagster_v2
+ROOT_DIR := $(shell pwd)
+
+# Export ROOT_DIR so nested Makefiles can use it
+export ROOT_DIR
 
 .PHONY: help dagster-local-up-build dagster-local-up dagster-local-stop \
         dagster-local-down dagster-local-logs dagster-local-restart \
+        dagster-local-rds-up-build dagster-local-rds-up dagster-local-rds-stop \
+        dagster-local-rds-down dagster-local-rds-logs dagster-local-rds-restart \
         dagster-prod-up dagster-prod-down dagster-prod-logs dagster-build \
         postgres-up postgres-down up down logs clean
 
@@ -33,7 +39,22 @@ help:
 	@echo "  make logs                   - View all logs"
 	@echo "  make clean                  - Clean up everything"
 
-# Dagster commands (delegate to workflows/dagster_v2/Makefile)
+# Environment check
+# ──────────────────────────────────────────────────────────────
+env-check:
+	@if [ ! -f .env ]; then \
+		echo "❌ Error: .env file not found in root directory"; \
+		echo "Please create .env file from .env.example"; \
+		exit 1; \
+	fi
+	@echo "✓ .env file found"
+	@if ! grep -q "DAGSTER_PG_DB_HOST" .env; then \
+		echo "⚠️  Warning: DAGSTER_PG_DB_HOST not found in .env"; \
+	fi
+	
+# ──────────────────────────────────────────────────────────────
+# Dagster - Local development
+# ──────────────────────────────────────────────────────────────
 dagster-local-up-build:
 	@$(MAKE) -C $(DAGSTER_DIR) local-up-build
 
@@ -52,6 +73,31 @@ dagster-local-logs:
 dagster-local-restart:
 	@$(MAKE) -C $(DAGSTER_DIR) local-restart
 
+# ──────────────────────────────────────────────────────────────
+# Dagster - Local + RDS (real AWS RDS instead of local postgres container)
+# ──────────────────────────────────────────────────────────────
+
+dagster-local-rds-up-build:
+	@$(MAKE) -C $(DAGSTER_DIR) local-rds-up-build
+
+dagster-local-rds-up:
+	@$(MAKE) -C $(DAGSTER_DIR) local-rds-up
+
+dagster-local-rds-stop:
+	@$(MAKE) -C $(DAGSTER_DIR) local-rds-stop
+
+dagster-local-rds-down:
+	@$(MAKE) -C $(DAGSTER_DIR) local-rds-down
+
+dagster-local-rds-logs:
+	@$(MAKE) -C $(DAGSTER_DIR) local-rds-logs
+
+dagster-local-rds-restart:
+	@$(MAKE) -C $(DAGSTER_DIR) local-rds-restart
+
+# ──────────────────────────────────────────────────────────────
+# Dagster - Production
+# ──────────────────────────────────────────────────────────────
 dagster-prod-up:
 	@$(MAKE) -C $(DAGSTER_DIR) prod-up
 
