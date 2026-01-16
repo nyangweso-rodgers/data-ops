@@ -7,14 +7,17 @@ storage:
   postgres:
     postgres_db:
       username:
-        env: DAGSTER_PG_DB_USER
+        env: DAGSTER_POSTGRES_USER
       password:
-        env: DAGSTER_PG_DB_PASSWORD
+        env: DAGSTER_POSTGRES_PASSWORD
       hostname:
-        env: DAGSTER_PG_DB_HOST
+        env: DAGSTER_POSTGRES_HOST
       db_name:
-        env: DAGSTER_PG_DB_NAME
-      port: 5432
+        env: DAGSTER_POSTGRES_DB
+      port:
+        env: DAGSTER_POSTGRES_PORT
+      params:
+        connect_timeout: 10
 
 # ============================================================================
 # RUN COORDINATOR - How runs are launched
@@ -24,6 +27,8 @@ run_coordinator:
   class: QueuedRunCoordinator
   config:
     max_concurrent_runs: 10
+    tag_concurrency_limits: []
+    dequeue_interval_seconds: 1
 
 # ============================================================================
 # RUN LAUNCHER (for local: DefaultRunLauncher, for ECS: EcsRunLauncher) - Where code actually executes
