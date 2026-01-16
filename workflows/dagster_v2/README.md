@@ -150,7 +150,6 @@
     - `Makefile`
     - `pyproject.toml`
     - `README.md`
-    - `requirements.txt`
 
 # Resources and Further Reading
 
