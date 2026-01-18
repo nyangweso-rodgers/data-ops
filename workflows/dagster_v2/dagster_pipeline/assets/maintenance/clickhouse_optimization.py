@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 
 TABLE_PRIMARY_KEYS: Dict[str, Dict[str, str]] = {
     "sales-service": {
-        "leads_v2": "leadId",
+        "leads_v1": "leadId",
         "leadsources_v1": "id",
         "lead_channels_v1": "id",
         "cds_v1": "id",
@@ -41,7 +41,7 @@ TABLE_PRIMARY_KEYS: Dict[str, Dict[str, str]] = {
     "amt": {
         "accounts_v1": "id",
     },
-    "soil_testing_prod": { 
+    "soil_testing_prod": {  # ← Fixed: underscores, not hyphens
         "policies_v1": "id",
     },
     "fma": {
@@ -110,18 +110,59 @@ def optimize_clickhouse_tables(context: AssetExecutionContext) -> Output:
             context.log.info(f"\n   🔨 Optimizing {database}.{table}...")
             
             try:
+                # Check table engine
+                engine = _check_table_engine(client, database, table, context)
+                context.log.info(f"      Engine: {engine}")
+                
+                # Warn about SharedReplacingMergeTree behavior
+                if "Shared" in engine:
+                    context.log.info(
+                        f"      Note: {engine} uses automatic background merges. "
+                        f"OPTIMIZE may not remove duplicates immediately."
+                    )
+                
+                # Warn if not ReplacingMergeTree
+                if "Replacing" not in engine:
+                    context.log.warning(
+                        f"      ⚠️  Table is using {engine} engine, not ReplacingMergeTree. "
+                        f"OPTIMIZE FINAL may not remove duplicates!"
+                    )
+                
                 # Get stats BEFORE optimization
                 stats_before = _get_table_stats(client, database, table, context)
+                
+                # Check for cross-partition duplicates (if table has duplicates)
+                cross_partition_info = None
+                if stats_before['duplicate_count'] > 0:
+                    primary_key = TABLE_PRIMARY_KEYS.get(database, {}).get(table)
+                    if primary_key:
+                        cross_partition_info = _check_cross_partition_duplicates(
+                            client, database, table, primary_key, context
+                        )
+                        
+                        if cross_partition_info['cross_partition_duplicates'] > 0:
+                            context.log.warning(
+                                f"      ⚠️  {cross_partition_info['cross_partition_duplicates']} "
+                                f"duplicates exist across different partitions. "
+                                f"OPTIMIZE FINAL cannot remove these!"
+                            )
                 
                 context.log.info(
                     f"      Before: {stats_before['total_rows']:,} rows, "
                     f"{stats_before['duplicate_count']:,} duplicates ({stats_before['duplicate_pct']}%)"
                 )
                 
-                # Run OPTIMIZE TABLE FINAL
+                # Run OPTIMIZE TABLE FINAL with synchronous mode
                 optimize_start = time.time()
                 
-                optimize_query = f"OPTIMIZE TABLE `{database}`.`{table}` FINAL"
+                # For SharedReplacingMergeTree, use DEDUPLICATE
+                # This forces immediate deduplication instead of relying on background merges
+                if "Shared" in engine:
+                    context.log.info(f"      Note: Using DEDUPLICATE for {engine} engine")
+                    optimize_query = f"OPTIMIZE TABLE `{database}`.`{table}` FINAL DEDUPLICATE SETTINGS alter_sync=2"
+                else:
+                    optimize_query = f"OPTIMIZE TABLE `{database}`.`{table}` FINAL SETTINGS alter_sync=2"
+                
                 client.command(optimize_query)
                 
                 optimize_duration = time.time() - optimize_start
@@ -143,7 +184,7 @@ def optimize_clickhouse_tables(context: AssetExecutionContext) -> Output:
                 results["total_duplicates_removed"] += duplicates_removed
                 
                 # Store details
-                results["details"].append({
+                result_detail = {
                     "database": database,
                     "table": table,
                     "status": "success",
@@ -151,7 +192,17 @@ def optimize_clickhouse_tables(context: AssetExecutionContext) -> Output:
                     "rows_after": stats_after['total_rows'],
                     "duplicates_removed": duplicates_removed,
                     "duration_seconds": round(optimize_duration, 2),
-                })
+                }
+                
+                # Add cross-partition info if available
+                if cross_partition_info and cross_partition_info['cross_partition_duplicates'] > 0:
+                    result_detail["cross_partition_duplicates"] = cross_partition_info['cross_partition_duplicates']
+                    result_detail["warning"] = (
+                        f"{cross_partition_info['cross_partition_duplicates']} duplicates "
+                        f"exist across partitions and cannot be removed by OPTIMIZE"
+                    )
+                
+                results["details"].append(result_detail)
                 
                 logger.info(
                     "table_optimized",
@@ -240,8 +291,87 @@ def optimize_clickhouse_tables(context: AssetExecutionContext) -> Output:
 
 
 # ============================================================================
-# HELPER FUNCTION
+# HELPER FUNCTIONS
 # ============================================================================
+
+def _check_cross_partition_duplicates(
+    client,
+    database: str,
+    table: str,
+    primary_key: str,
+    context: AssetExecutionContext
+) -> Dict[str, int]:
+    """
+    Check if duplicates exist across different partitions
+    
+    Returns:
+        {
+            "total_duplicates": int,
+            "within_partition_duplicates": int,
+            "cross_partition_duplicates": int,
+        }
+    """
+    
+    try:
+        # Get total duplicates (across all partitions)
+        total_query = f"""
+            SELECT count(*) - uniqExact({primary_key}) as cross_partition_dups
+            FROM `{database}`.`{table}`
+        """
+        total_result = client.query(total_query)
+        total_duplicates = total_result.result_rows[0][0] if total_result.result_rows else 0
+        
+        # Get within-partition duplicates
+        within_query = f"""
+            SELECT sum(cnt - 1) as within_partition_dups
+            FROM (
+                SELECT 
+                    _partition_id,
+                    {primary_key},
+                    count() as cnt
+                FROM `{database}`.`{table}`
+                GROUP BY _partition_id, {primary_key}
+                HAVING cnt > 1
+            )
+        """
+        within_result = client.query(within_query)
+        within_duplicates = within_result.result_rows[0][0] if within_result.result_rows and within_result.result_rows[0][0] else 0
+        
+        # Cross-partition = Total - Within
+        cross_partition_duplicates = total_duplicates - within_duplicates
+        
+        return {
+            "total_duplicates": total_duplicates,
+            "within_partition_duplicates": within_duplicates,
+            "cross_partition_duplicates": max(0, cross_partition_duplicates),  # Don't allow negative
+        }
+        
+    except Exception as e:
+        context.log.warning(f"Could not check cross-partition duplicates for {database}.{table}: {e}")
+        return {
+            "total_duplicates": 0,
+            "within_partition_duplicates": 0,
+            "cross_partition_duplicates": 0,
+        }
+
+
+def _check_table_engine(client, database: str, table: str, context: AssetExecutionContext) -> str:
+    """Check if table is using ReplacingMergeTree engine"""
+    
+    try:
+        query = f"SELECT engine FROM system.tables WHERE database = %(database)s AND name = %(table)s"
+        result = client.query(query, parameters={"database": database, "table": table})
+        
+        if result.result_rows:
+            engine = result.result_rows[0][0]
+            return engine
+        
+        return "Unknown"
+        
+    except Exception as e:
+        context.log.warning(f"Could not check engine for {database}.{table}: {e}")
+        return "Unknown"
+
 
 def _get_table_stats(client, database: str, table: str, context: AssetExecutionContext) -> Dict:
     """Get duplicate statistics for a table"""
@@ -277,7 +407,7 @@ def _get_table_stats(client, database: str, table: str, context: AssetExecutionC
             count() as total_rows,
             uniqExact({primary_key}) as unique_ids,
             count() - uniqExact({primary_key}) as duplicate_count,
-            round((count() - uniqExact({primary_key}) * 100.0 / count(), 2) as duplicate_pct
+            round((count() - uniqExact({primary_key})) * 100.0 / count(), 2) as duplicate_pct
         FROM `{database}`.`{table}`
     """
     
