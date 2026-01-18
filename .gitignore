@@ -3,6 +3,7 @@
 
 # local env files
 .env*.local
+.env.example
 .env
 .env.dagster
 .env.prefect
