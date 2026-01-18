@@ -1,13 +1,30 @@
-# definitions.py
 """
 Main Dagster definitions file.
+
+This is the entry point for Dagster - logging is initialized here before
+any other imports to ensure consistent logging across the entire application.
 """
 
-from dagster import Definitions
-from dagster import define_asset_job
-from dagster import ScheduleDefinition
+# ═════════════════════════════════════════════════════════════════════════════
+# STEP 1: Initialize logging FIRST (before any other dagster_pipeline imports)
+# ═════════════════════════════════════════════════════════════════════════════
+from dagster_pipeline.utils.logging_config import setup_logging, get_logger
 
-# Import ALL resources from the central registry
+# Configure logging for the entire application
+setup_logging()
+
+# Get logger for this module
+logger = get_logger(__name__)
+logger.info("dagster_definitions_loading")
+
+# ═════════════════════════════════════════════════════════════════════════════
+# STEP 2: Now import Dagster core
+# ═════════════════════════════════════════════════════════════════════════════
+from dagster import Definitions, define_asset_job, ScheduleDefinition
+
+# ═════════════════════════════════════════════════════════════════════════════
+# STEP 3: Import resources (logging is now configured)
+# ═════════════════════════════════════════════════════════════════════════════
 from dagster_pipeline.resources.registry import (
     # MySQL - Sales Service
     mysql_sales_service_dev,
@@ -25,16 +42,26 @@ from dagster_pipeline.resources.registry import (
     # PostgreSQL
     dagster_postgres_resource,
     postgres_fma,
-    
 )
 
-# Import assets 
+# ═════════════════════════════════════════════════════════════════════════════
+# STEP 4: Import assets
+# ═════════════════════════════════════════════════════════════════════════════
 from dagster_pipeline.assets.etl.mysql_to_clickhouse_asset import assets as mysql_assets
 from dagster_pipeline.assets.etl.postgres_to_clickhouse_asset import assets as postgres_assets
 from dagster_pipeline.assets.maintenance.optimize_clickhouse_asset import assets as optimize_clickhouse_asset
 
-# Import SchemaLoader class
+# ═════════════════════════════════════════════════════════════════════════════
+# STEP 5: Import utilities
+# ═════════════════════════════════════════════════════════════════════════════
 from dagster_pipeline.utils.schema_loader import SchemaLoader
+
+logger.info(
+    "imports_completed",
+    mysql_assets_count=len(mysql_assets),
+    postgres_assets_count=len(postgres_assets),
+    optimize_assets_count=len(optimize_clickhouse_asset)
+)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # ETL JOBS
@@ -78,10 +105,12 @@ postgres_fma_to_clickhouse_job = define_asset_job(
         "postgres_fma_premise_details_to_clickhouse",
     ],
 )
+
 # ═════════════════════════════════════════════════════════════════════════════
 # SNAPSHOT JOBS (Point-in-Time Capture)
 # ═════════════════════════════════════════════════════════════════════════════
 # Monthly Snapshots (end of month)
+# TODO: Add snapshot jobs when implemented
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAINTENANCE JOBS
@@ -94,6 +123,13 @@ clickhouse_cleanup_job = define_asset_job(
         "cleanup_sales_service_leads",
     ],
     description="Deduplicate ClickHouse tables to remove duplicate records",
+)
+
+logger.info(
+    "jobs_defined",
+    etl_jobs=4,
+    maintenance_jobs=1,
+    snapshot_jobs=0
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -135,16 +171,22 @@ postgres_fma_to_clickhouse_schedule = ScheduleDefinition(
 # ClickHouse Cleanup Schedule (Daily at midnight, Sunday-Friday)
 clickhouse_cleanup_schedule = ScheduleDefinition(
     job=clickhouse_cleanup_job,
-    cron_schedule="0 0 * * 0-5",  # 0 0 * * 0-5 = midnight Sun-Fri
+    cron_schedule="0 0 * * 0-5",  # midnight Sun-Fri
     name="clickhouse_cleanup_schedule",
     description="Run ClickHouse deduplication daily at midnight (Sun-Fri)",
+)
+
+logger.info(
+    "schedules_defined",
+    etl_schedules=4,
+    maintenance_schedules=1
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SNAPSHOT SCHEDULES
 # ═════════════════════════════════════════════════════════════════════════════
-
 # Monthly Snapshots: Run on 1st-5th of month at 1 AM
+# TODO: Add snapshot schedules when implemented
 
 # ═════════════════════════════════════════════════════════════════════════════
 # DAGSTER DEFINITIONS
@@ -187,16 +229,10 @@ defs = Definitions(
         mysql_sales_service_to_clickhouse_job,
         mysql_amt_to_clickhouse_job,
         postgres_fma_to_clickhouse_job,
-        
-        # ETL Jobs - Soil Testing Prod
         mysql_soil_testing_prod_to_clickhouse_job,
         
         # Maintenance Jobs
         clickhouse_cleanup_job, 
-        
-        # Snapshot Jobs
-        
-        # Data Quality Jobs
     ],
     schedules=[
         # ETL Schedules
@@ -207,9 +243,13 @@ defs = Definitions(
         
         # Maintenance Schedules
         clickhouse_cleanup_schedule, 
-        
-        # Snapshot Schedules
-        
-        # Data Quality Schedules
     ], 
+)
+
+logger.info(
+    "dagster_definitions_created",
+    total_assets=len(mysql_assets) + len(postgres_assets) + len(optimize_clickhouse_asset),
+    total_jobs=5,
+    total_schedules=5,
+    resources_count=9
 )
