@@ -8,9 +8,12 @@ from enum import Enum
 import re
 import csv
 from io import StringIO
-import structlog
 
-logger = structlog.get_logger(__name__)
+# Use centralized logging
+from dagster_pipeline.utils.logging_config import get_logger
+
+# Get module-level logger
+logger = get_logger(__name__)
 
 
 class DataType(Enum):
@@ -84,7 +87,10 @@ class TypeMapper:
                 return base_type, params_str if params_str else None
             else:
                 # Malformed type with parentheses
-                logger.warning("type_parse_failed_malformed", type_str=type_str)
+                logger.warning(
+                    "type_parse_failed_malformed",
+                    type_str=type_str
+                )
                 return type_str, None
         else:
             # No parentheses - just return the whole string as base_type
@@ -654,8 +660,20 @@ class TypeMapper:
             List of converted columns
         """
         source_db_type = schema["source"]["type"]
+        total_columns = len(schema["source"]["columns"])
+        
+        # Log schema conversion start (summary only)
+        logger.debug(
+            "schema_conversion_started",
+            source_type=source_db_type,
+            destination_type=destination_db_type,
+            total_columns=total_columns,
+            optimization=optimization
+        )
         
         converted_columns = []
+        failed_columns = []
+        
         for column in schema["source"]["columns"]:
             try:
                 converted = cls.convert_column(
@@ -666,13 +684,37 @@ class TypeMapper:
                 )
                 converted_columns.append(converted)
             except Exception as e:
+                column_name = column.get("name", "unknown")
+                failed_columns.append({
+                    "name": column_name,
+                    "type": column.get("type"),
+                    "error": str(e)
+                })
                 logger.error(
                     "column_conversion_failed",
-                    column_name=column.get("name"),
+                    column_name=column_name,
                     column_type=column.get("type"),
-                    error=str(e)
+                    error=str(e),
+                    error_type=type(e).__name__
                 )
                 # Continue processing other columns
                 continue
+        
+        # Log summary (not individual columns!)
+        logger.info(
+            "schema_conversion_completed",
+            source_type=source_db_type,
+            destination_type=destination_db_type,
+            columns_converted=len(converted_columns),
+            columns_failed=len(failed_columns),
+            success_rate=f"{(len(converted_columns)/total_columns*100):.1f}%"
+        )
+        
+        # Only log failed columns if there are any
+        if failed_columns:
+            logger.warning(
+                "schema_conversion_had_failures",
+                failed_columns=failed_columns
+            )
         
         return converted_columns

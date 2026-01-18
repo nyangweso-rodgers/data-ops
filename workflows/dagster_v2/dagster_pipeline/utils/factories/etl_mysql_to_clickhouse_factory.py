@@ -8,9 +8,10 @@ from dagster import AssetExecutionContext
 from .etl_base_factory import BaseETLFactory
 from dagster_pipeline.connectors.sources.mysql_source_connector import MySQLSourceConnector
 from dagster_pipeline.connectors.sink.clickhouse_sink_connector import ClickHouseSinkConnector
-import structlog
+from dagster_pipeline.utils.logging_config import get_logger, log_execution_time
 
-logger = structlog.get_logger(__name__)
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class MySQLToClickHouseFactory(BaseETLFactory):
@@ -64,6 +65,14 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         self.clickhouse_primary_key = clickhouse_primary_key
         self.clickhouse_ttl = clickhouse_ttl
         self.clickhouse_settings = clickhouse_settings or {}
+        
+        # Note: Parent class already created self.logger, just add CH config
+        self.logger.info(
+            "clickhouse_config",
+            engine=clickhouse_engine,
+            order_by=clickhouse_order_by,
+            partition_by=clickhouse_partition_by,
+        )
     
     def _validate_clickhouse_config(
         self,
@@ -100,14 +109,13 @@ class MySQLToClickHouseFactory(BaseETLFactory):
                 f"   Got: {order_by}"
             )
         
-        # PARTITION BY must be explicitly set (can be None for no partitioning)
-        # We check if it was passed to __init__ by checking if it's the sentinel value
-        # This is checked in the factory function instead
-        
         if errors:
             error_msg = "\n\n".join(errors)
             error_msg += "\n\n💡 TIP: All ClickHouse table parameters must be explicitly specified."
+            logger.error("clickhouse_config_invalid", errors=errors, engine=engine, order_by=order_by)
             raise ValueError(error_msg)
+        
+        logger.debug("clickhouse_config_validated", engine=engine, order_by=order_by)
 
     def source_type(self) -> str:
         return "mysql"
@@ -130,6 +138,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         
         if mysql_res is None:
             available = [attr for attr in dir(context.resources) if not attr.startswith('_')]
+            self.logger.error("mysql_resource_not_found", requested=self.mysql_resource_key, available=available)
             raise ValueError(
                 f"MySQL resource '{self.mysql_resource_key}' not found. "
                 f"Available resources: {available}"
@@ -141,6 +150,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
             "table": self.source_table,
         }
         
+        self.logger.debug("mysql_connector_created")
         return MySQLSourceConnector(context, config)
 
     def get_destination_connector(self, context: AssetExecutionContext):
@@ -149,12 +159,14 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         
         if ch_res is None:
             available = [attr for attr in dir(context.resources) if not attr.startswith('_')]
+            self.logger.error("clickhouse_resource_not_found", available=available)
             raise ValueError(
                 f"ClickHouse resource 'clickhouse_resource' not found. "
                 f"Available resources: {available}"
             )
         
         config = {**ch_res.get_config()}
+        self.logger.debug("clickhouse_connector_created")
         return ClickHouseSinkConnector(context, config)
 
     def get_clickhouse_table_options(self) -> Dict[str, Any]:
@@ -181,6 +193,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
             The incremental key as provided (no case correction)
         """
         if not self.incremental_key:
+            self.logger.info("no_incremental_key")
             return None
         
         # Get column names from schema
@@ -188,7 +201,7 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         
         # Check for exact match first
         if self.incremental_key in column_names:
-            context.log.info(f"✅ Incremental key validated: {self.incremental_key}")
+            self.logger.info("incremental_key_validated", key=self.incremental_key)
             return self.incremental_key
         
         # If exact match fails, try case-insensitive search to provide helpful error
@@ -197,11 +210,13 @@ class MySQLToClickHouseFactory(BaseETLFactory):
         
         if incremental_key_lower in column_names_lower:
             correct_case = column_names_lower[incremental_key_lower]
+            self.logger.error("incremental_key_case_mismatch", requested=self.incremental_key, correct=correct_case)
             raise ValueError(
                 f"Incremental key '{self.incremental_key}' not found (case mismatch). "
                 f"Did you mean '{correct_case}'? Update your asset definition to use the exact column name."
             )
         else:
+            self.logger.error("incremental_key_not_found", requested=self.incremental_key, available=column_names)
             raise ValueError(
                 f"Incremental key '{self.incremental_key}' not found in schema. "
                 f"Available columns: {column_names}"
@@ -337,5 +352,5 @@ def create_mysql_to_clickhouse_asset(
         clickhouse_ttl=clickhouse_ttl,
         clickhouse_settings=clickhouse_settings,
     )
-
+    
     return factory.build()

@@ -7,19 +7,20 @@ DESIGN PRINCIPLES:
 - Fail fast - any schema error raises exception immediately
 - Thread-safe for Dagster's multiprocess executor
 - Minimal memory footprint
-- No unnecessary logging
+- Structured logging with consistent format
 """
 from .type_mapper import TypeMapper
+from .logging_config import get_logger, log_execution_time
 
 import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-import structlog
 import threading
 
-logger = structlog.get_logger(__name__)
+# Get module-level logger
+logger = get_logger(__name__)
 
 
 class SourceType(Enum):
@@ -216,12 +217,18 @@ class SchemaLoader:
         self._schemas_cache: Dict[str, TableSchema] = {}
         self._cache_lock = threading.RLock()
         
-        # Minimal logging on init
-        logger.info(
-            "schema_loader_initialized",
-            schemas_dir=str(self.schemas_dir),
-            cache_enabled=enable_cache
+        # Create logger with context bound to this instance
+        self.logger = get_logger(
+            __name__,
+            context={
+                "component": "schema_loader",
+                "schemas_dir": str(self.schemas_dir),
+                "cache_enabled": enable_cache
+            }
         )
+        
+        # Log initialization (once, minimal)
+        self.logger.info("initialized")
     
     def _key_to_path(self, key: str) -> Path:
         """Convert cache key to file path: mysql:amtdb:accounts -> mysql/amtdb/accounts.yml"""
@@ -234,6 +241,11 @@ class SchemaLoader:
         """
         # Check file exists
         if not file_path.exists():
+            self.logger.error(
+                "schema_file_not_found",
+                file_path=str(file_path),
+                key=key
+            )
             raise SchemaNotFoundError(
                 f"Schema file not found: {file_path} (key: {key})"
             )
@@ -243,10 +255,20 @@ class SchemaLoader:
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
+            self.logger.error(
+                "yaml_parse_error",
+                file_path=str(file_path),
+                error=str(e)
+            )
             raise SchemaValidationError(
                 f"Invalid YAML in {file_path}: {e}"
             )
         except Exception as e:
+            self.logger.error(
+                "schema_file_read_error",
+                file_path=str(file_path),
+                error=str(e)
+            )
             raise SchemaNotFoundError(
                 f"Cannot read schema file {file_path}: {e}"
             )
@@ -324,6 +346,11 @@ class SchemaLoader:
         if self.validate_on_load:
             validation_errors = self.validate_schema(schema)
             if validation_errors:
+                self.logger.error(
+                    "schema_validation_failed",
+                    file_path=str(file_path),
+                    errors=validation_errors
+                )
                 raise SchemaValidationError(
                     f"Schema validation failed for {file_path}:\n" +
                     "\n".join(f"  - {err}" for err in validation_errors)
@@ -363,32 +390,37 @@ class SchemaLoader:
         if self.enable_cache:
             with self._cache_lock:
                 if key in self._schemas_cache:
+                    self.logger.debug(
+                        "schema_loaded_from_cache",
+                        key=key
+                    )
                     return self._schemas_cache[key]
         
         # Load schema (not in cache)
         file_path = self._key_to_path(key)
         
-        # Log only when actually loading (not from cache)
-        logger.info(
-            "loading_schema",
+        # Use context manager for automatic timing
+        with log_execution_time(
+            self.logger,
+            "schema_loading",
             source_type=source_type,
             database=database,
             table=table,
-            file=str(file_path)
-        )
-        
-        schema = self._load_and_validate_schema(file_path, key)
+            file_path=str(file_path)
+        ):
+            schema = self._load_and_validate_schema(file_path, key)
         
         # Cache if enabled
         if self.enable_cache:
             with self._cache_lock:
                 self._schemas_cache[key] = schema
         
-        logger.info(
+        self.logger.info(
             "schema_loaded",
             key=key,
             columns=len(schema.columns),
-            has_incremental_key=schema.incremental_key is not None
+            has_incremental_key=schema.incremental_key is not None,
+            source_cached=False
         )
         
         return schema
@@ -421,6 +453,14 @@ class SchemaLoader:
         schema.converted_columns = converted_columns  # type: ignore
         schema.destination_type = destination_type  # type: ignore
         
+        self.logger.debug(
+            "schema_type_mapping_completed",
+            source_type=source_type,
+            destination_type=destination_type,
+            optimization=optimization,
+            columns_mapped=len(converted_columns)
+        )
+        
         return schema
     
     def validate_schema(self, schema: TableSchema) -> List[str]:
@@ -432,12 +472,6 @@ class SchemaLoader:
         
         Returns:
             List of validation errors (empty if valid)
-            
-        Example:
-            >>> schema = loader.get_schema("postgres", "sunculture_ep", "premise_details")
-            >>> errors = loader.validate_schema(schema)
-            >>> if errors:
-            ...     print(f"Validation failed: {errors}")
         """
         errors = []
         
@@ -539,6 +573,13 @@ class SchemaLoader:
         # Validate before accepting
         validation_errors = self.validate_schema(schema)
         if validation_errors:
+            self.logger.error(
+                "schema_creation_validation_failed",
+                source_type=source_type,
+                database=database,
+                table=table,
+                errors=validation_errors
+            )
             raise SchemaValidationError(
                 f"Schema validation failed:\n" +
                 "\n".join(f"  - {err}" for err in validation_errors)
@@ -550,7 +591,7 @@ class SchemaLoader:
             with self._cache_lock:
                 self._schemas_cache[key] = schema
         
-        logger.info(
+        self.logger.info(
             "schema_created",
             source_type=source_type,
             database=database,
@@ -595,6 +636,11 @@ class SchemaLoader:
                     allow_unicode=True
                 )
         except Exception as e:
+            self.logger.error(
+                "schema_save_failed",
+                file_path=str(file_path),
+                error=str(e)
+            )
             raise IOError(f"Failed to save schema to {file_path}: {e}")
         
         # Update cache
@@ -603,7 +649,7 @@ class SchemaLoader:
             with self._cache_lock:
                 self._schemas_cache[key] = schema
         
-        logger.info(
+        self.logger.info(
             "schema_saved",
             path=str(file_path),
             full_name=schema.full_name
@@ -612,11 +658,14 @@ class SchemaLoader:
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache statistics (useful for debugging)"""
         with self._cache_lock:
-            return {
+            stats = {
                 "cache_enabled": self.enable_cache,
                 "schemas_cached": len(self._schemas_cache),
                 "cached_schemas": list(self._schemas_cache.keys())
             }
+        
+        self.logger.debug("cache_stats_requested", **stats)
+        return stats
     
     def clear_cache(self):
         """Clear the schema cache (useful for testing or hot-reloading)"""
@@ -624,7 +673,7 @@ class SchemaLoader:
             count = len(self._schemas_cache)
             self._schemas_cache.clear()
         
-        logger.info("schema_cache_cleared", schemas_cleared=count)
+        self.logger.info("cache_cleared", schemas_cleared=count)
     
     # Utility methods for schema discovery (optional, not used in normal flow)
     
@@ -643,29 +692,49 @@ class SchemaLoader:
             key = str(relative_path).replace('/', ':').replace('\\', ':').replace('.yml', '')
             available.append(key)
         
+        self.logger.debug(
+            "available_schemas_listed",
+            count=len(available)
+        )
+        
         return sorted(available)
     
     def preload_schemas(self, schema_keys: List[str]):
         """
         Preload specific schemas into cache
         
-        Useful if you know you'll need multiple schemas and want to load them
-        upfront (e.g., in a batch job processing multiple tables)
-        
         Args:
-            schema_keys: List of schema keys like ["mysql:amtdb:accounts", "mysql:amtdb:users"]
+            schema_keys: List of schema keys like ["mysql:amtdb:accounts"]
         """
+        self.logger.info(
+            "preloading_schemas",
+            count=len(schema_keys)
+        )
+        
         for key in schema_keys:
             parts = key.split(':')
             if len(parts) != 3:
-                logger.warning(f"Invalid schema key format: {key}")
+                self.logger.warning(
+                    "invalid_schema_key_format",
+                    key=key
+                )
                 continue
             
             source_type, database, table = parts
             try:
                 self.get_schema(source_type, database, table)
             except Exception as e:
+                self.logger.error(
+                    "preload_failed",
+                    key=key,
+                    error=str(e)
+                )
                 # Re-raise - fail fast
                 raise SchemaNotFoundError(
                     f"Failed to preload schema {key}: {e}"
                 )
+        
+        self.logger.info(
+            "preload_completed",
+            schemas_loaded=len(schema_keys)
+        )

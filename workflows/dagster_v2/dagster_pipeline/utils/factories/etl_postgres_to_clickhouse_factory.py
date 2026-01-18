@@ -10,9 +10,10 @@ from dagster import AssetExecutionContext
 from .etl_base_factory import BaseETLFactory
 from dagster_pipeline.connectors.sources.postgres_source_connector import PostgresSourceConnector
 from dagster_pipeline.connectors.sink.clickhouse_sink_connector import ClickHouseSinkConnector
-import structlog
+from dagster_pipeline.utils.logging_config import get_logger
 
-logger = structlog.get_logger(__name__)
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class PostgresToClickHouseFactory(BaseETLFactory):
@@ -72,6 +73,14 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         self.clickhouse_primary_key = clickhouse_primary_key
         self.clickhouse_ttl = clickhouse_ttl
         self.clickhouse_settings = clickhouse_settings or {}
+        
+        # Log Postgres-specific config (parent already logged base config)
+        self.logger.info(
+            "clickhouse_config",
+            engine=clickhouse_engine,
+            order_by=clickhouse_order_by,
+            partition_by=clickhouse_partition_by,
+        )
     
     def _validate_clickhouse_config(
         self,
@@ -105,7 +114,10 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         if errors:
             error_msg = "\n\n".join(errors)
             error_msg += "\n\n💡 TIP: All ClickHouse table parameters must be explicitly specified."
+            logger.error("clickhouse_config_invalid", errors=errors, engine=engine, order_by=order_by)
             raise ValueError(error_msg)
+        
+        logger.debug("clickhouse_config_validated", engine=engine, order_by=order_by)
 
     def source_type(self) -> str:
         return "postgres"
@@ -128,6 +140,7 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         
         if postgres_res is None:
             available = [attr for attr in dir(context.resources) if not attr.startswith('_')]
+            self.logger.error("postgres_resource_not_found", requested=self.postgres_resource_key, available=available)
             raise ValueError(
                 f"Postgres resource '{self.postgres_resource_key}' not found. "
                 f"Available resources: {available}"
@@ -139,6 +152,7 @@ class PostgresToClickHouseFactory(BaseETLFactory):
             "table": self.source_table,
         }
         
+        self.logger.debug("postgres_connector_created")
         return PostgresSourceConnector(context, config)
 
     def get_destination_connector(self, context: AssetExecutionContext):
@@ -147,12 +161,14 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         
         if ch_res is None:
             available = [attr for attr in dir(context.resources) if not attr.startswith('_')]
+            self.logger.error("clickhouse_resource_not_found", available=available)
             raise ValueError(
                 f"ClickHouse resource 'clickhouse_resource' not found. "
                 f"Available resources: {available}"
             )
         
         config = {**ch_res.get_config()}
+        self.logger.debug("clickhouse_connector_created")
         return ClickHouseSinkConnector(context, config)
 
     def get_clickhouse_table_options(self) -> Dict[str, Any]:
@@ -173,6 +189,7 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         Postgres is case-sensitive by default, so we do exact matching.
         """
         if not self.incremental_key:
+            self.logger.info("no_incremental_key")
             return None
         
         # Get column names from schema
@@ -180,6 +197,7 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         
         # Check for exact match
         if self.incremental_key in column_names:
+            self.logger.info("incremental_key_validated", key=self.incremental_key)
             context.log.info(f"✅ Incremental key validated: {self.incremental_key}")
             return self.incremental_key
         
@@ -187,6 +205,7 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         # Try lowercase version if exact match fails
         incremental_key_lower = self.incremental_key.lower()
         if incremental_key_lower in column_names:
+            self.logger.warning("incremental_key_case_corrected", requested=self.incremental_key, corrected=incremental_key_lower)
             context.log.warning(
                 f"⚠️ Incremental key found with different case: '{self.incremental_key}' → '{incremental_key_lower}'"
             )
@@ -196,11 +215,13 @@ class PostgresToClickHouseFactory(BaseETLFactory):
         column_names_lower = {col.lower(): col for col in column_names}
         if incremental_key_lower in column_names_lower:
             correct_case = column_names_lower[incremental_key_lower]
+            self.logger.error("incremental_key_case_mismatch", requested=self.incremental_key, correct=correct_case)
             raise ValueError(
                 f"Incremental key '{self.incremental_key}' not found (case mismatch). "
                 f"Did you mean '{correct_case}'? Update your asset definition to use the exact column name."
             )
         else:
+            self.logger.error("incremental_key_not_found", requested=self.incremental_key, available=column_names)
             raise ValueError(
                 f"Incremental key '{self.incremental_key}' not found in schema. "
                 f"Available columns: {column_names}"

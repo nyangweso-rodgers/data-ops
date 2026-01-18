@@ -10,6 +10,10 @@ from dagster import AssetExecutionContext
 import time
 
 from dagster_pipeline.utils.factories.base_maintenance_factory import BaseMaintenanceFactory
+from dagster_pipeline.utils.logging_config import get_logger, log_execution_time
+
+# Initialize logger
+logger = get_logger(__name__)
 
 
 class OptimizeClickHouseFactory(BaseMaintenanceFactory):
@@ -55,6 +59,23 @@ class OptimizeClickHouseFactory(BaseMaintenanceFactory):
             "database": database,
             "table": table,
         })
+        
+        # Update logger context with database and table info
+        self.logger = get_logger(
+            self.__class__.__name__,
+            context={
+                "asset_name": asset_name,
+                "maintenance_type": "clickhouse_optimize",
+                "database": database,
+                "table": table,
+            }
+        )
+        
+        self.logger.info(
+            "optimize_factory_initialized",
+            partition_column=partition_column,
+            specific_partitions=specific_partitions,
+        )
     
     def maintenance_type(self) -> str:
         return "clickhouse_optimize"
@@ -72,11 +93,21 @@ class OptimizeClickHouseFactory(BaseMaintenanceFactory):
         clickhouse_resource = resources["clickhouse_resource"]
         client = clickhouse_resource.get_client()
         
+        self.logger.info("clickhouse_connected", client_type=type(client).__name__)
         context.log.info(f"📌 Connected to ClickHouse: {type(client).__name__}")
         
         # Get stats before optimization
         context.log.info("📊 Getting stats before optimization...")
-        stats_before = self._get_table_stats(client, context)
+        with log_execution_time(self.logger, "stats_collection_before"):
+            stats_before = self._get_table_stats(client, context)
+        
+        self.logger.info(
+            "stats_before_optimization",
+            total_rows=stats_before['total_rows'],
+            unique_ids=stats_before['unique_ids'],
+            duplicate_count=stats_before['duplicate_count'],
+            duplicate_pct=stats_before['duplicate_pct'],
+        )
         
         context.log.info(
             f"   Before: {stats_before['total_rows']:,} total rows, "
@@ -89,25 +120,43 @@ class OptimizeClickHouseFactory(BaseMaintenanceFactory):
         
         if self.specific_partitions:
             # Optimize specific partitions
+            self.logger.info("optimizing_specific_partitions", partitions=self.specific_partitions)
             context.log.info(f"🔨 Optimizing {len(self.specific_partitions)} specific partition(s)...")
+            
             for partition in self.specific_partitions:
                 context.log.info(f"   → Optimizing partition {partition}...")
                 optimize_query = f"OPTIMIZE TABLE `{self.database}`.`{self.table}` PARTITION %(partition)s FINAL SETTINGS alter_sync=2"
-                client.command(optimize_query, parameters={"partition": partition})
+                
+                with log_execution_time(self.logger, "partition_optimization", partition=partition):
+                    client.command(optimize_query, parameters={"partition": partition})
         else:
             # Optimize entire table
+            self.logger.info("optimizing_entire_table")
             context.log.info("🔨 Optimizing entire table (this may take a while)...")
             optimize_query = f"OPTIMIZE TABLE `{self.database}`.`{self.table}` FINAL SETTINGS alter_sync=2"
-            client.command(optimize_query)
+            
+            with log_execution_time(self.logger, "table_optimization"):
+                client.command(optimize_query)
         
         duration = time.time() - start_time
+        self.logger.info("optimization_completed", duration=round(duration, 2))
         context.log.info(f"   ✅ OPTIMIZE completed in {duration:.2f}s")
         
         # Get stats after optimization
         context.log.info("📊 Getting stats after optimization...")
-        stats_after = self._get_table_stats(client, context)
+        with log_execution_time(self.logger, "stats_collection_after"):
+            stats_after = self._get_table_stats(client, context)
         
         duplicates_removed = stats_before['total_rows'] - stats_after['total_rows']
+        
+        self.logger.info(
+            "stats_after_optimization",
+            total_rows=stats_after['total_rows'],
+            unique_ids=stats_after['unique_ids'],
+            duplicate_count=stats_after['duplicate_count'],
+            duplicate_pct=stats_after['duplicate_pct'],
+            duplicates_removed=duplicates_removed,
+        )
         
         context.log.info(
             f"   After: {stats_after['total_rows']:,} total rows, "
@@ -143,23 +192,32 @@ class OptimizeClickHouseFactory(BaseMaintenanceFactory):
             FROM `{self.database}`.`{self.table}`
         """
         
-        result = client.query(query)
-        
-        if result.result_rows:
-            row = result.result_rows[0]
+        try:
+            result = client.query(query)
+            
+            if result.result_rows:
+                row = result.result_rows[0]
+                stats = {
+                    "total_rows": row[0],
+                    "unique_ids": row[1],
+                    "duplicate_count": row[2],
+                    "duplicate_pct": round(row[3], 2),
+                }
+                
+                self.logger.debug("table_stats_retrieved", **stats)
+                return stats
+            
+            self.logger.warning("no_stats_data_returned")
             return {
-                "total_rows": row[0],
-                "unique_ids": row[1],
-                "duplicate_count": row[2],
-                "duplicate_pct": round(row[3], 2),
+                "total_rows": 0,
+                "unique_ids": 0,
+                "duplicate_count": 0,
+                "duplicate_pct": 0.0,
             }
-        
-        return {
-            "total_rows": 0,
-            "unique_ids": 0,
-            "duplicate_count": 0,
-            "duplicate_pct": 0.0,
-        }
+            
+        except Exception as e:
+            self.logger.error("stats_collection_failed", error=str(e), exc_info=True)
+            raise
 
 
 def create_clickhouse_optimize_asset(
