@@ -22,6 +22,10 @@ dependencies = [
     "dagster-webserver==1.12.4",
     "dagster-postgres==0.28.4",
     
+    # AWS/ECS Support (for production deployment)
+    "dagster-aws==0.28.4",      # ECS run launcher, S3 compute logs
+    "boto3==1.35.36",           # AWS SDK
+    
     # Database drivers
     "psycopg2-binary==2.9.10",
     "pymysql==1.1.1",
@@ -41,9 +45,6 @@ dependencies = [
     
     # Monitoring
     "structlog==25.5.0",
-    
-    # Caching (example of adding a new package)
-    #"redis==5.0.1",
 ]
 
 [project.optional-dependencies]
@@ -58,15 +59,9 @@ dev = [
     "pre-commit>=3.6.0",
 ]
 
-# AWS dependencies (optional, enable when needed)
-aws = [
-    #"boto3>=1.35.36",
-    #"s3fs>=2024.2.0",
-]
-
 # All optional dependencies
 all = [
-    "dagster-pipeline[dev,aws]",
+    "dagster-pipeline[dev]",
 ]
 
 [project.urls]
