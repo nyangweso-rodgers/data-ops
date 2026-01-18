@@ -7,30 +7,25 @@
 # Architecture Overview
 
 - Three types of data operations:
-
   1. ETL Assets (`assets/etl/`)
-
      - **Purpose**: Keep destination in sync with source
      - Pattern: Continuous sync with incremental tracking
      - Schedule: Frequent (15-20 mins)
      - Example: MySQL accounts → ClickHouse accounts (live data)
 
   2. Maintenance Assets (`assets/maintenance/`)
-
      - **Purpose**: Optimize and clean existing data
      - Pattern: Analyze → Clean → Optimize
      - Schedule: Periodic (daily/weekly)
      - Example: Deduplicate ClickHouse partitions
 
   3. Snapshot Assets (`assets/snapshots/`)
-
      - **Purpose**: Capture point-in-time state for history
      - Pattern: Query → Timestamp → Append
      - Schedule: Periodic (daily/monthly)
      - Example: Account status at end of month
 
   4. Data Quality Assets (`assets/data_quality`)
-
      - **Purpose**: Data Quality Checks
 
   5. Reverse ETL Assets (`assets/reverse_etl`)
@@ -39,25 +34,20 @@
 # Project Structure
 
 - dagster_v2/
-
   - .github/
-
     - workflows/
       - `validate-pr.yml`
       - `test.yml` # Run tests
       - `deploy.yml` # Build & Deploy
 
   - dagster_home/
-
     - `dagster.yaml`
     - `workspace.yaml`
 
   - dagster_pipeline/
-
     - `__init__.py`
     - `definitions.py`
     - alerts/
-
       - `__init__.py`
       - `alert_manager.py`
       - `slack_alerts.py`
@@ -65,7 +55,6 @@
       - `alert_types`
 
     - connectors/
-
       - sources/ # Source connectors ← DATA EXTRACTION
         - `base_source_connector.py`
         - `mysql_source_connector.py` # MySQL extraction
@@ -82,16 +71,15 @@
         - `mysql_sink_connector.py` # MySQL loading
 
     - assets/
-
       - data_quality/ # Data Quality
       - etl/ # ETL Assets
         - `mysql_to_clickhouse_asset.py`
         - `postgres_to_clickhouse_asset.py`
       - maintenance/ # Cleanups and Optimizations
+        - `clickhouse_optimization.py`
       - snapshots/ # Point-in-time data capture
 
     - resources/
-
       - `__init__.py`
       - `clickhouse_resource.py` # Manages connections, pooling, basic health checks
       - `dagster_postgres_resource.py`
@@ -99,7 +87,6 @@
       - `registry.py`
 
     - schemas/
-
       - apis/
       - mysql/
         - amtdb/
@@ -123,7 +110,6 @@
         - `etl_base_factory.py` # ← Abstract base class
         - `etl_mysql_to_clickhouse_factory.py` # ← MySQL-specific
         - `etl_postgres_to_clickhouse_factory.py` # ← Postgres-specific
-        - `optimize_clickhouse_factory.py` # ClickHouse Table Optimizations, Deduplications
       - `logging_config.py`
       - `schema_loader.py`
       - `state_manager.py`
@@ -137,11 +123,7 @@
       - `adding-new-table.md`
       - `deployment.md`
     - tests/
-      - `test_type_mapper.py`
-      - `test_schema_loader.py`
-      - `test_mysql_to_clickhouse_factory.py`
     - `.dockerignore`
-    - `.env.dagster`
     - `.gitignore`
     - `CHANGELOG.md`
     - `docker-compose-dagster.base.yml`
