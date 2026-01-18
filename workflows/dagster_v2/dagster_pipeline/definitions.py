@@ -18,12 +18,12 @@ logger = get_logger(__name__)
 logger.info("dagster_definitions_loading")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# STEP 2: Now import Dagster core
+# STEP 2: Import Dagster core
 # ═════════════════════════════════════════════════════════════════════════════
 from dagster import Definitions, define_asset_job, ScheduleDefinition
 
 # ═════════════════════════════════════════════════════════════════════════════
-# STEP 3: Import resources (logging is now configured)
+# STEP 3: Import resources
 # ═════════════════════════════════════════════════════════════════════════════
 from dagster_pipeline.resources.registry import (
     # MySQL - Sales Service
@@ -49,7 +49,7 @@ from dagster_pipeline.resources.registry import (
 # ═════════════════════════════════════════════════════════════════════════════
 from dagster_pipeline.assets.etl.mysql_to_clickhouse_asset import assets as mysql_assets
 from dagster_pipeline.assets.etl.postgres_to_clickhouse_asset import assets as postgres_assets
-from dagster_pipeline.assets.maintenance.optimize_clickhouse_asset import assets as optimize_clickhouse_asset
+from dagster_pipeline.assets.maintenance.clickhouse_optimization import assets as optimization_assets
 
 # ═════════════════════════════════════════════════════════════════════════════
 # STEP 5: Import utilities
@@ -60,7 +60,7 @@ logger.info(
     "imports_completed",
     mysql_assets_count=len(mysql_assets),
     postgres_assets_count=len(postgres_assets),
-    optimize_assets_count=len(optimize_clickhouse_asset)
+    optimization_assets_count=len(optimization_assets)
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -116,20 +116,17 @@ postgres_fma_to_clickhouse_job = define_asset_job(
 # MAINTENANCE JOBS
 # ═════════════════════════════════════════════════════════════════════════════
 
-# ClickHouse Cleanup Job
-clickhouse_cleanup_job = define_asset_job(
-    name="clickhouse_cleanup_job",
-    selection=[
-        "cleanup_sales_service_leads",
-    ],
-    description="Deduplicate ClickHouse tables to remove duplicate records",
+# ClickHouse Table Optimization Job
+clickhouse_optimization_job = define_asset_job(
+    name="clickhouse_optimization_job",
+    selection=["optimize_clickhouse_tables"],
+    description="Run OPTIMIZE TABLE FINAL on all ClickHouse tables to remove duplicates",
 )
 
 logger.info(
     "jobs_defined",
     etl_jobs=4,
     maintenance_jobs=1,
-    snapshot_jobs=0
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -168,12 +165,12 @@ postgres_fma_to_clickhouse_schedule = ScheduleDefinition(
 # MAINTENANCE SCHEDULES
 # ═════════════════════════════════════════════════════════════════════════════
 
-# ClickHouse Cleanup Schedule (Daily at midnight, Sunday-Friday)
-clickhouse_cleanup_schedule = ScheduleDefinition(
-    job=clickhouse_cleanup_job,
-    cron_schedule="0 0 * * 0-5",  # midnight Sun-Fri
-    name="clickhouse_cleanup_schedule",
-    description="Run ClickHouse deduplication daily at midnight (Sun-Fri)",
+# ClickHouse Table Optimization Schedule (Daily at 2 AM)
+clickhouse_optimization_schedule = ScheduleDefinition(
+    job=clickhouse_optimization_job,
+    cron_schedule="0 2 * * *",  # 2 AM daily
+    name="clickhouse_optimization_schedule",
+    description="Run ClickHouse table optimization daily at 2 AM to remove duplicates",
 )
 
 logger.info(
@@ -199,7 +196,7 @@ defs = Definitions(
         *postgres_assets,
         
         # Maintenance assets (cleanup/optimization)
-        *optimize_clickhouse_asset,
+        *optimization_assets,
     ],
     resources={
         # MySQL - AMT
@@ -232,7 +229,7 @@ defs = Definitions(
         mysql_soil_testing_prod_to_clickhouse_job,
         
         # Maintenance Jobs
-        clickhouse_cleanup_job, 
+        clickhouse_optimization_job, 
     ],
     schedules=[
         # ETL Schedules
@@ -242,13 +239,13 @@ defs = Definitions(
         postgres_fma_to_clickhouse_schedule,
         
         # Maintenance Schedules
-        clickhouse_cleanup_schedule, 
+        clickhouse_optimization_schedule, 
     ], 
 )
 
 logger.info(
     "dagster_definitions_created",
-    total_assets=len(mysql_assets) + len(postgres_assets) + len(optimize_clickhouse_asset),
+    total_assets=len(mysql_assets) + len(postgres_assets) + len(optimization_assets),
     total_jobs=5,
     total_schedules=5,
     resources_count=9

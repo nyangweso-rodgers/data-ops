@@ -14,11 +14,6 @@ from .etl_postgres_to_clickhouse_factory import (
     create_postgres_to_clickhouse_asset
 )
 
-from .optimize_clickhouse_factory import (
-    OptimizeClickHouseFactory,
-    create_clickhouse_optimize_asset
-)
-
 __all__ = [
     "BaseETLFactory",
     
@@ -28,9 +23,5 @@ __all__ = [
     
     # Postgres to ClickHouse
     "PostgresToClickHouseFactory",
-    "create_postgres_to_clickhouse_asset",
-    
-    # ClickHouse Cleanup
-    "OptimizeClickHouseFactory",
-    "create_clickhouse_optimize_asset",
+    "create_postgres_to_clickhouse_asset"
 ]
