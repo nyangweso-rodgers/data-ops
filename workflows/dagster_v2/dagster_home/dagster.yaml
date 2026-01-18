@@ -18,6 +18,7 @@ storage:
         env: DAGSTER_POSTGRES_PORT
       params:
         connect_timeout: 10
+        options: "-c search_path=dagster,public"
 
 # ============================================================================
 # RUN COORDINATOR - How runs are launched

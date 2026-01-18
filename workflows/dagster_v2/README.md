@@ -124,6 +124,7 @@
         - `etl_mysql_to_clickhouse_factory.py` # ← MySQL-specific
         - `etl_postgres_to_clickhouse_factory.py` # ← Postgres-specific
         - `optimize_clickhouse_factory.py` # ClickHouse Table Optimizations, Deduplications
+      - `logging_config.py`
       - `schema_loader.py`
       - `state_manager.py`
       - `type_mapper.py`
@@ -144,6 +145,7 @@
     - `.gitignore`
     - `CHANGELOG.md`
     - `docker-compose-dagster.base.yml`
+    - `docker-compose-dagster.local-rds.yml`
     - `docker-compose-dagster.local.yml`
     - `docker-compose-dagster.prod.yml`
     - `Dockerfile`
