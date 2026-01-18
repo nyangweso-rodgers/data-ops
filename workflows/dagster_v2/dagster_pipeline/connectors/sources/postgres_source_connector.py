@@ -20,7 +20,6 @@ from datetime import datetime, date
 from decimal import Decimal
 from contextlib import contextmanager
 import time
-import structlog
 
 from .base_source_connector import (
     BaseSourceConnector,
@@ -30,8 +29,10 @@ from .base_source_connector import (
     IncrementalConfig,
     ColumnSchema
 )
+from dagster_pipeline.utils.logging_config import get_logger
 
-logger = structlog.get_logger(__name__)
+# Module logger
+logger = get_logger(__name__)
 
 
 class PostgresSourceConnector(BaseSourceConnector):
@@ -49,9 +50,9 @@ class PostgresSourceConnector(BaseSourceConnector):
     Key differences from MySQL:
     - Uses psycopg2 instead of pymysql
     - Schema-qualified table names (schema.table)
-    - Named cursors for streaming (not just SS cursor)
+    - Named cursors for streaming
     - Array types (_int4, text[], etc.)
-    - NULL arrays must be converted to [] for ClickHouse
+    - NULL arrays converted to [] for ClickHouse
     
     Returns batches as list of dictionaries:
     [
@@ -68,7 +69,7 @@ class PostgresSourceConnector(BaseSourceConnector):
     
     # Retry settings
     MAX_RETRIES = 3
-    RETRY_DELAY = 1  # seconds
+    RETRY_DELAY = 1
     RETRY_BACKOFF = 2
     
     # Cursor settings
@@ -114,46 +115,30 @@ class PostgresSourceConnector(BaseSourceConnector):
         conn = None
         cursor = None
         
-        # Retry logic
         last_error = None
         for attempt in range(self.MAX_RETRIES):
             try:
-                # Create connection
                 conn = psycopg2.connect(**self._connection_params)
                 
-                # Configure connection based on cursor type
                 if use_named_cursor and cursor_name:
-                    # Named cursor requires transaction (no autocommit)
                     conn.autocommit = False
-                    # Create named cursor with RealDictCursor
                     cursor = conn.cursor(
                         name=cursor_name,
                         cursor_factory=psycopg2.extras.RealDictCursor
                     )
-                    # Set fetch size for streaming
-                    cursor.itersize = self.config.get(
-                        "cursor_itersize",
-                        self.DEFAULT_CURSOR_ITERSIZE
-                    )
+                    cursor.itersize = self.config.get("cursor_itersize", self.DEFAULT_CURSOR_ITERSIZE)
                 else:
-                    # Regular cursor can use autocommit
                     conn.autocommit = True
                     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
                 
                 yield conn, cursor
-                return  # Success
+                return
                 
             except psycopg2.OperationalError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
                     delay = self.RETRY_DELAY * (self.RETRY_BACKOFF ** attempt)
-                    logger.warning(
-                        "postgres_connection_retry",
-                        attempt=attempt + 1,
-                        max_retries=self.MAX_RETRIES,
-                        delay=delay,
-                        error=str(e)
-                    )
+                    self.logger.warning("connection_retry", attempt=attempt + 1, delay=delay, error=str(e))
                     time.sleep(delay)
                 else:
                     raise SourceConnectionError(
@@ -161,11 +146,9 @@ class PostgresSourceConnector(BaseSourceConnector):
                     ) from e
                     
             except psycopg2.Error as e:
-                # Non-retryable error
                 raise SourceConnectionError(f"PostgreSQL connection error: {e}") from e
                 
             finally:
-                # Cleanup
                 if cursor and attempt >= self.MAX_RETRIES - 1:
                     try:
                         cursor.close()
@@ -174,7 +157,6 @@ class PostgresSourceConnector(BaseSourceConnector):
                 
                 if conn and attempt >= self.MAX_RETRIES - 1:
                     try:
-                        # Commit if in transaction
                         if not conn.autocommit and not conn.closed:
                             conn.commit()
                     except Exception:
@@ -185,11 +167,8 @@ class PostgresSourceConnector(BaseSourceConnector):
                     except Exception:
                         pass
         
-        # Should never reach here
         if last_error:
-            raise SourceConnectionError(
-                f"Failed to connect to PostgreSQL: {last_error}"
-            ) from last_error
+            raise SourceConnectionError(f"Failed to connect to PostgreSQL: {last_error}") from last_error
     
     def validate(self) -> bool:
         """Validate PostgreSQL connection and table exists"""
@@ -203,11 +182,11 @@ class PostgresSourceConnector(BaseSourceConnector):
                 cursor.execute("SELECT version()")
                 result = cursor.fetchone()
                 pg_version = result["version"] if result else "unknown"
-                logger.debug("postgres_version", version=pg_version[:50])
+                self.logger.debug("postgres_version", version=pg_version[:50])
         except psycopg2.Error as e:
             raise SourceConnectionError(f"Failed to connect to PostgreSQL: {e}") from e
         
-        # Check table exists - use information_schema (more reliable)
+        # Check table exists
         check_table_query = """
             SELECT 
                 table_schema,
@@ -227,22 +206,15 @@ class PostgresSourceConnector(BaseSourceConnector):
                         f"Table {schema}.{table} not found in PostgreSQL database {database}. "
                         f"Check schema and table names."
                     )
-                else:
-                    # Log table stats
-                    size_mb = result["total_bytes"] / 1024 / 1024 if result.get("total_bytes") else 0
-                    logger.info(
-                        "postgres_table_found",
-                        database=database,
-                        schema=schema,
-                        table=table,
-                        size_mb=round(size_mb, 2) if size_mb else None
-                    )
+                
+                size_mb = result["total_bytes"] / 1024 / 1024 if result.get("total_bytes") else 0
+                self.logger.info("table_validated", schema=schema, size_mb=round(size_mb, 2) if size_mb else None)
                     
         except psycopg2.Error as e:
             raise SourceValidationError(f"Failed to validate table: {e}") from e
         
         self._is_validated = True
-        logger.info("postgres_source_validated", database=database, schema=schema, table=table)
+        self.logger.info("source_validated", schema=schema)
         return True
     
     def get_schema(self) -> List[ColumnSchema]:
@@ -299,57 +271,36 @@ class PostgresSourceConnector(BaseSourceConnector):
                 columns = cursor.fetchall()
                 
                 if not columns:
-                    raise SourceValidationError(
-                        f"No columns found for table {schema}.{table}"
-                    )
+                    raise SourceValidationError(f"No columns found for table {schema}.{table}")
                 
                 schema_list = []
                 for col in columns:
                     schema_list.append(ColumnSchema(
                         name=col["name"],
-                        type=col["udt_type"],  # Use UDT type for better precision
+                        type=col["udt_type"],
                         nullable=(col["nullable"] == "YES"),
                         primary_key=col["is_primary_key"],
                         indexed=col["is_indexed"],
                         default=col["default_value"],
-                        extra=col["type"]  # Store data_type in extra
+                        extra=col["type"]
                     ))
                 
-                logger.info(
-                    "postgres_schema_fetched",
-                    database=database,
-                    schema=schema,
-                    table=table,
-                    columns=len(schema_list)
-                )
+                self.logger.info("schema_fetched", schema=schema, columns=len(schema_list))
                 return schema_list
                 
         except psycopg2.Error as e:
             raise SourceExtractionError(f"Failed to get schema: {e}") from e
     
-    @staticmethod
-    def _normalize_value(value: Any, column_type: Optional[str] = None) -> Any:
+    def _normalize_value(self, value: Any, column_type: Optional[str] = None) -> Any:
         """
         Convert PostgreSQL types to Python native types
         
         CRITICAL: ClickHouse arrays cannot be NULL!
         - PostgreSQL NULL arrays → empty list []
         - All other NULL values → None
-        
-        Args:
-            value: The value to normalize
-            column_type: PostgreSQL column type (e.g., '_int4', 'text[]', 'uuid')
-        
-        Handles:
-        - Decimal → float
-        - memoryview/bytes → str
-        - Arrays (including NULL arrays → [])
-        - JSON/JSONB → dict (already parsed)
-        - datetime/date → keep as-is
         """
         if value is None:
-            # CRITICAL: Check if column is array type
-            # Array types either start with '_' (e.g., _int4, _text) or end with '[]'
+            # Check if column is array type
             if column_type:
                 is_array = column_type.startswith('_') or '[]' in column_type
                 if is_array:
@@ -360,7 +311,6 @@ class PostgresSourceConnector(BaseSourceConnector):
             return float(value)
             
         elif isinstance(value, memoryview):
-            # PostgreSQL bytea columns return memoryview
             try:
                 return bytes(value).decode('utf-8')
             except UnicodeDecodeError:
@@ -372,47 +322,33 @@ class PostgresSourceConnector(BaseSourceConnector):
             except UnicodeDecodeError:
                 return value.hex()
                 
-        # ===== ZERO DATE HANDLING =====
         elif isinstance(value, datetime):
-            # Check for zero datetime (shouldn't happen in PostgreSQL, but be safe)
             if value.year == 0:
-                logger.warning(
-                    "zero_datetime_converted_to_null",
-                    value=str(value),
-                    hint="Zero datetime converted to NULL"
-                )
+                self.logger.warning("zero_datetime_to_null", value=str(value))
                 return None
             return value
         
         elif isinstance(value, date):
-            # Check for zero date (shouldn't happen in PostgreSQL, but be safe)
             if value.year == 0:
-                logger.warning(
-                    "zero_date_converted_to_null",
-                    value=str(value),
-                    hint="Zero date converted to NULL"
-                )
+                self.logger.warning("zero_date_to_null", value=str(value))
                 return None
             return value
             
         elif isinstance(value, list):
             # PostgreSQL arrays - recursively normalize
-            # Don't pass column_type to recursive calls (elements aren't arrays)
             return [
                 PostgresSourceConnector._normalize_value(item, column_type=None)
                 for item in value
             ]
             
         elif isinstance(value, dict):
-            # PostgreSQL JSON/JSONB - already parsed by psycopg2
-            # Recursively normalize nested values
+            # PostgreSQL JSON/JSONB - recursively normalize
             return {
                 k: PostgresSourceConnector._normalize_value(v, column_type=None)
                 for k, v in value.items()
             }
             
         else:
-            # int, float, str, bool, UUID all stay as-is
             return value
     
     def extract_data(
@@ -421,17 +357,7 @@ class PostgresSourceConnector(BaseSourceConnector):
         batch_size: int = 10000,
         incremental_config: Optional[IncrementalConfig] = None
     ) -> Iterator[List[Dict[str, Any]]]:
-        """
-        Extract data from PostgreSQL - returns list of dictionaries
-        
-        CRITICAL: NULL arrays are converted to [] for ClickHouse compatibility
-        
-        Yields:
-            [
-                {"id": 1, "name": "Alice", "tags": ["a", "b"]},
-                {"id": 2, "name": "Bob", "tags": []},  # Was NULL
-            ]
-        """
+        """Extract data from PostgreSQL - returns list of dictionaries"""
         if not self._is_validated:
             self.validate()
         
@@ -439,7 +365,7 @@ class PostgresSourceConnector(BaseSourceConnector):
         table = self.config["table"]
         schema = self._schema
         
-        # Get schema info for column types (needed for array handling)
+        # Get schema for column types (needed for array handling)
         schema_info = self.get_schema()
         column_types = {col.name: col.type for col in schema_info}
         
@@ -449,7 +375,7 @@ class PostgresSourceConnector(BaseSourceConnector):
         else:
             column_list = [col.name for col in schema_info]
         
-        # Validate requested columns exist
+        # Validate columns
         if columns:
             schema_columns = {col.name for col in schema_info}
             invalid_columns = [col for col in columns if col not in schema_columns]
@@ -459,7 +385,7 @@ class PostgresSourceConnector(BaseSourceConnector):
                     f"Available columns: {sorted(schema_columns)}"
                 )
         
-        # Build SELECT clause (quote identifiers)
+        # Build SELECT clause
         columns_str = ", ".join(f'"{col}"' for col in column_list)
         
         # Build WHERE clause
@@ -467,23 +393,18 @@ class PostgresSourceConnector(BaseSourceConnector):
         params = []
         
         if incremental_config:
-            # Validate incremental config
             if incremental_config.key not in column_types:
-                raise SourceValidationError(
-                    f"Incremental key '{incremental_config.key}' not found in table"
-                )
+                raise SourceValidationError(f"Incremental key '{incremental_config.key}' not found in table")
             
             if incremental_config.last_value is not None:
                 where_clause = f'WHERE "{incremental_config.key}" {incremental_config.operator} %s'
                 params.append(incremental_config.last_value)
-                logger.info(
-                    "postgres_incremental_extraction",
-                    database=database,
+                self.logger.info(
+                    "incremental_extraction",
                     schema=schema,
-                    table=table,
                     key=incremental_config.key,
                     operator=incremental_config.operator,
-                    last_value=str(incremental_config.last_value)[:50]
+                    from_value=str(incremental_config.last_value)[:50]
                 )
         
         # Build ORDER BY
@@ -492,7 +413,7 @@ class PostgresSourceConnector(BaseSourceConnector):
             order_by = incremental_config.order_by or incremental_config.key
             order_clause = f'ORDER BY "{order_by}" ASC'
         
-        # Build final query
+        # Build query
         query = f"""
             SELECT {columns_str}
             FROM "{schema}"."{table}"
@@ -500,11 +421,9 @@ class PostgresSourceConnector(BaseSourceConnector):
             {order_clause}
         """.strip()
         
-        logger.info(
-            "postgres_extraction_start",
-            database=database,
+        self.logger.info(
+            "extraction_started",
             schema=schema,
-            table=table,
             batch_size=batch_size,
             columns=len(column_list),
             incremental=bool(incremental_config)
@@ -518,11 +437,9 @@ class PostgresSourceConnector(BaseSourceConnector):
         
         try:
             with self._get_connection(use_named_cursor=True, cursor_name=cursor_name) as (conn, cursor):
-                # Execute query with named cursor
                 cursor.execute(query, params)
                 
                 while True:
-                    # Fetch batch
                     rows = cursor.fetchmany(batch_size)
                     
                     if not rows:
@@ -531,14 +448,11 @@ class PostgresSourceConnector(BaseSourceConnector):
                     batch_num += 1
                     total_rows += len(rows)
                     
-                    # Normalize all values in batch
+                    # Normalize all values
                     normalized_batch = []
                     for row in rows:
                         normalized_row = {
-                            col: self._normalize_value(
-                                row[col],
-                                column_type=column_types.get(col)
-                            )
+                            col: self._normalize_value(row[col], column_type=column_types.get(col))
                             for col in column_list
                         }
                         normalized_batch.append(normalized_row)
@@ -546,56 +460,22 @@ class PostgresSourceConnector(BaseSourceConnector):
                     # Log first batch sample
                     if batch_num == 1 and normalized_batch:
                         sample_row = normalized_batch[0]
-                        sample_types = {
-                            col: type(sample_row[col]).__name__
-                            for col in column_list
-                        }
-                        logger.debug(
-                            "postgres_first_batch_sample",
-                            database=database,
-                            schema=schema,
-                            table=table,
-                            rows=len(normalized_batch),
-                            sample_types=sample_types,
-                            sample_values={
-                                k: str(v)[:50] for k, v in list(sample_row.items())[:3]
-                            }
-                        )
+                        sample_types = {col: type(sample_row[col]).__name__ for col in column_list}
+                        self.logger.debug("first_batch_sample", rows=len(normalized_batch), sample_types=sample_types)
                     
-                    # Log progress every 10 batches
                     if batch_num % 10 == 0:
-                        logger.info(
-                            "postgres_extraction_progress",
-                            database=database,
-                            schema=schema,
-                            table=table,
-                            batches=batch_num,
-                            rows=total_rows
-                        )
+                        self.logger.info("extraction_progress", batches=batch_num, rows=total_rows)
                     
                     yield normalized_batch
                     
         except QueryCanceledError as e:
-            raise SourceExtractionError(
-                f"PostgreSQL query canceled (timeout or manual cancel): {e}"
-            ) from e
+            raise SourceExtractionError(f"PostgreSQL query canceled (timeout): {e}") from e
         except psycopg2.Error as e:
-            raise SourceExtractionError(
-                f"PostgreSQL extraction failed at batch {batch_num}: {e}"
-            ) from e
+            raise SourceExtractionError(f"PostgreSQL extraction failed at batch {batch_num}: {e}") from e
         except Exception as e:
-            raise SourceExtractionError(
-                f"Unexpected error during extraction: {e}"
-            ) from e
+            raise SourceExtractionError(f"Unexpected error during extraction: {e}") from e
         
-        logger.info(
-            "postgres_extraction_complete",
-            database=database,
-            schema=schema,
-            table=table,
-            total_rows=total_rows,
-            batches=batch_num
-        )
+        self.logger.info("extraction_complete", total_rows=total_rows, batches=batch_num)
     
     def get_row_count(
         self,
@@ -623,14 +503,7 @@ class PostgresSourceConnector(BaseSourceConnector):
                 result = cursor.fetchone()
                 count = result["cnt"] if result else 0
                 
-                logger.info(
-                    "postgres_row_count",
-                    database=database,
-                    schema=schema,
-                    table=table,
-                    count=count,
-                    filtered=bool(where_clause)
-                )
+                self.logger.info("row_count", schema=schema, count=count, filtered=bool(where_clause))
                 return count
                 
         except psycopg2.Error as e:
@@ -649,9 +522,7 @@ class PostgresSourceConnector(BaseSourceConnector):
         schema_info = self.get_schema()
         schema_columns = {col.name for col in schema_info}
         if column not in schema_columns:
-            raise SourceValidationError(
-                f"Column '{column}' not found in table {schema}.{table}"
-            )
+            raise SourceValidationError(f"Column '{column}' not found in table {schema}.{table}")
         
         query = f'SELECT MAX("{column}") as max_val FROM "{schema}"."{table}"'
         
@@ -661,24 +532,13 @@ class PostgresSourceConnector(BaseSourceConnector):
                 result = cursor.fetchone()
                 max_val = result["max_val"] if result else None
                 
-                logger.info(
-                    "postgres_max_value",
-                    database=database,
-                    schema=schema,
-                    table=table,
-                    column=column,
-                    max_value=str(max_val)[:50] if max_val else None
-                )
+                self.logger.info("max_value", schema=schema, column=column, value=str(max_val)[:50] if max_val else None)
                 return self._normalize_value(max_val)
                 
         except psycopg2.Error as e:
             raise SourceExtractionError(f"Failed to get max value: {e}") from e
     
-    def test_query(
-        self,
-        query: str,
-        params: Optional[List[Any]] = None
-    ) -> List[Dict[str, Any]]:
+    def test_query(self, query: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
         """Execute a test query (for debugging)"""
         if not self._is_validated:
             self.validate()
@@ -688,19 +548,11 @@ class PostgresSourceConnector(BaseSourceConnector):
                 cursor.execute(query, params or [])
                 results = cursor.fetchall()
                 
-                # Normalize values
                 normalized = []
                 for row in results:
-                    normalized.append({
-                        k: self._normalize_value(v)
-                        for k, v in row.items()
-                    })
+                    normalized.append({k: self._normalize_value(v) for k, v in row.items()})
                 
-                logger.info(
-                    "postgres_test_query_executed",
-                    rows=len(normalized),
-                    query_preview=query[:100]
-                )
+                self.logger.info("test_query_executed", rows=len(normalized))
                 return normalized
                 
         except psycopg2.Error as e:
@@ -712,6 +564,6 @@ class PostgresSourceConnector(BaseSourceConnector):
             try:
                 self._connection.close()
                 self._connection = None
-                logger.debug("postgres_connection_closed")
+                self.logger.debug("connection_closed")
             except Exception as e:
-                logger.warning("postgres_close_error", error=str(e))
+                self.logger.warning("close_error", error=str(e))

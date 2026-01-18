@@ -12,10 +12,10 @@ from abc import ABC, abstractmethod
 from typing import Iterator, List, Dict, Any, Optional, Literal
 from enum import Enum
 from dagster import AssetExecutionContext
-import structlog
+from dagster_pipeline.utils.logging_config import get_logger
 from dataclasses import dataclass
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class SourceType(Enum):
@@ -132,15 +132,20 @@ class BaseSourceConnector(ABC):
         self._connection = None
         self._is_validated = False
         
+        # Create connector-specific logger
+        self.logger = get_logger(
+            self.__class__.__name__,
+            context={
+                "source_type": self.source_type(),
+                "database": config.get("database"),
+                "table": config.get("table"),
+            }
+        )
+        
         # Validate required config keys
         self._validate_config()
         
-        logger.info(
-            "source_connector_initialized",
-            source_type=self.source_type(),
-            database=config.get("database"),
-            table=config.get("table")
-        )
+        self.logger.info("connector_initialized")
     
     def _validate_config(self):
         """Validate that required config keys are present"""
@@ -148,9 +153,12 @@ class BaseSourceConnector(ABC):
         missing_keys = [key for key in required_keys if key not in self.config]
         
         if missing_keys:
+            self.logger.error("config_validation_failed", missing_keys=missing_keys, required_keys=required_keys)
             raise SourceValidationError(
                 f"Missing required config keys for {self.source_type()}: {missing_keys}"
             )
+        
+        self.logger.debug("config_validated", keys=list(self.config.keys()))
     
     @abstractmethod
     def source_type(self) -> str:
@@ -281,7 +289,7 @@ class BaseSourceConnector(ABC):
         Note:
             Override if source supports more efficient implementation
         """
-        # Default implementation - sources can override for better performance
+        self.logger.warning("get_max_value_not_implemented", column=column)
         raise NotImplementedError(
             f"{self.source_type()} connector does not implement get_max_value(). "
             f"Override this method for better incremental extraction support."
@@ -301,6 +309,7 @@ class BaseSourceConnector(ABC):
         Note:
             Override for database sources, raise NotImplementedError for others
         """
+        self.logger.warning("test_query_not_implemented")
         raise NotImplementedError(
             f"{self.source_type()} connector does not support test_query()"
         )
@@ -315,16 +324,9 @@ class BaseSourceConnector(ABC):
             try:
                 self._connection.close()
                 self._connection = None
-                logger.debug(
-                    "source_connection_closed",
-                    source_type=self.source_type()
-                )
+                self.logger.debug("connection_closed")
             except Exception as e:
-                logger.warning(
-                    "source_close_error",
-                    source_type=self.source_type(),
-                    error=str(e)
-                )
+                self.logger.warning("close_error", error=str(e))
     
     def __enter__(self):
         """Context manager support"""

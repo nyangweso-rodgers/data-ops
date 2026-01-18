@@ -7,14 +7,15 @@ IMPROVEMENTS:
 - Config validation
 - Better type hints
 - Consistent interface
+- Centralized structured logging
 """
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from dagster import AssetExecutionContext
-import structlog
+from dagster_pipeline.utils.logging_config import get_logger
 
-logger = structlog.get_logger(__name__)
+logger = get_logger(__name__)
 
 
 class DestinationConnectionError(Exception):
@@ -81,13 +82,18 @@ class BaseSinkConnector(ABC):
         self._connection = None
         self._is_validated = False
         
+        # Create connector-specific logger
+        self.logger = get_logger(
+            self.__class__.__name__,
+            context={
+                "destination_type": self.destination_type(),
+            }
+        )
+        
         # Validate required config keys
         self._validate_config()
         
-        logger.info(
-            "destination_connector_initialized",
-            destination_type=self.destination_type()
-        )
+        self.logger.info("connector_initialized")
     
     def _validate_config(self):
         """Validate that required config keys are present"""
@@ -95,9 +101,12 @@ class BaseSinkConnector(ABC):
         missing_keys = [key for key in required_keys if key not in self.config]
         
         if missing_keys:
+            self.logger.error("config_validation_failed", missing_keys=missing_keys, required_keys=required_keys)
             raise DestinationValidationError(
                 f"Missing required config keys for {self.destination_type()}: {missing_keys}"
             )
+        
+        self.logger.debug("config_validated", keys=list(self.config.keys()))
     
     @abstractmethod
     def destination_type(self) -> str:
@@ -238,10 +247,7 @@ class BaseSinkConnector(ABC):
             Most destinations only support adding columns, not modifying/dropping.
             Override in subclass with destination-specific logic.
         """
-        logger.warning(
-            "schema_sync_not_implemented",
-            destination_type=self.destination_type()
-        )
+        self.logger.warning("schema_sync_not_implemented")
     
     def get_row_count(self, database: str, table: str) -> int:
         """
@@ -256,6 +262,7 @@ class BaseSinkConnector(ABC):
         Returns:
             Row count
         """
+        self.logger.warning("get_row_count_not_implemented", database=database, table=table)
         raise NotImplementedError(
             f"{self.destination_type()} connector does not implement get_row_count()"
         )
@@ -270,16 +277,9 @@ class BaseSinkConnector(ABC):
             try:
                 self._connection.close()
                 self._connection = None
-                logger.debug(
-                    "destination_connection_closed",
-                    destination_type=self.destination_type()
-                )
+                self.logger.debug("connection_closed")
             except Exception as e:
-                logger.warning(
-                    "destination_close_error",
-                    destination_type=self.destination_type(),
-                    error=str(e)
-                )
+                self.logger.warning("close_error", error=str(e))
     
     def __enter__(self):
         """Context manager support"""

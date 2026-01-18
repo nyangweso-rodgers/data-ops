@@ -19,7 +19,6 @@ from datetime import datetime, date
 from decimal import Decimal
 from contextlib import contextmanager
 import time
-import structlog
 
 from .base_source_connector import (
     BaseSourceConnector,
@@ -29,8 +28,10 @@ from .base_source_connector import (
     IncrementalConfig,
     ColumnSchema
 )
+from dagster_pipeline.utils.logging_config import get_logger
 
-logger = structlog.get_logger(__name__)
+# Module logger for class-level operations
+logger = get_logger(__name__)
 
 
 class MySQLSourceConnector(BaseSourceConnector):
@@ -108,7 +109,7 @@ class MySQLSourceConnector(BaseSourceConnector):
             "read_timeout": self.config.get("read_timeout", self.DEFAULT_READ_TIMEOUT),
             "autocommit": True,
             "cursorclass": SSDictCursor,
-            "conv": self._create_safe_date_converters()  # THE FIX: Use safe converters
+            "conv": self._create_safe_date_converters()
         }
     
     @contextmanager
@@ -123,7 +124,6 @@ class MySQLSourceConnector(BaseSourceConnector):
         params = self._connection_params.copy()
         
         if not use_server_cursor:
-            # Use regular cursor for small queries
             params["cursorclass"] = pymysql.cursors.DictCursor
         
         # Retry logic
@@ -132,43 +132,31 @@ class MySQLSourceConnector(BaseSourceConnector):
             try:
                 conn = pymysql.connect(**params)
                 yield conn
-                return  # Success
+                return
                 
             except pymysql.OperationalError as e:
                 last_error = e
                 if attempt < self.MAX_RETRIES - 1:
                     delay = self.RETRY_DELAY * (self.RETRY_BACKOFF ** attempt)
-                    logger.warning(
-                        "mysql_connection_retry",
-                        attempt=attempt + 1,
-                        max_retries=self.MAX_RETRIES,
-                        delay=delay,
-                        error=str(e)
-                    )
+                    self.logger.warning("connection_retry", attempt=attempt + 1, delay=delay, error=str(e))
                     time.sleep(delay)
                 else:
-                    # Final attempt failed
                     raise SourceConnectionError(
                         f"Failed to connect to MySQL after {self.MAX_RETRIES} attempts: {e}"
                     ) from e
                     
             except pymysql.Error as e:
-                # Non-retryable error
                 raise SourceConnectionError(f"MySQL connection error: {e}") from e
                 
             finally:
                 if conn and attempt == self.MAX_RETRIES - 1:
-                    # Only close if we're done (success or final failure)
                     try:
                         conn.close()
                     except Exception:
                         pass
         
-        # Should never reach here, but just in case
         if last_error:
-            raise SourceConnectionError(
-                f"Failed to connect to MySQL: {last_error}"
-            ) from last_error
+            raise SourceConnectionError(f"Failed to connect to MySQL: {last_error}") from last_error
     
     def validate(self) -> bool:
         """Validate MySQL connection and table exists"""
@@ -206,10 +194,8 @@ class MySQLSourceConnector(BaseSourceConnector):
                         )
                     
                     # Log table stats
-                    logger.info(
-                        "mysql_table_found",
-                        database=database,
-                        table=table,
+                    self.logger.info(
+                        "table_validated",
                         approx_rows=result.get("TABLE_ROWS"),
                         data_size_mb=round(result.get("DATA_LENGTH", 0) / 1024 / 1024, 2)
                     )
@@ -217,7 +203,7 @@ class MySQLSourceConnector(BaseSourceConnector):
             raise SourceValidationError(f"Failed to validate table: {e}") from e
         
         self._is_validated = True
-        logger.info("mysql_source_validated", database=database, table=table)
+        self.logger.info("source_validated")
         return True
     
     def get_schema(self) -> List[ColumnSchema]:
@@ -248,9 +234,7 @@ class MySQLSourceConnector(BaseSourceConnector):
                     columns = cursor.fetchall()
                     
                     if not columns:
-                        raise SourceValidationError(
-                            f"No columns found for table {database}.{table}"
-                        )
+                        raise SourceValidationError(f"No columns found for table {database}.{table}")
                     
                     schema = []
                     for col in columns:
@@ -265,23 +249,13 @@ class MySQLSourceConnector(BaseSourceConnector):
                             extra=col["extra"]
                         ))
                     
-                    logger.info(
-                        "mysql_schema_fetched",
-                        database=database,
-                        table=table,
-                        columns=len(schema)
-                    )
+                    self.logger.info("schema_fetched", columns=len(schema))
                     return schema
                     
         except pymysql.Error as e:
             raise SourceExtractionError(f"Failed to get schema: {e}") from e
     
-    @staticmethod
-    def _normalize_value(
-        value: Any,
-        mysql_type: str = "",
-        column_name: str = ""
-    ) -> Any:
+    def _normalize_value(self, value: Any, mysql_type: str = "", column_name: str = "") -> Any:
         """
         Convert MySQL types to Python native types
         
@@ -296,22 +270,20 @@ class MySQLSourceConnector(BaseSourceConnector):
         if value is None:
             return None
         
-        mysql_type_lower = mysql_type.lower().strip()
-        
-        # ── 1. Handle already-parsed native date/datetime coming from MySQL ──
+        # Handle already-parsed native date/datetime from MySQL
         if isinstance(value, datetime):
             if value.year == 0:
-                logger.warning("zero_datetime_converted_to_null", column=column_name, value=str(value))
+                self.logger.warning("zero_datetime_to_null", column=column_name)
                 return None
             return value
         
         if isinstance(value, date):
             if value.year == 0:
-                logger.warning("zero_date_converted_to_null", column=column_name, value=str(value))
+                self.logger.warning("zero_date_to_null", column=column_name)
                 return None
             return value
 
-        # ── 2. Decimal / bytes ──
+        # Decimal / bytes
         if isinstance(value, Decimal):
             return float(value)
 
@@ -320,68 +292,52 @@ class MySQLSourceConnector(BaseSourceConnector):
                 return value.decode('utf-8')
             except UnicodeDecodeError:
                 return value.hex()
-            
-        # ── 3. Only attempt string parsing if MySQL column type INDICATES date/time ──
+        
+        # Only attempt string parsing if MySQL column type indicates date/time
         mysql_type_lower = mysql_type.lower().strip()
-        base_type = mysql_type_lower.split('(')[0].strip()          # 'date', 'datetime', 'varchar', 'enum', etc.
-
+        base_type = mysql_type_lower.split('(')[0].strip()
         is_date_like_column = base_type in {'date', 'datetime', 'timestamp', 'time'}
 
         if isinstance(value, str) and is_date_like_column:
             # Zero / invalid date strings → None
             if value.startswith('0000-00-00'):
-                logger.warning("zero_date_string_converted_to_null", column=column_name, value=value)
+                self.logger.warning("zero_date_string_to_null", column=column_name)
                 return None
 
             # Parse date (YYYY-MM-DD)
             if len(value) == 10 and value[4] == '-' and value[7] == '-':
                 try:
-                    # Extract year first to check range before parsing
                     year = int(value[0:4])
                     
                     # ClickHouse Date supports 1970-2149, Date32 supports 1900-2299
-                    # To be safe for both, reject anything outside 1900-2149
                     if year < 1900 or year > 2149:
-                        logger.warning(
-                            "date_out_of_range_converted_to_null",
-                            column=column_name,
-                            value=value,
-                            year=year
-                        )
+                        self.logger.warning("date_out_of_range", column=column_name, year=year)
                         return None
                     
-                    parsed = datetime.strptime(value, '%Y-%m-%d').date()
-                    return parsed
+                    return datetime.strptime(value, '%Y-%m-%d').date()
                 except ValueError:
-                    logger.warning("invalid_date_string_in_date_column", column=column_name, value=value)
-                    return None   # safer than keeping invalid string in Date column
+                    self.logger.warning("invalid_date_string", column=column_name, value=value)
+                    return None
 
             # Parse datetime (YYYY-MM-DD HH:MM:SS)
             if len(value) >= 19 and value[4] == '-' and value[10] == ' ':
                 try:
-                    # Extract year first to check range
                     year = int(value[0:4])
                     
                     if year < 1900 or year > 2149:
-                        logger.warning(
-                            "datetime_out_of_range_converted_to_null",
-                            column=column_name,
-                            value=value,
-                            year=year
-                        )
+                        self.logger.warning("datetime_out_of_range", column=column_name, year=year)
                         return None
                     
-                    parsed = datetime.strptime(value[:19], '%Y-%m-%d %H:%M:%S')
-                    return parsed
+                    return datetime.strptime(value[:19], '%Y-%m-%d %H:%M:%S')
                 except ValueError:
-                    logger.warning("invalid_datetime_string_in_datetime_column", column=column_name, value=value)
+                    self.logger.warning("invalid_datetime_string", column=column_name, value=value)
                     return None
 
             # If it didn't parse but column expects date → None
-            logger.warning("unparsable_value_in_date_column", column=column_name, value=value)
+            self.logger.warning("unparsable_date_value", column=column_name)
             return None
         
-        # ── 4. Default: keep everything else as-is (especially VARCHAR strings) ──
+        # Default: keep everything else as-is
         return value
     
     def extract_data(
@@ -390,9 +346,7 @@ class MySQLSourceConnector(BaseSourceConnector):
         batch_size: int = 10000,
         incremental_config: Optional[IncrementalConfig] = None
     ) -> Iterator[List[Dict[str, Any]]]:
-        """
-        Extract data from MySQL - returns list of dictionaries
-        """
+        """Extract data from MySQL - returns list of dictionaries"""
         if not self._is_validated:
             self.validate()
         
@@ -435,13 +389,11 @@ class MySQLSourceConnector(BaseSourceConnector):
             if incremental_config.last_value is not None:
                 where_clause = f"WHERE `{incremental_config.key}` {incremental_config.operator} %s"
                 params.append(incremental_config.last_value)
-                logger.info(
-                    "mysql_incremental_extraction",
-                    database=database,
-                    table=table,
+                self.logger.info(
+                    "incremental_extraction",
                     key=incremental_config.key,
                     operator=incremental_config.operator,
-                    last_value=str(incremental_config.last_value)[:50]
+                    from_value=str(incremental_config.last_value)[:50]
                 )
         
         # Build ORDER BY
@@ -458,16 +410,14 @@ class MySQLSourceConnector(BaseSourceConnector):
             {order_clause}
         """.strip()
         
-        logger.info(
-            "mysql_extraction_start",
-            database=database,
-            table=table,
+        self.logger.info(
+            "extraction_started",
             batch_size=batch_size,
             columns=len(column_list),
             incremental=bool(incremental_config)
         )
         
-        # Cache MySQL column types once (required for type-aware normalization)
+        # Cache MySQL column types for normalization
         schema = self.get_schema()
         mysql_types = {col.name: col.type for col in schema}
         
@@ -488,7 +438,7 @@ class MySQLSourceConnector(BaseSourceConnector):
                         batch_num += 1
                         total_rows += len(rows)
                         
-                        # Pass mysql_type and column_name to _normalize_value
+                        # Normalize values with type information
                         normalized_batch = []
                         for row in rows:
                             normalized_row = {
@@ -501,51 +451,27 @@ class MySQLSourceConnector(BaseSourceConnector):
                             }
                             normalized_batch.append(normalized_row)
                         
-                        # Log first batch sample for debugging
+                        # Log first batch sample
                         if batch_num == 1 and normalized_batch:
                             sample_row = normalized_batch[0]
-                            sample_types = {
-                                col: type(sample_row[col]).__name__ 
-                                for col in column_list
-                            }
-                            logger.debug(
-                                "mysql_first_batch_sample",
-                                database=database,
-                                table=table,
+                            sample_types = {col: type(sample_row[col]).__name__ for col in column_list}
+                            self.logger.debug(
+                                "first_batch_sample",
                                 rows=len(normalized_batch),
-                                sample_types=sample_types,
-                                sample_values={
-                                    k: str(v)[:50] for k, v in list(sample_row.items())[:3]
-                                }
+                                sample_types=sample_types
                             )
                         
                         if batch_num % 10 == 0:
-                            logger.info(
-                                "mysql_extraction_progress",
-                                database=database,
-                                table=table,
-                                batches=batch_num,
-                                rows=total_rows
-                            )
+                            self.logger.info("extraction_progress", batches=batch_num, rows=total_rows)
                         
                         yield normalized_batch
                         
         except pymysql.Error as e:
-            raise SourceExtractionError(
-                f"MySQL extraction failed at batch {batch_num}: {e}"
-            ) from e
+            raise SourceExtractionError(f"MySQL extraction failed at batch {batch_num}: {e}") from e
         except Exception as e:
-            raise SourceExtractionError(
-                f"Unexpected error during extraction: {e}"
-            ) from e
+            raise SourceExtractionError(f"Unexpected error during extraction: {e}") from e
         
-        logger.info(
-            "mysql_extraction_complete",
-            database=database,
-            table=table,
-            total_rows=total_rows,
-            batches=batch_num
-        )
+        self.logger.info("extraction_complete", total_rows=total_rows, batches=batch_num)
     
     def get_row_count(
         self,
@@ -573,13 +499,7 @@ class MySQLSourceConnector(BaseSourceConnector):
                     result = cursor.fetchone()
                     count = result["cnt"] if result else 0
                     
-                    logger.info(
-                        "mysql_row_count",
-                        database=database,
-                        table=table,
-                        count=count,
-                        filtered=bool(where_clause)
-                    )
+                    self.logger.info("row_count", count=count, filtered=bool(where_clause))
                     return count
                     
         except pymysql.Error as e:
@@ -593,15 +513,12 @@ class MySQLSourceConnector(BaseSourceConnector):
         database = self.config["database"]
         table = self.config["table"]
         
-        # Cache types here too (for normalization)
         schema = self.get_schema()
         mysql_types = {col.name: col.type for col in schema}
         
         schema_columns = {col.name for col in schema}
         if column not in schema_columns:
-            raise SourceValidationError(
-                f"Column '{column}' not found in table {database}.{table}"
-            )
+            raise SourceValidationError(f"Column '{column}' not found in table {database}.{table}")
         
         query = f"SELECT MAX(`{column}`) as max_val FROM `{database}`.`{table}`"
         
@@ -612,15 +529,8 @@ class MySQLSourceConnector(BaseSourceConnector):
                     result = cursor.fetchone()
                     max_val = result["max_val"] if result else None
                     
-                    logger.info(
-                        "mysql_max_value",
-                        database=database,
-                        table=table,
-                        column=column,
-                        max_value=str(max_val)[:50] if max_val else None
-                    )
+                    self.logger.info("max_value", column=column, value=str(max_val)[:50] if max_val else None)
                     
-                    # Pass type for proper normalization
                     return self._normalize_value(
                         max_val,
                         mysql_type=mysql_types.get(column, ""),
@@ -630,11 +540,7 @@ class MySQLSourceConnector(BaseSourceConnector):
         except pymysql.Error as e:
             raise SourceExtractionError(f"Failed to get max value: {e}") from e
     
-    def test_query(
-        self,
-        query: str,
-        params: Optional[List[Any]] = None
-    ) -> List[Dict[str, Any]]:
+    def test_query(self, query: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
         """Execute a test query (for debugging)"""
         if not self._is_validated:
             self.validate()
@@ -645,26 +551,17 @@ class MySQLSourceConnector(BaseSourceConnector):
                     cursor.execute(query, params or [])
                     results = cursor.fetchall()
                     
-                    # Cache types for test_query normalization too
                     schema = self.get_schema()
                     mysql_types = {col.name: col.type for col in schema}
                     
                     normalized = []
                     for row in results:
                         normalized.append({
-                            k: self._normalize_value(
-                                v,
-                                mysql_type=mysql_types.get(k, ""),
-                                column_name=k
-                            )
+                            k: self._normalize_value(v, mysql_type=mysql_types.get(k, ""), column_name=k)
                             for k, v in row.items()
                         })
                     
-                    logger.info(
-                        "mysql_test_query_executed",
-                        rows=len(normalized),
-                        query_preview=query[:100]
-                    )
+                    self.logger.info("test_query_executed", rows=len(normalized))
                     return normalized
                     
         except pymysql.Error as e:
@@ -676,6 +573,6 @@ class MySQLSourceConnector(BaseSourceConnector):
             try:
                 self._connection.close()
                 self._connection = None
-                logger.debug("mysql_connection_closed")
+                self.logger.debug("connection_closed")
             except Exception as e:
-                logger.warning("mysql_close_error", error=str(e))
+                self.logger.warning("close_error", error=str(e))
