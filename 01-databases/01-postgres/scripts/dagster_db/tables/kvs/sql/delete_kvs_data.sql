@@ -1,3 +1,3 @@
 DELETE 
-FROM public.kvs
-where id = 6; -- specify the id to delete
+FROM dagster.kvs
+where id = 1; -- specify the id to delete
