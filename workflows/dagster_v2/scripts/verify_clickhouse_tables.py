@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#scripts/verify_clickhouse_tables.py
 """
 Verify ClickHouse table configurations
 

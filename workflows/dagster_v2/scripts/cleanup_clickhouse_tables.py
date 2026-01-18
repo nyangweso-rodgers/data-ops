@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#scripts/cleanup_clickhouse_tables.py
 """
 Local ClickHouse Cleanup Test Script
 
