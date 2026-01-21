@@ -7,15 +7,30 @@ ROOT_DIR := $(shell pwd)
 # Export ROOT_DIR so nested Makefiles can use it
 export ROOT_DIR
 
-.PHONY: help dagster-local-up-build dagster-local-up dagster-local-stop \
+.PHONY: help env-check\
+		mysql-build mysql-up mysql-stop mysql-down mysql-logs mysql-restart \
+		postgres-up postgres-stop postgres-down postgres-logs \
+		dagster-local-up-build dagster-local-up dagster-local-stop \
         dagster-local-down dagster-local-logs dagster-local-restart \
         dagster-local-rds-up-build dagster-local-rds-up dagster-local-rds-stop \
         dagster-local-rds-down dagster-local-rds-logs dagster-local-rds-restart \
         dagster-prod-up dagster-prod-down dagster-prod-logs dagster-build \
-        postgres-up postgres-down up down logs clean
+        up down logs clean
 
 help:
 	@echo "Data-Ops Monorepo Commands:"
+	@echo ""
+	@echo "  make mysql-build           - Build and start MySQL (detached)"
+	@echo "  make mysql-up              - Start MySQL (attached, shows logs)"
+	@echo "  make mysql-stop            - Stop MySQL"
+	@echo "  make mysql-down            - Remove MySQL"
+	@echo "  make mysql-logs            - View MySQL logs"
+	@echo "  make mysql-restart         - Restart MySQL"
+	@echo ""
+	@echo "  make postgres-up           - Start PostgreSQL"
+	@echo "  make postgres-stop         - Stop PostgreSQL"
+	@echo "  make postgres-down         - Remove PostgreSQL"
+	@echo "  make postgres-logs         - View PostgreSQL logs"
 	@echo ""
 	@echo "Dagster:"
 	@echo "  make dagster-local-up-build - Build and start local Dagster"
@@ -51,7 +66,53 @@ env-check:
 	@if ! grep -q "DAGSTER_PG_DB_HOST" .env; then \
 		echo "⚠️  Warning: DAGSTER_PG_DB_HOST not found in .env"; \
 	fi
-	
+# ──────────────────────────────────────────────────────────────
+# MySQL Commands
+# ──────────────────────────────────────────────────────────────
+mysql-build:
+	@echo "🔨 Building and starting MySQL (detached)..."
+	@docker-compose up -d --build mysql
+	@echo "✓ MySQL started in background"
+
+mysql-up:
+	@echo "🚀 Starting MySQL (attached)..."
+	@docker-compose up mysql
+
+mysql-stop:
+	@echo "⏸️  Stopping MySQL..."
+	@docker-compose stop mysql
+	@echo "✓ MySQL stopped"
+
+mysql-down:
+	@echo "🗑️  Removing MySQL..."
+	@docker-compose rm -sf mysql
+	@echo "✓ MySQL removed"
+
+mysql-logs:
+	@docker-compose logs -f mysql
+
+mysql-restart:
+	@echo "🔄 Restarting MySQL..."
+	@docker-compose restart mysql
+	@echo "✓ MySQL restarted"
+
+# ──────────────────────────────────────────────────────────────
+# PostgreSQL Commands
+# ──────────────────────────────────────────────────────────────
+postgres-up:
+	@echo "🚀 Starting PostgreSQL..."
+	@docker-compose up -d postgres
+	@echo "✓ PostgreSQL started"
+
+postgres-stop:
+	@docker-compose stop postgres
+
+postgres-down:
+	@docker-compose rm -sf postgres
+
+postgres-logs:
+	@docker-compose logs -f postgres
+
 # ──────────────────────────────────────────────────────────────
 # Dagster - Local development
 # ──────────────────────────────────────────────────────────────
