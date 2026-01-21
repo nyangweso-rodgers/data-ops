@@ -10,8 +10,7 @@ services:
     env_file:
       - ../../.env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
-    #command: --bind-address=0.0.0.0  # Listen on all interfaces
+      MYSQL_ROOT_PASSWORD: ${LOCAL_MYSQL_DB_PASSWORD}
     command: --bind-address=0.0.0.0 --wait_timeout=28800 --interactive_timeout=28800
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
@@ -20,13 +19,14 @@ services:
       retries: 5
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./init-scripts/:/docker-entrypoint-initdb.d
     networks:
       - data-ops-network
+
 ################################ Networks ############################################
 networks:
   data-ops-network:
-    external: true 
+    external: true
+
 ################################ Volumes ############################################
 volumes:
   mysql-db-volume:
