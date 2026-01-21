@@ -33,10 +33,9 @@
 - data-ops/
   - `docker-compose.yml` # Root compose (orchestrates all services)
   - databases/
-    - postgres/
-      - `docker-compose-postgres.yml`
     - mysql/
       - `docker-compose-mysql.yml`
+    - `Makefile`
   - workflows/
     - dagster_v2/
       - `Dockerfile`

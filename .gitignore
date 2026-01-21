@@ -8,6 +8,9 @@
 .env.dagster
 .env.prefect
 
+# mysql init scripts
+01-databases/mysql/init-scripts/init-mysql-users.sql
+
 # dependencies
 /node_modules
 
