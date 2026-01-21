@@ -1,0 +1,116 @@
+# workflows/dagster/docker-compose-dagster.prod.yml
+# Production override (uses AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance configured
+#   - SSL certificate downloaded: certs/rds-ca-bundle.pem
+#   - Environment variables set in .env.dagster
+#
+# Usage:
+#   docker-compose -f docker-compose-dagster.base.yml -f docker-compose-dagster.prod.yml up -d
+services:
+  dagster:
+    environment:
+      - ENVIRONMENT=production
+      - DAGSTER_LOG_LEVEL=WARNING # Minimal logging in production
+      # RDS configuration
+      - DAGSTER_POSTGRES_HOST=${RDS_HOSTNAME}
+      - DAGSTER_POSTGRES_USER=${RDS_USERNAME}
+      - DAGSTER_POSTGRES_PASSWORD=${RDS_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${RDS_DB_NAME}
+      - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
+      # SSL for RDS
+      - DAGSTER_POSTGRES_SSLMODE=require
+      # Feature flags from .env
+      - ENABLE_SCHEDULES=${ENABLE_SCHEDULES:-true}
+      - ENABLE_SENSORS=${ENABLE_SENSORS:-true}
+      - ENABLE_AUTO_MATERIALIZE=${ENABLE_AUTO_MATERIALIZE:-false}
+      # Monitoring (if configured)
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - ALERT_EMAIL=${ALERT_EMAIL:-}
+    restart: unless-stopped
+    volumes:
+      # Read-only in production
+      - ./dagster_home:/app/dagster_home:ro
+      - ./dagster_pipeline:/app/dagster_pipeline:ro
+      # SSL certificate (if using verify-ca or verify-full)
+      - ./certs/rds-ca-bundle.pem:/app/certs/rds-ca-bundle.pem:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "${DAGSTER_CPU_LIMIT:-2}"
+          memory: ${DAGSTER_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "${DAGSTER_CPU_RESERVATION:-1}"
+          memory: ${DAGSTER_MEMORY_RESERVATION:-2G}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  dagster_webserver:
+    environment:
+      - ENVIRONMENT=production
+      - DAGSTER_LOG_LEVEL=WARNING
+      - DAGSTER_POSTGRES_HOST=${RDS_HOSTNAME}
+      - DAGSTER_POSTGRES_USER=${RDS_USERNAME}
+      - DAGSTER_POSTGRES_PASSWORD=${RDS_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${RDS_DB_NAME}
+      - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
+      - DAGSTER_POSTGRES_SSLMODE=require
+    ports:
+      - "${DAGSTER_WEBSERVER_PORT:-3004}:3004"
+    restart: unless-stopped
+    volumes:
+      - ./dagster_home:/app/dagster_home:ro
+      - ./dagster_pipeline:/app/dagster_pipeline:ro
+      - ./certs/rds-ca-bundle.pem:/app/certs/rds-ca-bundle.pem:ro
+    depends_on:
+      dagster:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  dagster_daemon:
+    environment:
+      - ENVIRONMENT=production
+      - DAGSTER_LOG_LEVEL=WARNING
+      - DAGSTER_POSTGRES_HOST=${RDS_HOSTNAME}
+      - DAGSTER_POSTGRES_USER=${RDS_USERNAME}
+      - DAGSTER_POSTGRES_PASSWORD=${RDS_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${RDS_DB_NAME}
+      - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
+      - DAGSTER_POSTGRES_SSLMODE=requir
+    restart: always
+    volumes:
+      - ./dagster_home:/app/dagster_home:ro
+      - ./dagster_pipeline:/app/dagster_pipeline:ro
+      - ./certs/rds-ca-bundle.pem:/app/certs/rds-ca-bundle.pem:ro
+    depends_on:
+      dagster:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

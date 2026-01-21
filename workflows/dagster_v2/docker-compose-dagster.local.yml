@@ -1,0 +1,61 @@
+# workflows/dagster/docker-compose-dagster.local.yml
+# Local development override 
+#
+# Prerequisites:
+#   - Postgres must be running
+#   - Network must exist
+#
+# Usage:
+#   docker-compose -f docker-compose-dagster.base.yml -f docker-compose-dagster.local.yml up -d
+services:
+  dagster:
+    env_file:
+      - ../../.env  # Load all variables from root .env
+    environment:
+      - ENVIRONMENT=local
+      - DAGSTER_LOG_LEVEL=DEBUG
+      # Point to the PostgreSQL container from databases/postgres
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      - DAGSTER_POSTGRES_PORT=${DAGSTER_PG_DB_PORT:-5432}
+    # Note: Can't use depends_on with health check across compose files
+    restart: "no"  # No auto-restart for easier debugging
+    volumes:
+      # Development: mount code for hot reload
+      - ./dagster_pipeline:/app/dagster_pipeline
+
+  dagster_webserver:
+    env_file:
+      - ../../.env  # Load all variables from root .env
+    environment:
+      - ENVIRONMENT=local
+      - DAGSTER_LOG_LEVEL=DEBUG
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      - DAGSTER_POSTGRES_PORT=${DAGSTER_PG_DB_PORT:-5432}
+    ports:
+      - "${DAGSTER_WEBSERVER_PORT:-3004}:3004"
+    restart: "no"
+    depends_on:
+      dagster:
+        condition: service_healthy
+
+  dagster_daemon:
+    env_file:
+      - ../../.env  # Load all variables from root .env
+    environment:
+      - ENVIRONMENT=local
+      - DAGSTER_LOG_LEVEL=DEBUG
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      - DAGSTER_POSTGRES_PORT=${DAGSTER_PG_DB_PORT:-5432}
+    restart: "no"
+    depends_on:
+      dagster:
+        condition: service_healthy

@@ -1,0 +1,70 @@
+# docker-compose-dagster.local-rds.yml
+# ───────────────────────────────────────
+# Local dev → but using real RDS instead of local postgres container
+#
+# Usage:
+#   docker-compose -f docker-compose-dagster.base.yml -f docker-compose-dagster.local-rds.yml up -d
+
+services:
+  dagster:
+    environment:
+      - ENVIRONMENT=local-rds
+      - DAGSTER_LOG_LEVEL=DEBUG
+      # RDS credentials
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      # SSL
+      - DAGSTER_POSTGRES_SSLMODE=require
+      #- DAGSTER_POSTGRES_SSLROOTCERT=/app/certs/rds-ca-bundle.pem
+    volumes:
+      # Mount the RDS CA bundle (same as in prod)
+      #- ./certs/rds-ca-bundle.pem:/app/certs/rds-ca-bundle.pem:ro
+      # Keep hot-reload for local dev
+      - ./dagster_pipeline:/app/dagster_pipeline
+    restart: "no"
+    # No depends_on postgres anymore
+
+  dagster_webserver:
+    environment:
+      - ENVIRONMENT=local-rds
+      - DAGSTER_LOG_LEVEL=DEBUG
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      - DAGSTER_POSTGRES_SSLMODE=require
+      #- DAGSTER_POSTGRES_SSLROOTCERT=/app/certs/rds-ca-bundle.pem
+    ports:
+      - "${DAGSTER_WEBSERVER_PORT:-3004}:3004"
+    volumes:
+      #- ./certs/rds-ca-bundle.pem:/app/certs/rds-ca-bundle.pem:ro
+      #- ./dagster_home:/app/dagster_home
+      - ./dagster_pipeline:/app/dagster_pipeline
+    restart: "no"
+    depends_on:
+      dagster:
+        condition: service_healthy
+
+  dagster_daemon:
+    environment:
+      - ENVIRONMENT=local-rds
+      - DAGSTER_LOG_LEVEL=DEBUG
+      - DAGSTER_POSTGRES_HOST=${DAGSTER_PG_DB_HOST}
+      - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
+      - DAGSTER_POSTGRES_USER=${DAGSTER_PG_DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DAGSTER_PG_DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DAGSTER_PG_DB_NAME}
+      - DAGSTER_POSTGRES_SSLMODE=require
+      #- DAGSTER_POSTGRES_SSLROOTCERT=/app/certs/rds-ca-bundle.pem
+    volumes:
+      #- ./certs/rds-ca-bundle.pem:/app/certs/rds-ca-bundle.pem:ro
+      #- ./dagster_home:/app/dagster_home
+      - ./dagster_pipeline:/app/dagster_pipeline
+    restart: "no"
+    depends_on:
+      dagster:
+        condition: service_healthy
