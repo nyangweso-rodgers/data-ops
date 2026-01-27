@@ -59,5 +59,5 @@ postgres_fma_premise_details = create_postgres_to_clickhouse_asset(
 # ============================================================================
 assets = [
     postgres_fma_premises,
-    postgres_fma_premise_details,
+    postgres_fma_premise_details
 ]

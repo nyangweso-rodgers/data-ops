@@ -78,7 +78,7 @@ mysql_sales_service_to_clickhouse_job = define_asset_job(
         "mysql_sales_service_form_answers_to_clickhouse",
         "mysql_sales_service_kyc_requests_to_clickhouse",
         "mysql_sales_service_forms_to_clickhouse"
-    ],
+    ]
 )
 
 # MySQL AMT Job
@@ -86,15 +86,19 @@ mysql_amt_to_clickhouse_job = define_asset_job(
     name="mysql_amt_to_clickhouse_job",
     selection=[
         "mysql_amt_accounts_to_clickhouse",
-    ],
+    ]
 )
 
 # MySQL - Soil Testing Prod Job
 mysql_soil_testing_prod_to_clickhouse_job = define_asset_job(
     name="mysql_soil_testing_prod_to_clickhouse_job",
     selection=[
-        "mysql_soil_testing_prod_policies_to_clickhouse"
-    ],
+        "mysql_soil_testing_prod_policies_to_clickhouse",
+        "mysql_soil_testing_prod_vouchers_to_clickhouse",
+        "mysql_soil_testing_voucher_redemptions_to_clickhouse",
+        "mysql_soil_testing_prod_voucher_eligibilities_to_clickhouse",
+        "mysql_soil_testing_prod_payout_request_items_to_clickhouse"
+    ]
 )
 
 # PostgreSQL FMA Job
@@ -102,8 +106,8 @@ postgres_fma_to_clickhouse_job = define_asset_job(
     name="postgres_fma_to_clickhouse_job",
     selection=[
         "postgres_fma_premises_to_clickhouse",
-        "postgres_fma_premise_details_to_clickhouse",
-    ],
+        "postgres_fma_premise_details_to_clickhouse"
+    ]
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -120,13 +124,13 @@ postgres_fma_to_clickhouse_job = define_asset_job(
 clickhouse_optimization_job = define_asset_job(
     name="clickhouse_optimization_job",
     selection=["optimize_clickhouse_tables"],
-    description="Run OPTIMIZE TABLE FINAL on all ClickHouse tables to remove duplicates",
+    description="Run OPTIMIZE TABLE FINAL on all ClickHouse tables to remove duplicates"
 )
 
 logger.info(
     "jobs_defined",
     etl_jobs=4,
-    maintenance_jobs=1,
+    maintenance_jobs=1
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -137,28 +141,28 @@ logger.info(
 mysql_sales_service_to_clickhouse_schedule = ScheduleDefinition(
     job=mysql_sales_service_to_clickhouse_job,
     cron_schedule="*/20 6-20 * * *",
-    name="mysql_sales_service_to_clickhouse_schedule",
+    name="mysql_sales_service_to_clickhouse_schedule"
 )
 
 # MySQL AMT Schedule (Every 20 minutes, 6 AM - 8 PM)
 mysql_amt_to_clickhouse_schedule = ScheduleDefinition(
     job=mysql_amt_to_clickhouse_job,
     cron_schedule="*/20 6-20 * * *",
-    name="mysql_amt_to_clickhouse_schedule",
+    name="mysql_amt_to_clickhouse_schedule"
 )
 
 # MySQL - Soil Testing Prod Schedule (Every 20 minutes, 6 AM - 8 PM)
 mysql_soil_testing_prod_to_clickhouse_schedule = ScheduleDefinition(
     job=mysql_soil_testing_prod_to_clickhouse_job,
     cron_schedule="*/20 6-20 * * *",
-    name="mysql_soil_testing_prod_to_clickhouse_schedule",
+    name="mysql_soil_testing_prod_to_clickhouse_schedule"
 )
 
 # PostgreSQL FMA Schedule (Every 30 minutes, 6 AM - 8 PM)
 postgres_fma_to_clickhouse_schedule = ScheduleDefinition(
     job=postgres_fma_to_clickhouse_job,
     cron_schedule="*/30 6-20 * * *",
-    name="postgres_fma_to_clickhouse_schedule",
+    name="postgres_fma_to_clickhouse_schedule"
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -170,7 +174,7 @@ clickhouse_optimization_schedule = ScheduleDefinition(
     job=clickhouse_optimization_job,
     cron_schedule="0 2 * * *",  # 2 AM daily
     name="clickhouse_optimization_schedule",
-    description="Run ClickHouse table optimization daily at 2 AM to remove duplicates",
+    description="Run ClickHouse table optimization daily at 2 AM to remove duplicates"
 )
 
 logger.info(
@@ -196,7 +200,7 @@ defs = Definitions(
         *postgres_assets,
         
         # Maintenance assets (cleanup/optimization)
-        *optimization_assets,
+        *optimization_assets
     ],
     resources={
         # MySQL - AMT
@@ -219,28 +223,36 @@ defs = Definitions(
         "dagster_postgres_resource": dagster_postgres_resource,
         
         # Utilities
-        "schema_loader": SchemaLoader(),
+        "schema_loader": SchemaLoader()
     },
     jobs=[
         # ETL Jobs
         mysql_sales_service_to_clickhouse_job,
         mysql_amt_to_clickhouse_job,
         postgres_fma_to_clickhouse_job,
+        
+        # MySQL - Soil Testing Prod Job
         mysql_soil_testing_prod_to_clickhouse_job,
         
         # Maintenance Jobs
-        clickhouse_optimization_job, 
+        clickhouse_optimization_job
     ],
     schedules=[
-        # ETL Schedules
+        # MySQL - Sales Service Schedule
         mysql_sales_service_to_clickhouse_schedule,
+        
+        # MySQL - AMT Schedule
         mysql_amt_to_clickhouse_schedule,
+        
+        # MySQL - Soil Testing Prod Schedule
         mysql_soil_testing_prod_to_clickhouse_schedule,
+        
+        # PostgreSQL - FMA Schedule
         postgres_fma_to_clickhouse_schedule,
         
         # Maintenance Schedules
-        clickhouse_optimization_schedule, 
-    ], 
+        clickhouse_optimization_schedule
+    ]
 )
 
 logger.info(

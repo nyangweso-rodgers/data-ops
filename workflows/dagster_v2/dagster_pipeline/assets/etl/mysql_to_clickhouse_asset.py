@@ -179,10 +179,85 @@ mysql_soil_testing_prod_policies = create_mysql_to_clickhouse_asset(
     
     # Destination Config (ClickHouse)
     destination_database="soil_testing_prod",
-    destination_table="policies_v1",
+    destination_table="policies",
     clickhouse_engine="ReplacingMergeTree(updatedAt)",
     clickhouse_order_by=["id", "updatedAt"],
-    clickhouse_partition_by=None,
+    clickhouse_partition_by=None
+)
+mysql_soil_testing_prod_vouchers = create_mysql_to_clickhouse_asset(
+    # Asset Identity
+    asset_name="mysql_soil_testing_prod_vouchers_to_clickhouse",
+    group_name="mysql_soil_testing_prod_to_clickhouse",
+    
+    # Source Config
+    mysql_resource_key="mysql_soil_testing_prod_db",
+    source_database="soil_testing_prod",
+    source_table="vouchers",
+    incremental_key="updatedAt",
+    
+    # Destination Config (ClickHouse)
+    destination_database="soil_testing_prod",
+    destination_table="vouchers",
+    clickhouse_engine="ReplacingMergeTree(updatedAt)",
+    clickhouse_order_by=["id", "updatedAt"],
+    clickhouse_partition_by=None
+)
+
+mysql_soil_testing_voucher_redemptions = create_mysql_to_clickhouse_asset(
+    # Asset Identity
+    asset_name="mysql_soil_testing_voucher_redemptions_to_clickhouse",
+    group_name="mysql_soil_testing_prod_to_clickhouse",
+    
+    # Source Config
+    mysql_resource_key="mysql_soil_testing_prod_db",
+    source_database="soil_testing_prod",
+    source_table="voucher_redemptions",
+    incremental_key="updatedAt",
+    
+    # Destination Config (ClickHouse)
+    destination_database="soil_testing_prod",
+    destination_table="voucher_redemptions",
+    clickhouse_engine="ReplacingMergeTree(updatedAt)",
+    clickhouse_order_by=["id", "updatedAt"],
+    clickhouse_partition_by=None
+)
+
+mysql_soil_testing_prod_voucher_eligibilities = create_mysql_to_clickhouse_asset(
+    # Asset Identity
+    asset_name="mysql_soil_testing_prod_voucher_eligibilities_to_clickhouse",
+    group_name="mysql_soil_testing_prod_to_clickhouse",
+    
+    # Source Config
+    mysql_resource_key="mysql_soil_testing_prod_db",
+    source_database="soil_testing_prod",
+    source_table="voucher_eligibilities",
+    incremental_key="updatedAt",
+    
+    # Destination Config (ClickHouse)
+    destination_database="soil_testing_prod",
+    destination_table="voucher_eligibilities",
+    clickhouse_engine="ReplacingMergeTree(updatedAt)",
+    clickhouse_order_by=["id", "updatedAt"],
+    clickhouse_partition_by=None
+    )
+
+mysql_soil_testing_prod_payout_request_items = create_mysql_to_clickhouse_asset(
+    # Asset Identity
+    asset_name="mysql_soil_testing_prod_payout_request_items_to_clickhouse",
+    group_name="mysql_soil_testing_prod_to_clickhouse",
+    
+    # Source Config
+    mysql_resource_key="mysql_soil_testing_prod_db",
+    source_database="soil_testing_prod",
+    source_table="payout_request_items",
+    incremental_key="updatedAt",
+    
+    # Destination Config (ClickHouse)
+    destination_database="soil_testing_prod",
+    destination_table="payout_request_items",
+    clickhouse_engine="ReplacingMergeTree(updatedAt)",
+    clickhouse_order_by=["id", "updatedAt"],
+    clickhouse_partition_by=None
 )
 # ============================================================================
 # ASSET COLLECTION
@@ -201,5 +276,9 @@ assets = [
     mysql_sales_service_forms,
     
     # MySQL Soil Testing Prod DB Tables
-    mysql_soil_testing_prod_policies
+    mysql_soil_testing_prod_policies,
+    mysql_soil_testing_prod_vouchers,
+    mysql_soil_testing_voucher_redemptions,
+    mysql_soil_testing_prod_voucher_eligibilities,
+    mysql_soil_testing_prod_payout_request_items
     ]
