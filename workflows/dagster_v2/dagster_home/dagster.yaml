@@ -1,10 +1,50 @@
 # dagster_home/dagster.yaml
 
 # ============================================================================
-# STORAGE - PostgreSQL (used for both local and production)
+# STORAGE - PostgreSQL
 # ============================================================================
-storage:
-  postgres:
+run_storage:
+  module: dagster_postgres.run_storage
+  class: PostgresRunStorage
+  config:
+    postgres_db:
+      username:
+        env: DAGSTER_POSTGRES_USER
+      password:
+        env: DAGSTER_POSTGRES_PASSWORD
+      hostname:
+        env: DAGSTER_POSTGRES_HOST
+      db_name:
+        env: DAGSTER_POSTGRES_DB
+      port:
+        env: DAGSTER_POSTGRES_PORT
+      params:
+        connect_timeout: 10
+        options: "-c search_path=dagster,public"
+
+event_log_storage:
+  module: dagster_postgres.event_log
+  class: PostgresEventLogStorage
+  config:
+    postgres_db:
+      username:
+        env: DAGSTER_POSTGRES_USER
+      password:
+        env: DAGSTER_POSTGRES_PASSWORD
+      hostname:
+        env: DAGSTER_POSTGRES_HOST
+      db_name:
+        env: DAGSTER_POSTGRES_DB
+      port:
+        env: DAGSTER_POSTGRES_PORT
+      params:
+        connect_timeout: 10
+        options: "-c search_path=dagster,public"
+
+schedule_storage:
+  module: dagster_postgres.schedule_storage
+  class: PostgresScheduleStorage
+  config:
     postgres_db:
       username:
         env: DAGSTER_POSTGRES_USER
