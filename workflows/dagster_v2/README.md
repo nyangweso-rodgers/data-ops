@@ -71,6 +71,7 @@
         - `mysql_sink_connector.py` # MySQL loading
 
     - assets/
+      - data_migration/
       - data_quality/ # Data Quality
       - etl/ # ETL Assets
         - `mysql_to_clickhouse_asset.py`
