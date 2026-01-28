@@ -26,15 +26,22 @@ from dagster import Definitions, define_asset_job, ScheduleDefinition
 # STEP 3: Import resources
 # ═════════════════════════════════════════════════════════════════════════════
 from dagster_pipeline.resources.registry import (
+    # MySQL - LOCAL DB (for local development)
+    local_mysql_db_resource,
+    
     # MySQL - Sales Service
     mysql_sales_service_dev,
     mysql_sales_service,
     
     # MySQL - AMT
     mysql_amt,
+    sc_mysql_amtdb_replica_resource,
     
     # MySQL - Soil Testing Prod
     mysql_soil_testing_prod_db,
+    
+    # MySQL - GRDATA DB
+    grdata_mysql_db_resource,
     
     # ClickHouse
     clickhouse_resource,
@@ -50,6 +57,7 @@ from dagster_pipeline.resources.registry import (
 from dagster_pipeline.assets.etl.mysql_to_clickhouse_asset import assets as mysql_assets
 from dagster_pipeline.assets.etl.postgres_to_clickhouse_asset import assets as postgres_assets
 from dagster_pipeline.assets.maintenance.clickhouse_optimization import assets as optimization_assets
+from dagster_pipeline.assets.data_migration.civ_regional_data_migration import assets as data_migration_assets
 
 # ═════════════════════════════════════════════════════════════════════════════
 # STEP 5: Import utilities
@@ -60,7 +68,8 @@ logger.info(
     "imports_completed",
     mysql_assets_count=len(mysql_assets),
     postgres_assets_count=len(postgres_assets),
-    optimization_assets_count=len(optimization_assets)
+    optimization_assets_count=len(optimization_assets),
+    data_migration_assets_count=len(data_migration_assets)
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -111,6 +120,18 @@ postgres_fma_to_clickhouse_job = define_asset_job(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
+# DATA MIGRATION JOBS (NEW)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# CIV Regional Data Migration Job
+civ_regional_data_migration_job = define_asset_job(
+    name="civ_regional_data_migration_job",
+    selection=["civ_regional_data_migration"],
+    description="Migrate CIV regional data from SC AMTDB replica to GRDATA MySQL database"
+)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
 # SNAPSHOT JOBS (Point-in-Time Capture)
 # ═════════════════════════════════════════════════════════════════════════════
 # Monthly Snapshots (end of month)
@@ -130,6 +151,7 @@ clickhouse_optimization_job = define_asset_job(
 logger.info(
     "jobs_defined",
     etl_jobs=4,
+    data_migration_jobs=1,
     maintenance_jobs=1
 )
 
@@ -177,17 +199,29 @@ clickhouse_optimization_schedule = ScheduleDefinition(
     description="Run ClickHouse table optimization daily at 2 AM to remove duplicates"
 )
 
-logger.info(
-    "schedules_defined",
-    etl_schedules=4,
-    maintenance_schedules=1
-)
+# ═════════════════════════════════════════════════════════════════════════════
+# DATA MIGRATION SCHEDULES (NEW)
+# ═════════════════════════════════════════════════════════════════════════════
+
+# CIV Regional Data Migration Schedule (Weekly on Sundays at 2 AM)
+civ_regional_data_migration_schedule = ScheduleDefinition(
+     job=civ_regional_data_migration_job,
+     cron_schedule="0 2 * * 0",  # Every Sunday at 2 AM
+     name="civ_regional_data_migration_schedule",
+     description="Weekly CIV regional data migration from SC AMTDB to GRDATA"
+ )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SNAPSHOT SCHEDULES
 # ═════════════════════════════════════════════════════════════════════════════
-# Monthly Snapshots: Run on 1st-5th of month at 1 AM
-# TODO: Add snapshot schedules when implemented
+
+logger.info(
+    "schedules_defined",
+    etl_schedules=4,
+    data_migration_schedules=0,
+    maintenance_schedules=1,
+    snapshot_schedules=0
+)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # DAGSTER DEFINITIONS
@@ -200,11 +234,18 @@ defs = Definitions(
         *postgres_assets,
         
         # Maintenance assets (cleanup/optimization)
-        *optimization_assets
+        *optimization_assets,
+        
+        # Data migration assets
+        *data_migration_assets
     ],
     resources={
+        # MySQL - LOCAL DB (for testing) ← ADD THIS!
+        "local_mysql_db_resource": local_mysql_db_resource,
+        
         # MySQL - AMT
         "mysql_amt": mysql_amt,
+        "sc_mysql_amtdb_replica_resource": sc_mysql_amtdb_replica_resource,
         
         # MySQL - Sales Service
         "mysql_sales_service_dev": mysql_sales_service_dev,
@@ -213,13 +254,16 @@ defs = Definitions(
         # MySQL - Soil Testing Prod
         "mysql_soil_testing_prod_db": mysql_soil_testing_prod_db,
         
+        # MySQL - GRDATA DB
+        "grdata_mysql_db_resource": grdata_mysql_db_resource,   
+        
         # PostgreSQL
         "postgres_fma": postgres_fma,
         
         # ClickHouse
         "clickhouse_resource": clickhouse_resource,
         
-        # Infrastructure
+        # PostgreSQL - Infrastructure
         "dagster_postgres_resource": dagster_postgres_resource,
         
         # Utilities
@@ -235,7 +279,10 @@ defs = Definitions(
         mysql_soil_testing_prod_to_clickhouse_job,
         
         # Maintenance Jobs
-        clickhouse_optimization_job
+        clickhouse_optimization_job,
+        
+        # Data Migration Jobs (NEW)
+        civ_regional_data_migration_job
     ],
     schedules=[
         # MySQL - Sales Service Schedule
@@ -251,7 +298,10 @@ defs = Definitions(
         postgres_fma_to_clickhouse_schedule,
         
         # Maintenance Schedules
-        clickhouse_optimization_schedule
+        clickhouse_optimization_schedule,
+        
+        # Data Migration Schedules
+        civ_regional_data_migration_schedule
     ]
 )
 

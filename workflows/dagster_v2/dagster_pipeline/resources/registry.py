@@ -25,7 +25,18 @@ dagster_postgres_resource = DagsterPostgresResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# MySQL - AMT 
+# MySQL - LOCAL DB (for local development) 
+# ═════════════════════════════════════════════════════════════════════════════
+local_mysql_db_resource = MySQLResource(
+    host=EnvVar("LOCAL_MYSQL_DB_HOST"),
+    port=3306, 
+    user=EnvVar("LOCAL_MYSQL_DB_USER"),
+    password=EnvVar("LOCAL_MYSQL_DB_PASSWORD"),
+    database=EnvVar("LOCAL_MYSQL_DB_NAME")
+)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MySQL - AMTDB RESOURCE
 # ═════════════════════════════════════════════════════════════════════════════
 
 mysql_amt = MySQLResource(
@@ -34,6 +45,17 @@ mysql_amt = MySQLResource(
     user=EnvVar("SC_AMT_REPLICA_MYSQL_DB_USER"),
     password=EnvVar("SC_AMT_REPLICA_MYSQL_DB_PASSWORD"),
     database=EnvVar("SC_AMT_REPLICA_MYSQL_DB_NAME")
+)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MySQL - SC AMTDB REPLICA RESOURCE
+# ═════════════════════════════════════════════════════════════════════════════
+sc_mysql_amtdb_replica_resource = MySQLResource(
+    host=EnvVar("SC_MYSQL_AMTDB_v39_REPLICA_HOST"),
+    port=3306,
+    user=EnvVar("SC_MYSQL_AMTDB_v39_REPLICA_USER"),
+    password=EnvVar("SC_MYSQL_AMTDB_v39_REPLICA_PASSWORD"),
+    database=EnvVar("SC_MYSQL_AMTDB_v39_REPLICA_DB")
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -73,6 +95,17 @@ mysql_soil_testing_prod_db = MySQLResource(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
+# MySQL - GRDATA DB
+# ═════════════════════════════════════════════════════════════════════════════
+grdata_mysql_db_resource = MySQLResource(
+    host=EnvVar("GRDATA_MYSQL_DB_HOST"),
+    port=3306, 
+    user=EnvVar("GRDATA_MYSQL_DB_USER"),
+    password=EnvVar("GRDATA_MYSQL_DB_PASSWORD"),
+    database=EnvVar("GRDATA_MYSQL_DB_NAME")
+    )
+
+# ═══════════════════════════════════════════════════════════════════════════
 # ClickHouse Cloud
 # ═════════════════════════════════════════════════════════════════════════════
 
