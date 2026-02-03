@@ -38,6 +38,7 @@ dependencies = [
     
     # Utilities
     "pyyaml==6.0.2",
+    "cryptography>=41.0.0",     # Required for PyMySQL caching_sha2_password auth
     "python-dotenv==1.0.1",
     "pydantic==2.9.2",
     "sqlalchemy==2.0.43",
