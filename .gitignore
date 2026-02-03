@@ -69,3 +69,8 @@ dagster-home/*
 
 # dbt
 target/
+
+# Data files 
+*.xlsx
+*.xls
+*.csv
