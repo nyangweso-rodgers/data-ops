@@ -48,6 +48,11 @@ bigquery-keyfile.json
 next-env.d.ts
 
 # python
+## Python cache files
+__pycache__/
+
+## Python virtual environments
+*.pyc
 venv/
 data-ops-venv/
 
@@ -63,9 +68,9 @@ issue.json
 clickhouse-logs/
 
 # Dagster
-dagster-home/*
-!dagster-home/dagster.yaml
-!dagster-home/workspace.yaml
+dagster_home/*
+!dagster_home/dagster.yaml
+!dagster_home/workspace.yaml
 
 # dbt
 target/
