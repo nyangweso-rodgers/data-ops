@@ -1,7 +1,7 @@
 # data-ops/Makefile
 # Root Makefile for the entire data-ops monorepo
 
-DAGSTER_DIR := workflows/dagster_v2
+DAGSTER_DIR := workflows/dagster
 ROOT_DIR := $(shell pwd)
 
 # Export ROOT_DIR so nested Makefiles can use it
@@ -217,16 +217,3 @@ n8n-init-db:
 # ──────────────────────────────────────────────────────────────
 # Full Stack Commands
 # ──────────────────────────────────────────────────────────────
-up:
-	@docker-compose up -d
-
-down:
-	@docker-compose down
-
-logs:
-	@docker-compose logs -f
-
-clean:
-	@$(MAKE) -C $(DAGSTER_DIR) clean
-	@docker-compose down -v
-	@echo "✓ All services cleaned"
