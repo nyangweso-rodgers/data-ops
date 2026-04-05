@@ -1,0 +1,73 @@
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Database Configuration - Uses existing postgres from monorepo
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=${N8N_DB_NAME:-n8n}
+      - DB_POSTGRESDB_USER=${N8N_DB_USER:-n8n}
+      - DB_POSTGRESDB_PASSWORD=${N8N_DB_PASSWORD}
+      
+      # Basic Configuration
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      
+      # Timezone
+      - GENERIC_TIMEZONE=${TIMEZONE:-Africa/Nairobi}
+      - TZ=${TIMEZONE:-Africa/Nairobi}
+      
+      # Execution Data
+      - EXECUTIONS_DATA_SAVE_ON_ERROR=all
+      - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
+      
+      # Webhook URL
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678/}
+      
+      # Security
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      
+      # Encryption key
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      
+      # Performance
+      - N8N_PAYLOAD_SIZE_MAX=16
+      - N8N_METRICS=${N8N_METRICS:-false}
+
+      # Auto-create owner account
+      - N8N_OWNER_EMAIL=${N8N_OWNER_EMAIL}
+      - N8N_OWNER_PASSWORD=${N8N_OWNER_PASSWORD}
+      - N8N_OWNER_FIRST_NAME=${N8N_OWNER_FIRST_NAME:-Admin}
+      - N8N_OWNER_LAST_NAME=${N8N_OWNER_LAST_NAME:-User}
+      
+    volumes:
+      # Persist n8n data
+      - n8n-data:/home/node/.n8n
+      
+      # Optional: Mount local files if you need to access them in workflows
+      # - ./local-files:/files
+      
+    depends_on:
+      - postgres
+    
+    networks:
+      - data-ops-network
+
+volumes:
+  n8n-data:
+    external: true
+
+networks:
+  data-ops-network:
+    external: true
