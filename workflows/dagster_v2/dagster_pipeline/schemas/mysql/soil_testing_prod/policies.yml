@@ -1,0 +1,187 @@
+# Template for table schemas
+metadata:
+  version: 1.0.0
+  created_by: "Rodgers Nyangweso"
+  description: "Brief description of the table"
+  created_at: "2026-01--14"
+  last_modified: "2026-01-14"
+  # Optional: Add any additional metadata
+  # owner: "team-name"
+
+source:
+  type: mysql 
+  database: "soil_testing_prod"
+  table: "policies"
+  
+  columns:
+    - name: id
+      type: bigint
+      nullable: false
+      primary_key: true
+
+    - name: providerId
+      type: bigint
+      nullable: true
+
+    - name: customerId
+      type: varchar(255)
+      nullable: true
+
+    - name: idNumber
+      type: varchar(200)
+      nullable: true
+
+    - name: externalCustomerRef
+      type: varchar(200)
+      nullable: true
+    
+    - name: accountId
+      type: varchar(255)
+      nullable: true
+
+    - name: productId
+      type: varchar(255)
+      nullable: true
+    
+    - name: productPackId
+      type: varchar(255)
+      nullable: true
+
+    - name: productPackRefId
+      type: varchar(200)
+      nullable: true
+
+    - name: startDate
+      type: date
+      nullable: true
+    
+    - name: endDate
+      type: date
+      nullable: true
+    
+    - name: premiumValue
+      type: varchar(255)
+      nullable: true
+    
+    - name: sumInsured
+      type: decimal(10,2)
+      nullable: true
+    
+    - name: assetValue
+      type: bigint
+      nullable: true
+
+    - name: payPlanId
+      type: varchar(255)
+      nullable: true
+
+    - name: loanAmount
+      type: decimal(10,2)
+      nullable: true
+
+    - name: loanDisbursementDate
+      type: datetime
+      nullable: true
+
+    - name: loanTerm
+      type: int
+      nullable: true
+
+    - name: loanRefNumber
+      type: varchar(255)
+      nullable: true
+    
+    - name: policyRefId
+      type: varchar(200)
+      nullable: true
+    
+    - name: requestReference
+      type: varchar(200)
+      nullable: true
+
+    - name: policyNumber
+      type: varchar(255)
+      nullable: true
+
+    - name: policyId
+      type: varchar(255)
+      nullable: true
+    
+    - name: channel
+      type: varchar(100)
+      nullable: true
+    
+    - name: status
+      type: enum('ACTIVE', 'APPROVED')
+      nullable: true
+    
+    - name: policyType
+      type: enum('embeded', 'optin')
+      nullable: true
+    
+    - name: coverPeriods
+      type: json
+      nullable: true
+
+    - name: companyRegionId
+      type: bigint
+      nullable: true
+
+    - name: statusReason
+      type: text
+      nullable: true
+
+    - name: gracePeriodDays
+      type: bigint
+      nullable: true
+    
+    - name: gracePeriodEnd
+      type: date
+      nullable: true
+    
+    - name: code 
+      type: bigint
+      nullable: true
+
+    - name: cancelledDate
+      type: datetime
+      nullable: true
+    
+    - name: cancelledBy
+      type: varchar(255)
+      nullable: true
+    
+    - name: submittedDate
+      type: datetime
+      nullable: true
+    
+    - name: dateReceived
+      type: datetime
+      nullable: true
+    
+    - name: dateActivated
+      type: datetime
+      nullable: true
+    
+    - name: premiumBillingCycle
+      type: enum('yearly', 'monthly')
+      nullable: true
+    
+    - name: rejectionReason
+      type: text
+      nullable: true
+    
+    - name: modifiedBy
+      type: varchar(255)
+      nullable: true
+
+    - name: createdAt
+      type: datetime
+      nullable: false
+      default: CURRENT_TIMESTAMP
+    
+    - name: updatedAt
+      type: datetime
+      nullable: false
+      default: CURRENT_TIMESTAMP
+      on_update: CURRENT_TIMESTAMP
