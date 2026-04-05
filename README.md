@@ -32,9 +32,12 @@
 
 - data-ops/
   - `docker-compose.yml` # Root compose (orchestrates all services)
-  - databases/
+  - `Makefile`
+  - 01-databases/
+    - 01-postgres/
+      - `docker-compose.postgres.yml`
     - mysql/
-      - `docker-compose-mysql.yml`
+      - `docker-compose.mysql.yml`
     - `Makefile`
   - workflows/
     - dagster_v2/
@@ -43,6 +46,8 @@
       - `docker-compose-dagster-base.yml`
       - `docker-compose-dagster-local.yml`
       - `docker-compose-dagster-prod.yml`
+    - n8n/
+      - `docker-compose.n8n.yml`
   - metadata/
   - messaging/
 

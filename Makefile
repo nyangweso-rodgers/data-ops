@@ -15,6 +15,7 @@ export ROOT_DIR
         dagster-local-rds-up-build dagster-local-rds-up dagster-local-rds-stop \
         dagster-local-rds-down dagster-local-rds-logs dagster-local-rds-restart \
         dagster-prod-up dagster-prod-down dagster-prod-logs dagster-build \
+		n8n-init-db n8n-up-build n8n-up n8n-down n8n-logs n8n-restart n8n-shell \
         up down logs clean
 
 help:
@@ -43,6 +44,14 @@ help:
 	@echo "  make dagster-prod-down      - Stop production Dagster"
 	@echo "  make dagster-prod-logs      - View production logs"
 	@echo "  make dagster-build          - Rebuild Dagster images"
+	@echo ""
+	@echo "n8n:"
+	@echo "  make n8n-init-db        - Initialize n8n database"
+	@echo "  make n8n-up             - Start n8n"
+	@echo "  make n8n-down           - Stop n8n"
+	@echo "  make n8n-logs           - View n8n logs"
+	@echo "  make n8n-restart        - Restart n8n"
+	@echo "  make n8n-shell          - Access n8n shell"
 	@echo ""
 	@echo "PostgreSQL:"
 	@echo "  make postgres-up            - Start PostgreSQL"
@@ -97,7 +106,7 @@ mysql-restart:
 	@echo "✓ MySQL restarted"
 
 # ──────────────────────────────────────────────────────────────
-# PostgreSQL Commands
+# Postgres Commands
 # ──────────────────────────────────────────────────────────────
 postgres-up:
 	@echo "🚀 Starting PostgreSQL..."
@@ -171,14 +180,43 @@ dagster-prod-logs:
 dagster-build:
 	@$(MAKE) -C $(DAGSTER_DIR) build
 
-# PostgreSQL commands
-postgres-up:
-	@docker-compose up -d postgres
+# ──────────────────────────────────────────────────────────────
+# n8n Commands
+# ──────────────────────────────────────────────────────────────
+n8n-up-build:
+	@echo "🚀 Building and starting n8n..."
+	@docker-compose up -d --build n8n
+	@echo "✓ n8n started at http://localhost:5678"
 
-postgres-down:
-	@docker-compose stop postgres
+n8n-up:
+	@echo "🚀 Starting n8n..."
+	@docker-compose up -d n8n
+	@echo "✓ n8n started"
 
-# Full stack
+n8n-down:
+	@echo "⏸️  Stopping n8n..."
+	@docker-compose stop n8n
+	@echo "✓ n8n stopped"
+
+n8n-logs:
+	@docker-compose logs -f n8n
+
+n8n-restart:
+	@echo "🔄 Restarting n8n..."
+	@docker-compose restart n8n
+	@echo "✓ n8n restarted"
+
+n8n-shell:
+	@docker-compose exec n8n /bin/sh
+
+n8n-init-db:
+	@echo "🗄️  Initializing n8n database..."
+	@docker exec -i postgres psql -U postgres < workflows/n8n/init-n8n-db.sql
+	@echo "✓ n8n database initialized"
+
+# ──────────────────────────────────────────────────────────────
+# Full Stack Commands
+# ──────────────────────────────────────────────────────────────
 up:
 	@docker-compose up -d
 
