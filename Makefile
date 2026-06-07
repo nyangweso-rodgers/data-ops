@@ -8,12 +8,10 @@ ROOT_DIR := $(shell pwd)
 export ROOT_DIR
 
 .PHONY: help env-check\
-		mysql-build mysql-up mysql-stop mysql-down mysql-logs mysql-restart \
-		postgres-up postgres-stop postgres-down postgres-logs \
+		mysql-dev-build mysql-dev-up mysql-dev-stop mysql-dev-down mysql-dev-logs mysql-dev-restart \
+		postgres-dev-up postgres-dev-stop postgres-dev-down postgres-dev-logs \
 		dagster-local-up-build dagster-local-up dagster-local-stop \
         dagster-local-down dagster-local-logs dagster-local-restart \
-        dagster-local-rds-up-build dagster-local-rds-up dagster-local-rds-stop \
-        dagster-local-rds-down dagster-local-rds-logs dagster-local-rds-restart \
         dagster-prod-up dagster-prod-down dagster-prod-logs dagster-build \
 		n8n-init-db n8n-up-build n8n-up n8n-down n8n-logs n8n-restart n8n-shell \
         up down logs clean
@@ -21,17 +19,16 @@ export ROOT_DIR
 help:
 	@echo "Data-Ops Monorepo Commands:"
 	@echo ""
-	@echo "  make mysql-build           - Build and start MySQL (detached)"
-	@echo "  make mysql-up              - Start MySQL (attached, shows logs)"
-	@echo "  make mysql-stop            - Stop MySQL"
-	@echo "  make mysql-down            - Remove MySQL"
-	@echo "  make mysql-logs            - View MySQL logs"
-	@echo "  make mysql-restart         - Restart MySQL"
+	@echo "  make mysql-dev-build           - Build and start MySQL (detached)"
+	@echo "  make mysql-dev-up              - Start MySQL (detached)"
+	@echo "  make mysql-dev-stop            - Stop MySQL"
+	@echo "  make mysql-dev-down            - Remove MySQL"
+	@echo "  make mysql-dev-restart         - Restart MySQL"
 	@echo ""
-	@echo "  make postgres-up           - Start PostgreSQL"
-	@echo "  make postgres-stop         - Stop PostgreSQL"
-	@echo "  make postgres-down         - Remove PostgreSQL"
-	@echo "  make postgres-logs         - View PostgreSQL logs"
+	@echo "  make postgres-dev-up       - Start development PostgreSQL"
+	@echo "  make postgres-dev-stop     - Stop development PostgreSQL"
+	@echo "  make postgres-dev-down     - Remove development PostgreSQL"
+	@echo "  make postgres-dev-logs     - View development PostgreSQL logs"
 	@echo ""
 	@echo "Dagster:"
 	@echo "  make dagster-local-up-build - Build and start local Dagster"
@@ -49,7 +46,6 @@ help:
 	@echo "  make n8n-init-db        - Initialize n8n database"
 	@echo "  make n8n-up             - Start n8n"
 	@echo "  make n8n-down           - Stop n8n"
-	@echo "  make n8n-logs           - View n8n logs"
 	@echo "  make n8n-restart        - Restart n8n"
 	@echo "  make n8n-shell          - Access n8n shell"
 	@echo ""
@@ -78,29 +74,27 @@ env-check:
 # ──────────────────────────────────────────────────────────────
 # MySQL Commands
 # ──────────────────────────────────────────────────────────────
-mysql-build:
+mysql-dev-build:
 	@echo "🔨 Building and starting MySQL (detached)..."
 	@docker-compose up -d --build mysql
 	@echo "✓ MySQL started in background"
 
-mysql-up:
-	@echo "🚀 Starting MySQL (attached)..."
-	@docker-compose up mysql
+mysql-dev-up:
+	@echo "🚀 Starting MySQL..."
+	@docker-compose up -d mysql
+	@echo "✓ MySQL started"
 
-mysql-stop:
+mysql-dev-stop:
 	@echo "⏸️  Stopping MySQL..."
 	@docker-compose stop mysql
 	@echo "✓ MySQL stopped"
 
-mysql-down:
+mysql-dev-down:
 	@echo "🗑️  Removing MySQL..."
 	@docker-compose rm -sf mysql
 	@echo "✓ MySQL removed"
 
-mysql-logs:
-	@docker-compose logs -f mysql
-
-mysql-restart:
+mysql-dev-restart:
 	@echo "🔄 Restarting MySQL..."
 	@docker-compose restart mysql
 	@echo "✓ MySQL restarted"
@@ -108,19 +102,16 @@ mysql-restart:
 # ──────────────────────────────────────────────────────────────
 # Postgres Commands
 # ──────────────────────────────────────────────────────────────
-postgres-up:
+postgres-dev-up:
 	@echo "🚀 Starting PostgreSQL..."
 	@docker-compose up -d postgres
 	@echo "✓ PostgreSQL started"
 
-postgres-stop:
+postgres-dev-stop:
 	@docker-compose stop postgres
 
-postgres-down:
+postgres-dev-down:
 	@docker-compose rm -sf postgres
-
-postgres-logs:
-	@docker-compose logs -f postgres
 
 # ──────────────────────────────────────────────────────────────
 # Dagster - Local development
@@ -137,33 +128,8 @@ dagster-local-stop:
 dagster-local-down:
 	@$(MAKE) -C $(DAGSTER_DIR) local-down
 
-dagster-local-logs:
-	@$(MAKE) -C $(DAGSTER_DIR) local-logs
-
 dagster-local-restart:
 	@$(MAKE) -C $(DAGSTER_DIR) local-restart
-
-# ──────────────────────────────────────────────────────────────
-# Dagster - Local + RDS (real AWS RDS instead of local postgres container)
-# ──────────────────────────────────────────────────────────────
-
-dagster-local-rds-up-build:
-	@$(MAKE) -C $(DAGSTER_DIR) local-rds-up-build
-
-dagster-local-rds-up:
-	@$(MAKE) -C $(DAGSTER_DIR) local-rds-up
-
-dagster-local-rds-stop:
-	@$(MAKE) -C $(DAGSTER_DIR) local-rds-stop
-
-dagster-local-rds-down:
-	@$(MAKE) -C $(DAGSTER_DIR) local-rds-down
-
-dagster-local-rds-logs:
-	@$(MAKE) -C $(DAGSTER_DIR) local-rds-logs
-
-dagster-local-rds-restart:
-	@$(MAKE) -C $(DAGSTER_DIR) local-rds-restart
 
 # ──────────────────────────────────────────────────────────────
 # Dagster - Production
@@ -173,9 +139,6 @@ dagster-prod-up:
 
 dagster-prod-down:
 	@$(MAKE) -C $(DAGSTER_DIR) prod-down
-
-dagster-prod-logs:
-	@$(MAKE) -C $(DAGSTER_DIR) prod-logs
 
 dagster-build:
 	@$(MAKE) -C $(DAGSTER_DIR) build
@@ -198,9 +161,6 @@ n8n-down:
 	@docker-compose stop n8n
 	@echo "✓ n8n stopped"
 
-n8n-logs:
-	@docker-compose logs -f n8n
-
 n8n-restart:
 	@echo "🔄 Restarting n8n..."
 	@docker-compose restart n8n
@@ -215,5 +175,32 @@ n8n-init-db:
 	@echo "✓ n8n database initialized"
 
 # ──────────────────────────────────────────────────────────────
-# Full Stack Commands
+# MetaBase Commands
 # ──────────────────────────────────────────────────────────────
+metabase-dev-up-build:
+	@echo "🚀 Building and starting Metabase..."
+	@docker-compose up -d --build metabase
+	@echo "✓ Metabase started at http://localhost:3000"
+
+metabase-dev-up:
+	@echo "🚀 Starting Metabase..."
+	@docker-compose up -d metabase
+	@echo "✓ Metabase started at http://localhost:3000"
+
+metabase-dev-stop:
+	@echo "⏸️  Stopping Metabase..."
+	@docker-compose stop metabase
+	@echo "✓ Metabase stopped"
+
+metabase-dev-down:
+	@echo "🗑️  Removing Metabase..."
+	@docker-compose rm -sf metabase
+	@echo "✓ Metabase removed"
+
+metabase-provision:
+	@echo "🔌 Provisioning Metabase database connections..."
+	@python 07_dashboards/04_metabase/provisioning/provision_metabase.py
+
+metabase-provision-dry-run:
+	@python 07_dashboards/04_metabase/provisioning/provision_metabase.py --dry-run
+
