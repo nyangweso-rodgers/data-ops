@@ -16,6 +16,14 @@ services:
       service: mysql
 
   # ============================================================================
+  # Dashboard - Metabase
+  # ============================================================================
+  metabase:
+    extends:
+      file: 07_dashboards/04_metabase/docker-compose.metabase.yml
+      service: metabase
+
+  # ============================================================================
   # Redis Services
   # ============================================================================
   redis:
@@ -88,17 +96,17 @@ services:
   # ============================================================================
   dagster:
     extends:
-      file: workflows/dagster_v2/docker-compose-dagster.base.yml
+      file: workflows/dagster/docker-compose-dagster.base.yml
       service: dagster
 
   dagster_webserver:
     extends:
-      file: workflows/dagster_v2/docker-compose-dagster.base.yml
+      file: workflows/dagster/docker-compose-dagster.base.yml
       service: dagster_webserver
 
   dagster_daemon:
     extends:
-      file: workflows/dagster_v2/docker-compose-dagster.base.yml
+      file: workflows/dagster/docker-compose-dagster.base.yml
       service: dagster_daemon
 
   # ============================================================================
