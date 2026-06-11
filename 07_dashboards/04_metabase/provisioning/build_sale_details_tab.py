@@ -147,7 +147,7 @@ def main():
 
     payload = {"tabs": [{"id": tab1_id, "name": tab1_name},
                         {"id": tab2_id, "name": TAB2_NAME}],
-               "dashcards": keep + new, "parameters": filter_defs()}
+               "dashcards": keep + new, "parameters": filter_defs(), "width": "full"}
     st, r = api("PUT", f"/api/dashboard/{DASH_ID}", token, payload)
     if st != 200:
         print(f"✗ save failed ({st}): {r.get('message') or r}"); raise SystemExit(1)

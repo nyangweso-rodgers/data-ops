@@ -51,45 +51,57 @@ def main():
     fid = {f["name"]: f["id"] for f in meta["fields"]}
     qty, sdate = fid["productQty"], fid["sale_date"]  # filter fields resolved via fid
 
-    def card_query(n, unit):
-        return {"database": DB_ID, "type": "query", "query": {
-            "source-table": TABLE_ID,
-            "aggregation": [["sum", ["field", qty, None]]],
-            "filter": ["and",
-                       ["not-null", ["field", sdate, None]],
-                       ["time-interval", ["field", sdate, None], n, unit]]}}
+    empid, dept = fid["employee_id"], fid["Department_name"]
 
-    # (display name, interval-n, interval-unit)
-    # Order = reading flow: current periods (top row) then prior periods (bottom).
-    specs = [
-        ("Sales Today",      "current", "day"),
-        ("Sales This Week",  "current", "week"),
-        ("Sales This Month", "current", "month"),
-        ("Sales YTD",        "current", "year"),
-        ("Sales Yesterday",  "last",    "day"),
-        ("Sales Last Week",  "last",    "week"),
-        ("Sales Last Month", "last",    "month"),
-        ("Sales Last Year",  "last",    "year"),
+    # 8 periods shared by every section: current 4 (top row), prior 4 (bottom row)
+    PERIODS = [
+        ("Today", "current", "day"), ("This Week", "current", "week"),
+        ("This Month", "current", "month"), ("YTD", "current", "year"),
+        ("Yesterday", "last", "day"), ("Last Week", "last", "week"),
+        ("Last Month", "last", "month"), ("Last Year", "last", "year"),
     ]
 
-    # existing cards by name -> id (for idempotency)
+    def filt(n, unit, field_sales):
+        conds = [["not-null", ["field", sdate, None]]]
+        if field_sales:
+            conds.append(["=", ["field", dept, None], "Field Sales"])
+        conds.append(["time-interval", ["field", sdate, None], n, unit])
+        return ["and", *conds]
+
+    def query_for(metric, n, unit):
+        if metric == "sales":            # SUM(productQty)
+            agg, fs = ["sum", ["field", qty, None]], False
+        elif metric == "agents":         # COUNT(DISTINCT employee_id), Field Sales only
+            agg, fs = ["distinct", ["field", empid, None]], True
+        else:                            # productivity: avg qty per selling agent
+            agg = ["/", ["sum", ["field", qty, None]], ["distinct", ["field", empid, None]]]; fs = True
+        return {"database": DB_ID, "type": "query", "query": {
+            "source-table": TABLE_ID, "aggregation": [agg], "filter": filt(n, unit, fs)}}
+
+    # (heading text, card-name prefix, metric)
+    SECTIONS = [
+        ("Sales Overview",     "Sales ",              "sales"),
+        ("Selling Agents",     "# Selling Agents ",   "agents"),
+        ("Agent Productivity", "Agent Productivity ", "productivity"),
+    ]
+
+    # create/update every scorecard (idempotent by name)
     _, allcards = api("GET", "/api/card", token)
     existing = {c["name"]: c["id"] for c in allcards}
-
     card_ids = {}
-    for name, n, unit in specs:
-        body = {"name": name, "dataset_query": card_query(n, unit),
-                "display": "scalar", "visualization_settings": {}}
-        if name in existing:
-            st, r = api("PUT", f"/api/card/{existing[name]}", token, body)
-            action = "updated"
-        else:
-            st, r = api("POST", "/api/card", token, body)
-            action = "created"
-        if st not in (200, 201):
-            print(f"✗ {name} failed ({st}): {r.get('message') or r}"); raise SystemExit(1)
-        card_ids[name] = r["id"]
-        print(f"✓ {action}: {name} (id={r['id']})")
+    for _, prefix, metric in SECTIONS:
+        for label, n, unit in PERIODS:
+            name = prefix + label
+            body = {"name": name, "dataset_query": query_for(metric, n, unit),
+                    "display": "scalar", "visualization_settings": {}}
+            if name in existing:
+                st, r = api("PUT", f"/api/card/{existing[name]}", token, body)
+            else:
+                st, r = api("POST", "/api/card", token, body)
+            if st not in (200, 201):
+                print(f"✗ {name} ({st}): {r.get('message') or r}"); raise SystemExit(1)
+            card_ids[name] = r["id"]
+    print(f"✓ {len(card_ids)} scorecards across {len(SECTIONS)} sections created/updated")
 
     # find or create the dashboard
     _, dashlist = api("GET", "/api/dashboard", token)
@@ -100,37 +112,32 @@ def main():
     else:
         print(f"• reusing dashboard: {DASH_NAME} (id={did})")
 
-    # layout on 24-col grid. Row 0 = big heading title. Then even 4x4:
-    # row 1 = current periods (day->year), row 4 = each period's prior beneath it.
-    pos = {
-        "Sales Today":      (1, 0,  6, 3), "Sales This Week":  (1, 6,  6, 3),
-        "Sales This Month": (1, 12, 6, 3), "Sales YTD":        (1, 18, 6, 3),
-        "Sales Yesterday":  (4, 0,  6, 3), "Sales Last Week":  (4, 6,  6, 3),
-        "Sales Last Month": (4, 12, 6, 3), "Sales Last Year":  (4, 18, 6, 3),
-    }
-
-    # heading (virtual text card, display=heading -> large title font)
-    heading = {"id": -100, "card_id": None, "row": 0, "col": 0, "size_x": 24, "size_y": 1,
-               "series": [], "parameter_mappings": [],
-               "visualization_settings": {
-                   "virtual_card": {"name": None, "display": "heading", "dataset_query": {},
-                                    "visualization_settings": {}, "archived": False},
-                   "text": "Sales Overview"}}
-
-    dashcards = [heading]
-    for i, (name, _, _) in enumerate(specs):
-        row, col, sx, sy = pos[name]
-        cid = card_ids[name]
-        dashcards.append({"id": -(i + 1), "card_id": cid, "row": row, "col": col,
-                          "size_x": sx, "size_y": sy, "series": [],
-                          "parameter_mappings": filter_mappings(cid, fid),
-                          "visualization_settings": {}})
+    # layout: each section = heading (24x1) + current row + prior row (each 4x 6w 3h)
+    dashcards = []
+    neg, base_row = -1, 0
+    for htext, prefix, _ in SECTIONS:
+        dashcards.append({"id": neg, "card_id": None, "row": base_row, "col": 0,
+                          "size_x": 24, "size_y": 1, "series": [], "parameter_mappings": [],
+                          "visualization_settings": {
+                              "virtual_card": {"name": None, "display": "heading", "dataset_query": {},
+                                               "visualization_settings": {}, "archived": False},
+                              "text": htext}})
+        neg -= 1
+        for ri, periods in enumerate((PERIODS[:4], PERIODS[4:])):
+            for ci, (label, _, _) in enumerate(periods):
+                cid = card_ids[prefix + label]
+                dashcards.append({"id": neg, "card_id": cid, "row": base_row + 1 + ri * 3,
+                                  "col": ci * 6, "size_x": 6, "size_y": 3, "series": [],
+                                  "parameter_mappings": filter_mappings(cid, fid),
+                                  "visualization_settings": {}})
+                neg -= 1
+        base_row += 7  # heading(1) + 2 rows of 3
 
     st, r = api("PUT", f"/api/dashboard/{did}", token,
-                {"dashcards": dashcards, "parameters": filter_defs()})
+                {"dashcards": dashcards, "parameters": filter_defs(), "width": "full"})
     if st != 200:
         print(f"✗ placing cards failed ({st}): {r.get('message') or r}"); raise SystemExit(1)
-    print(f"✓ heading + {len(dashcards)-1} scorecards placed; {len(FILTERS)} filters wired to all")
+    print(f"✓ {len(SECTIONS)} sections placed ({len(dashcards)} dashcards); {len(FILTERS)} filters wired")
 
     # Make each filter a proper dropdown: enable + scan values for its field
     # (low cost; field-value scanning is otherwise disabled for the DB).

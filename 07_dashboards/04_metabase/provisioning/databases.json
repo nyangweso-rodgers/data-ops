@@ -1,0 +1,67 @@
+{
+  "$comment": "Declarative Metabase database-connection manifest. Secrets are referenced by ${ENV_VAR} name only (resolved from the repo-root .env at run time) so this file is safe to commit. Connections are matched/updated by 'name'. Run: make metabase-provision",
+  "databases": [
+    {
+      "name": "Local Postgres - Users",
+      "engine": "postgres",
+      "details": {
+        "host": "postgres",
+        "port": 5432,
+        "dbname": "users",
+        "user": "${LOCAL_USERS_PG_DB_USER}",
+        "password": "${LOCAL_USERS_PG_DB_PASSWORD}",
+        "ssl": false
+      }
+    },
+    {
+      "name": "Local MySQL - Test",
+      "engine": "mysql",
+      "details": {
+        "host": "mysql",
+        "port": 3306,
+        "dbname": "test",
+        "user": "${LOCAL_MYSQL_DB_USER}",
+        "password": "${LOCAL_MYSQL_DB_PASSWORD}"
+      }
+    },
+    {
+      "name": "ClickHouse Cloud - SC",
+      "engine": "clickhouse",
+      "_note": "Cost control via sync throttling: NO field-value scans (is_full_sync=false) and metadata sync moved to daily, so Metabase's background jobs don't quietly bill ClickHouse. NOTE: Layer A (server-side query cache) CANNOT be set through the Metabase driver — `additional-options` is stored but NOT applied as a ClickHouse setting (verified: use_query_cache stayed 0). To enable it, set it on the ClickHouse side instead, e.g.: ALTER USER <user> SETTINGS use_query_cache = 1, query_cache_ttl = 1800;",
+      "is_full_sync": false,
+      "is_on_demand": false,
+      "auto_run_queries": true,
+      "details": {
+        "host": "${SC_CLICKHOUSE_CLOUD_HOST}",
+        "port": "${SC_CLICKHOUSE_CLOUD_PORT}",
+        "dbname": "test",
+        "user": "${SC_CLICKHOUSE_CLOUD_USER}",
+        "password": "${SC_CLICKHOUSE_CLOUD_PASSWORD}",
+        "scan-all-databases": false,
+        "ssl": true,
+        "let-user-control-scheduling": true,
+        "additional-options": ""
+      },
+      "schedules": {
+        "metadata_sync": {
+          "schedule_type": "daily",
+          "schedule_hour": 3,
+          "schedule_minute": 0,
+          "schedule_day": null,
+          "schedule_frame": null
+        },
+        "cache_field_values": {
+          "schedule_type": "daily",
+          "schedule_hour": 3,
+          "schedule_minute": 0,
+          "schedule_day": null,
+          "schedule_frame": null
+        }
+      }
+    }
+  ],
+  "global_cache": {
+    "_note": "Layer B: OSS global adaptive query cache (root policy). Requires MB_ENABLE_QUERY_CACHING=true (set in docker-compose). A result's TTL ≈ query_runtime_ms × multiplier, only for queries that ran at least min_duration_ms. Applied via PUT /api/cache by the provision script. This is heuristic, NOT a fixed 30-min window (that is Pro-only).",
+    "strategy": { "type": "ttl", "multiplier": 360, "min_duration_ms": 1000 }
+  }
+}
