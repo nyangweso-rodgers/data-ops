@@ -69,4 +69,28 @@
         SHOW DATABASES;
        ```
 
+## Verify Database Exists
+
+```sh
+  # Should show both test and test_kaleidofin
+  docker exec -it mysql mysql -u root -p${LOCAL_MYSQL_DB_PASSWORD} -e "SHOW DATABASES;"
+```
+
+## Create Database Manually
+
+```sql
+  -- Create the database
+  CREATE DATABASE IF NOT EXISTS test_kaleidofin;
+
+  -- Grant permissions to mysql_user
+  GRANT ALL PRIVILEGES ON test_kaleidofin.* TO '<password>'@'%';
+  FLUSH PRIVILEGES;
+
+  -- Verify it was created
+  SHOW DATABASES;
+
+  -- Exit
+  exit;
+```
+
 # Resources and Further Reading
