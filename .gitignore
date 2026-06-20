@@ -12,7 +12,7 @@
 01-databases/mysql/init-scripts/init-mysql-users.sql
 
 # dependencies
-/node_modules
+node_modules/
 
 # data/
 # Ignore everything in data/
