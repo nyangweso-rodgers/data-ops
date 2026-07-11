@@ -27,6 +27,7 @@ export ROOT_DIR
 		prefect-server-up prefect-server-stop prefect-server-down prefect-server-logs \
 		prefect-worker-up prefect-worker-stop prefect-worker-down prefect-worker-logs \
 		prefect-services-up prefect-services-stop prefect-services-down prefect-services-logs \
+		superset-dev-build superset-dev-up superset-dev-stop superset-dev-down superset-dev-logs superset-dev-restart superset-shell \
         up down logs clean
 
 help:
@@ -68,6 +69,15 @@ help:
 	@echo "PostgreSQL:"
 	@echo "  make postgres-up            - Start PostgreSQL"
 	@echo "  make postgres-down          - Stop PostgreSQL"
+	@echo ""
+	@echo "Superset:"
+	@echo "  make superset-dev-build     - Build and start Superset"
+	@echo "  make superset-dev-up        - Start Superset"
+	@echo "  make superset-dev-stop      - Stop Superset"
+	@echo "  make superset-dev-down      - Remove Superset"
+	@echo "  make superset-dev-logs      - View Superset logs"
+	@echo "  make superset-dev-restart   - Restart Superset"
+	@echo "  make superset-shell         - Access Superset shell"
 	@echo ""
 	@echo "Elasticsearch:"
 	@echo "  make elasticsearch-up       - Start Elasticsearch"
@@ -295,6 +305,40 @@ metabase-provision:
 
 metabase-provision-dry-run:
 	@python 07_dashboards/04_metabase/provisioning/provision_metabase.py --dry-run
+
+# ──────────────────────────────────────────────────────────────
+# Superset Commands
+# ──────────────────────────────────────────────────────────────
+superset-dev-build:
+	@echo "🔨 Building and starting Superset (detached)..."
+	@docker-compose up -d --build apache-superset
+	@echo "✓ Superset started at http://localhost:8088"
+
+superset-dev-up:
+	@echo "🚀 Starting Superset..."
+	@docker-compose up -d apache-superset
+	@echo "✓ Superset started at http://localhost:8088"
+
+superset-dev-stop:
+	@echo "⏸️  Stopping Superset..."
+	@docker-compose stop apache-superset
+	@echo "✓ Superset stopped"
+
+superset-dev-down:
+	@echo "🗑️  Removing Superset..."
+	@docker-compose rm -sf apache-superset
+	@echo "✓ Superset removed"
+
+superset-dev-logs:
+	@docker-compose logs -f apache-superset
+
+superset-dev-restart:
+	@echo "🔄 Restarting Superset..."
+	@docker-compose restart apache-superset
+	@echo "✓ Superset restarted"
+
+superset-shell:
+	@docker-compose exec apache-superset bash
 
 # ──────────────────────────────────────────────────────────────
 # Elasticsearch Commands
