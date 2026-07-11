@@ -24,6 +24,14 @@ services:
       service: metabase
 
   # ============================================================================
+  # Dashboard - Superset
+  # ============================================================================
+  apache-superset:
+    extends:
+      file: 07_dashboards/01_superset/docker-compose.superset.yml
+      service: apache-superset
+
+  # ============================================================================
   # Redis Services
   # ============================================================================
   redis:
@@ -184,7 +192,7 @@ services:
   # ============================================================================
   grafana:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
       service: grafana
 
   # ============================================================================
@@ -200,7 +208,7 @@ services:
   # ============================================================================
   prometheus:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
       service: prometheus
 
   # ============================================================================
@@ -208,11 +216,11 @@ services:
   # ============================================================================
   loki:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
       service: loki
   postgres-db-exporter:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
       service: postgres-db-exporter
 
   # ============================================================================
@@ -297,6 +305,10 @@ volumes:
 
   # Datawarehouse Volumes
   clickhouse-server-data:
+    external: true
+
+  # Superset Volumes
+  superset-volume:
     external: true
 
   # Grafana Volumes
