@@ -17,8 +17,8 @@ export ROOT_DIR
 		elasticsearch-up elasticsearch-stop elasticsearch-down elasticsearch-logs \
 		kibana-up kibana-stop kibana-down kibana-logs \
 		neo4j-up neo4j-stop neo4j-down neo4j-logs \
-		redis-up redis-stop redis-down redis-logs \
-		redisinsight-up redisinsight-stop redisinsight-down redisinsight-logs \
+		redis-dev-up redis-dev-stop redis-dev-down redis-dev-logs \
+		redisinsight-dev-up redisinsight-dev-stop redisinsight-dev-down redisinsight-dev-logs \
 		trino-up trino-stop trino-down trino-logs \
 		amundsen-up amundsen-stop amundsen-down amundsen-logs \
 		amundsen-frontend-up amundsen-frontend-stop amundsen-frontend-down amundsen-frontend-logs \
@@ -98,16 +98,16 @@ help:
 	@echo "  make neo4j-logs             - View Neo4j logs"
 	@echo ""
 	@echo "Redis:"
-	@echo "  make redis-up               - Start Redis"
-	@echo "  make redis-stop             - Stop Redis"
-	@echo "  make redis-down             - Remove Redis"
-	@echo "  make redis-logs             - View Redis logs"
+	@echo "  make redis-dev-up           - Start Redis"
+	@echo "  make redis-dev-stop         - Stop Redis"
+	@echo "  make redis-dev-down         - Remove Redis"
+	@echo "  make redis-dev-logs         - View Redis logs"
 	@echo ""
 	@echo "RedisInsight:"
-	@echo "  make redisinsight-up        - Start RedisInsight"
-	@echo "  make redisinsight-stop      - Stop RedisInsight"
-	@echo "  make redisinsight-down      - Stop and remove RedisInsight"
-	@echo "  make redisinsight-logs      - View RedisInsight logs"
+	@echo "  make redisinsight-dev-up    - Start RedisInsight"
+	@echo "  make redisinsight-dev-stop  - Stop RedisInsight"
+	@echo "  make redisinsight-dev-down  - Stop and remove RedisInsight"
+	@echo "  make redisinsight-dev-logs  - View RedisInsight logs"
 	@echo ""
 	@echo "Trino:"
 	@echo "  make trino-up               - Start Trino"
@@ -406,43 +406,43 @@ neo4j-logs:
 # ──────────────────────────────────────────────────────────────
 # Redis Commands
 # ──────────────────────────────────────────────────────────────
-redis-up:
+redis-dev-up:
 	@echo "Starting Redis..."
 	@docker-compose up -d redis
 	@echo "Redis started"
 
-redis-stop:
+redis-dev-stop:
 	@echo "Stopping Redis..."
 	@docker-compose stop redis
 	@echo "Redis stopped"
 
-redis-down:
+redis-dev-down:
 	@echo "Removing Redis..."
 	@docker-compose rm -sf redis
 	@echo "Redis removed"
 
-redis-logs:
+redis-dev-logs:
 	@docker-compose logs -f redis
 
 # ──────────────────────────────────────────────────────────────
 # RedisInsight Commands
 # ──────────────────────────────────────────────────────────────
-redisinsight-up:
+redisinsight-dev-up:
 	@echo "Starting RedisInsight..."
 	@docker-compose up -d redisinsight
 	@echo "RedisInsight started at http://localhost:8001"
 
-redisinsight-stop:
+redisinsight-dev-stop:
 	@echo "Stopping RedisInsight..."
 	@docker-compose stop redisinsight
 	@echo "RedisInsight stopped"
 
-redisinsight-down:
+redisinsight-dev-down:
 	@echo "Removing RedisInsight..."
 	@docker-compose rm -sf redisinsight
 	@echo "RedisInsight removed"
 
-redisinsight-logs:
+redisinsight-dev-logs:
 	@docker-compose logs -f redisinsight
 
 # ──────────────────────────────────────────────────────────────
