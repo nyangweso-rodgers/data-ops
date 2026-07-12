@@ -30,12 +30,26 @@ services:
     ports:
       - "5540:5540"
     environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
       - REDISINSIGHT_HOST=0.0.0.0
+      # RI_REDIS_* auto-provisions a database connection on startup (RedisInsight's
+      # own pre-setup discovery mechanism -- scans for RI_REDIS_HOST* env vars).
+      # Re-applied idempotently on every container start, so no manual "Add
+      # Database" click in the UI. Defaults to db 1 since that's where Superset's
+      # DATA_CACHE_CONFIG writes; switch db from the UI to browse others.
+      - RI_REDIS_HOST=redis
+      - RI_REDIS_PORT=6379
+      - RI_REDIS_ALIAS=Superset Data Cache
+      - RI_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - RI_REDIS_DB=1
+      # Without this, RedisInsight tries OS-keychain encryption (keytar) for the
+      # stored password, which fails on this Alpine-based image (missing
+      # libsecret) and silently drops the auto-provisioned database with no
+      # visible error -- falls back to the app's own AES encryption instead.
+      - RI_ENCRYPTION_KEYTAR=false
     env_file:
       - ../../.env
+    volumes:
+      - redisinsight-data:/data
     networks:
       - data-ops-network
     depends_on:
@@ -43,6 +57,7 @@ services:
 
 volumes:
   redis-data:
+  redisinsight-data:
 
 networks:
   data-ops-network:
