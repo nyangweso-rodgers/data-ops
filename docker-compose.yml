@@ -32,6 +32,24 @@ services:
       service: apache-superset
 
   # ============================================================================
+  # Dashboard - Redash
+  # ============================================================================
+  redash-server:
+    extends:
+      file: 07_dashboards/03_redash/docker-compose.redash.yml
+      service: redash-server
+
+  redash-scheduler:
+    extends:
+      file: 07_dashboards/03_redash/docker-compose.redash.yml
+      service: redash-scheduler
+
+  redash-worker:
+    extends:
+      file: 07_dashboards/03_redash/docker-compose.redash.yml
+      service: redash-worker
+
+  # ============================================================================
   # Redis Services
   # ============================================================================
   redis:
@@ -192,7 +210,7 @@ services:
   # ============================================================================
   grafana:
     extends:
-      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose.grafana.yml
       service: grafana
 
   # ============================================================================
@@ -208,7 +226,7 @@ services:
   # ============================================================================
   prometheus:
     extends:
-      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose.grafana.yml
       service: prometheus
 
   # ============================================================================
@@ -216,11 +234,11 @@ services:
   # ============================================================================
   loki:
     extends:
-      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose.grafana.yml
       service: loki
   postgres-db-exporter:
     extends:
-      file: 07_dashboards/05_grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose.grafana.yml
       service: postgres-db-exporter
 
   # ============================================================================
@@ -268,7 +286,7 @@ services:
   # ============================================================================
   trino:
     extends:
-      file: trino/docker-compose.trino.yml
+      file: 01-databases/trino/docker-compose.trino.yml
       service: trino
 
 # ============================================================================
@@ -286,6 +304,9 @@ volumes:
     external: true
 
   redis-data:
+    external: true
+
+  redisinsight-data:
     external: true
 
   # Elasticsearch Volumes
