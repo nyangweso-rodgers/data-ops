@@ -28,6 +28,13 @@ export ROOT_DIR
 		prefect-worker-up prefect-worker-stop prefect-worker-down prefect-worker-logs \
 		prefect-services-up prefect-services-stop prefect-services-down prefect-services-logs \
 		superset-dev-build superset-dev-up superset-dev-stop superset-dev-down superset-dev-logs superset-dev-restart superset-shell \
+		redash-dev-up-build redash-dev-up redash-dev-stop redash-dev-down redash-dev-logs redash-dev-restart redash-init-db \
+		redash-provision redash-provision-dry-run \
+		grafana-up-build grafana-up grafana-stop grafana-down grafana-logs grafana-restart \
+		prometheus-up prometheus-stop prometheus-down prometheus-logs \
+		loki-up loki-stop loki-down loki-logs \
+		postgres-db-exporter-up postgres-db-exporter-stop postgres-db-exporter-down postgres-db-exporter-logs \
+		grafana-stack-up grafana-stack-stop grafana-stack-down grafana-stack-logs \
         up down logs clean
 
 help:
@@ -78,6 +85,41 @@ help:
 	@echo "  make superset-dev-logs      - View Superset logs"
 	@echo "  make superset-dev-restart   - Restart Superset"
 	@echo "  make superset-shell         - Access Superset shell"
+	@echo ""
+	@echo "Redash:"
+	@echo "  make redash-dev-build       - Build and start Redash (server/scheduler/worker)"
+	@echo "  make redash-dev-up          - Start Redash"
+	@echo "  make redash-dev-stop        - Stop Redash"
+	@echo "  make redash-dev-down        - Remove Redash"
+	@echo "  make redash-dev-logs        - View Redash logs"
+	@echo "  make redash-dev-restart     - Restart Redash"
+	@echo "  make redash-init-db         - Run Redash's one-time schema migration (create_db)"
+	@echo "  make redash-provision       - Provision Redash data sources + dashboards"
+	@echo "  make redash-provision-dry-run - Preview data-source changes, secrets redacted"
+	@echo ""
+	@echo "Grafana:"
+	@echo "  make grafana-up-build       - Build and start Grafana"
+	@echo "  make grafana-up             - Start Grafana"
+	@echo "  make grafana-stop           - Stop Grafana"
+	@echo "  make grafana-down           - Remove Grafana"
+	@echo "  make grafana-logs           - View Grafana logs"
+	@echo "  make grafana-restart        - Restart Grafana"
+	@echo "  make prometheus-up          - Start Prometheus"
+	@echo "  make prometheus-stop        - Stop Prometheus"
+	@echo "  make prometheus-down        - Remove Prometheus"
+	@echo "  make prometheus-logs        - View Prometheus logs"
+	@echo "  make loki-up                - Start Loki"
+	@echo "  make loki-stop              - Stop Loki"
+	@echo "  make loki-down              - Remove Loki"
+	@echo "  make loki-logs              - View Loki logs"
+	@echo "  make postgres-db-exporter-up   - Start Postgres exporter"
+	@echo "  make postgres-db-exporter-stop - Stop Postgres exporter"
+	@echo "  make postgres-db-exporter-down - Remove Postgres exporter"
+	@echo "  make postgres-db-exporter-logs - View Postgres exporter logs"
+	@echo "  make grafana-stack-up       - Start Grafana + Prometheus + Loki + exporter"
+	@echo "  make grafana-stack-stop     - Stop the full Grafana stack"
+	@echo "  make grafana-stack-down     - Remove the full Grafana stack"
+	@echo "  make grafana-stack-logs     - View logs for the full Grafana stack"
 	@echo ""
 	@echo "Elasticsearch:"
 	@echo "  make elasticsearch-up       - Start Elasticsearch"
@@ -339,6 +381,150 @@ superset-dev-restart:
 
 superset-shell:
 	@docker-compose exec apache-superset bash
+
+# ──────────────────────────────────────────────────────────────
+# Redash Commands
+# ──────────────────────────────────────────────────────────────
+redash-dev-build:
+	@echo "🔨 Building and starting Redash (detached)..."
+	@docker-compose up -d --build redash-server redash-scheduler redash-worker
+	@echo "✓ Redash started at http://localhost:$${REDASH_PORT:-5001}"
+
+redash-dev-up:
+	@echo "🚀 Starting Redash..."
+	@docker-compose up -d redash-server redash-scheduler redash-worker
+	@echo "✓ Redash started at http://localhost:$${REDASH_PORT:-5001}"
+	@echo "  First time only: run 'make redash-init-db' before opening the UI."
+
+redash-dev-stop:
+	@echo "⏸️  Stopping Redash..."
+	@docker-compose stop redash-server redash-scheduler redash-worker
+	@echo "✓ Redash stopped"
+
+redash-dev-down:
+	@echo "🗑️  Removing Redash..."
+	@docker-compose rm -sf redash-server redash-scheduler redash-worker
+	@echo "✓ Redash removed"
+
+redash-dev-logs:
+	@docker-compose logs -f redash-server redash-scheduler redash-worker
+
+redash-dev-restart:
+	@echo "🔄 Restarting Redash..."
+	@docker-compose restart redash-server redash-scheduler redash-worker
+	@echo "✓ Redash restarted"
+
+redash-init-db:
+	@echo "🗄️  Running Redash schema migration (create_db)..."
+	@docker-compose run --rm redash-server create_db
+	@echo "✓ Redash database initialized"
+
+redash-provision:
+	@echo "🔌 Provisioning Redash data sources and dashboards..."
+	@python 07_dashboards/03_redash/provisioning/provision_redash.py
+
+redash-provision-dry-run:
+	@python 07_dashboards/03_redash/provisioning/provision_redash.py --dry-run
+
+# ──────────────────────────────────────────────────────────────
+# Grafana Commands
+# ──────────────────────────────────────────────────────────────
+grafana-up-build:
+	@echo "🔨 Building and starting Grafana (detached)..."
+	@docker-compose up -d --build grafana
+	@echo "✓ Grafana started at http://localhost:3006"
+
+grafana-up:
+	@echo "🚀 Starting Grafana..."
+	@docker-compose up -d grafana
+	@echo "✓ Grafana started at http://localhost:3006"
+
+grafana-stop:
+	@echo "⏸️  Stopping Grafana..."
+	@docker-compose stop grafana
+	@echo "✓ Grafana stopped"
+
+grafana-down:
+	@echo "🗑️  Removing Grafana..."
+	@docker-compose rm -sf grafana
+	@echo "✓ Grafana removed"
+
+grafana-logs:
+	@docker-compose logs -f grafana
+
+grafana-restart:
+	@echo "🔄 Restarting Grafana..."
+	@docker-compose restart grafana
+	@echo "✓ Grafana restarted"
+
+# ──────────────────────────────────────────────────────────────
+# Prometheus Commands
+# ──────────────────────────────────────────────────────────────
+prometheus-up:
+	@echo "🚀 Starting Prometheus..."
+	@docker-compose up -d prometheus
+	@echo "✓ Prometheus started at http://localhost:$${PROMETHEUS_PORT:-9090}"
+
+prometheus-stop:
+	@docker-compose stop prometheus
+
+prometheus-down:
+	@docker-compose rm -sf prometheus
+
+prometheus-logs:
+	@docker-compose logs -f prometheus
+
+# ──────────────────────────────────────────────────────────────
+# Loki Commands
+# ──────────────────────────────────────────────────────────────
+loki-up:
+	@echo "🚀 Starting Loki..."
+	@docker-compose up -d loki
+	@echo "✓ Loki started"
+
+loki-stop:
+	@docker-compose stop loki
+
+loki-down:
+	@docker-compose rm -sf loki
+
+loki-logs:
+	@docker-compose logs -f loki
+
+# ──────────────────────────────────────────────────────────────
+# Postgres DB Exporter Commands
+# ──────────────────────────────────────────────────────────────
+postgres-db-exporter-up:
+	@echo "🚀 Starting Postgres DB exporter..."
+	@docker-compose up -d postgres-db-exporter
+	@echo "✓ Postgres DB exporter started at http://localhost:9187"
+
+postgres-db-exporter-stop:
+	@docker-compose stop postgres-db-exporter
+
+postgres-db-exporter-down:
+	@docker-compose rm -sf postgres-db-exporter
+
+postgres-db-exporter-logs:
+	@docker-compose logs -f postgres-db-exporter
+
+grafana-stack-up:
+	@echo "Starting full Grafana observability stack..."
+	@docker-compose up -d --build grafana prometheus loki postgres-db-exporter
+	@echo "✓ Grafana stack started (Grafana: http://localhost:3006)"
+
+grafana-stack-stop:
+	@echo "Stopping full Grafana observability stack..."
+	@docker-compose stop grafana prometheus loki postgres-db-exporter
+	@echo "✓ Grafana stack stopped"
+
+grafana-stack-down:
+	@echo "Removing full Grafana observability stack..."
+	@docker-compose rm -sf grafana prometheus loki postgres-db-exporter
+	@echo "✓ Grafana stack removed"
+
+grafana-stack-logs:
+	@docker-compose logs -f grafana prometheus loki postgres-db-exporter
 
 # ──────────────────────────────────────────────────────────────
 # Elasticsearch Commands
