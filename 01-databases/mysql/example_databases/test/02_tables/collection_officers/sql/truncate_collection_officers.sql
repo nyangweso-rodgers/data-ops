@@ -1,0 +1,1 @@
+TRUNCATE TABLE test.collection_officers;
