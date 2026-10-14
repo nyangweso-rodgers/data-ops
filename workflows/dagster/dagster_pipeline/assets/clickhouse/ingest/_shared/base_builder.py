@@ -1,12 +1,16 @@
+# dagster_pipeline/assets/clickhouse/ingest/_shared/base_builder.py
 """
-Abstract base factory for ETL pipelines with enhanced state management
+Abstract base builder for <source> → ClickHouse ingestion assets
+
+Holds everything source-agnostic: schema loading, incremental state, type
+mapping, ClickHouse table setup, batch extract/load loop, and the @asset
+wrapper. Each from_<source>/builder.py only implements the source side.
 
 Architecture:
 - Uses SchemaLoader as resource (not creating new instance)
-- Better error handling (raises exceptions instead of returning error Output)
-- Validates incremental key earlier in process
-- Cleaner separation of concerns
-- More robust state management
+- Raises exceptions instead of returning error Output
+- Validates incremental key early
+- Robust state management with retries
 - Centralized structured logging
 """
 
@@ -15,9 +19,9 @@ from typing import Dict, Any, Optional, Callable, List
 from dagster import asset, AssetExecutionContext, Output, MetadataValue
 
 from dagster_pipeline.connectors.sources.base_source_connector import IncrementalConfig
+from dagster_pipeline.connectors.sink.clickhouse_sink_connector import ClickHouseSinkConnector
 
 from dagster_pipeline.utils.schema_loader import (
-    SchemaLoader,
     SchemaNotFoundError,
     SchemaValidationError,
     TableSchema
@@ -32,65 +36,96 @@ from datetime import datetime
 logger = get_logger(__name__)
 
 
-class BaseETLFactory(ABC):
+class ClickHouseIngestBuilder(ABC):
     """
-    Abstract base class for ETL factories with robust state management
-    
-    Key Features:
-    - Schema validation before execution
-    - Incremental key validation with case-insensitive matching
-    - Robust state management with retries
-    - Proper error handling (raises exceptions)
-    - Single Output per asset
-    - Uses resources efficiently
-    - Structured logging with automatic timing
-    
+    Abstract base class for <source> → ClickHouse ingestion builders
+
+    Subclasses implement only the source side:
+        - source_type()
+        - get_source_connector(context)
+        - validate_and_correct_incremental_key(...)  (optional override)
+
     Usage:
-        class MySQLToClickHouseFactory(BaseETLFactory):
+        class MySQLToClickHouseBuilder(ClickHouseIngestBuilder):
             def source_type(self) -> str:
                 return "mysql"
-            
-            def destination_type(self) -> str:
-                return "clickhouse"
-            
-            # ... implement other methods
-        
-        factory = MySQLToClickHouseFactory(
-            asset_name="mysql_accounts_to_clickhouse",
+
+            def get_source_connector(self, context):
+                ...
+
+        asset = MySQLToClickHouseBuilder(
+            asset_name="mysql_amt_accounts_to_clickhouse",
+            resource_key="mysql_amt",
             source_database="amtdb",
             source_table="accounts",
             destination_database="amt",
-            destination_table="accounts_test",
-            incremental_key="updatedAt"
-        )
-        
-        asset = factory.build()
+            destination_table="accounts_v1",
+            schema_path="mysql/amtdb/accounts.yml",
+            incremental_key="updatedAt",
+            clickhouse_engine="ReplacingMergeTree(updatedAt)",
+            clickhouse_order_by=["id"],
+            clickhouse_partition_by=None,
+        ).build()
     """
-    
+
     def __init__(
         self,
         asset_name: str,
+        resource_key: str,
         source_database: str,
         source_table: str,
         destination_database: str,
         destination_table: str,
+        schema_path: str,
         incremental_key: Optional[str] = None,
         sync_method: str = "append",
         batch_size: int = 10000,
         group_name: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None
+        tags: Optional[Dict[str, str]] = None,
+
+        # ClickHouse table options - engine and order_by REQUIRED
+        clickhouse_engine: Optional[str] = None,
+        clickhouse_order_by: Optional[list] = None,
+        clickhouse_partition_by: Optional[str] = None,  # Explicit None means "no partitioning"
+        clickhouse_primary_key: Optional[list] = None,
+        clickhouse_ttl: Optional[str] = None,
+        clickhouse_settings: Optional[Dict[str, Any]] = None,
     ):
+        """
+        Args:
+            asset_name: Unique Dagster asset name
+            resource_key: Resource key for the source DB connection
+            source_database: Source database name
+            source_table: Source table name
+            destination_database: ClickHouse database name
+            destination_table: ClickHouse table name
+            schema_path: Source schema file, relative to schemas/ (e.g. "mysql/amtdb/accounts.yml")
+            incremental_key: Column for incremental sync (None = full sync)
+            sync_method: "append", "replace", or "upsert"
+            batch_size: Rows per batch
+            group_name: Dagster asset group
+            tags: Additional tags
+
+            clickhouse_engine: REQUIRED - e.g. "MergeTree", "ReplacingMergeTree(updatedAt)"
+            clickhouse_order_by: REQUIRED - e.g. ["id"] or ["tenant_id", "created_at", "id"]
+            clickhouse_partition_by: e.g. "toYYYYMM(created_at)", or None for no partitioning
+            clickhouse_primary_key: e.g. ["tenant_id", "id"] (default: ORDER BY)
+            clickhouse_ttl: e.g. "created_at + INTERVAL 90 DAY"
+            clickhouse_settings: e.g. {"index_granularity": 8192}
+        """
         self.asset_name = asset_name
+        self.resource_key = resource_key
         self.source_database = source_database
         self.source_table = source_table
         self.destination_database = destination_database
         self.destination_table = destination_table
+        self.schema_path = schema_path  # Relative to schemas/, e.g. "mysql/amtdb/accounts.yml"
         self.incremental_key = incremental_key
         self.sync_method = sync_method
         self.batch_size = batch_size
         self.group_name = group_name or self._default_group_name()
         self.tags = tags or {}
-        
+
         # Update tags with metadata
         self.tags.update({
             "source_type": self.source_type(),
@@ -98,119 +133,186 @@ class BaseETLFactory(ABC):
             "sync_type": "incremental" if incremental_key else "full",
             "sync_method": sync_method
         })
-        
-        # Create logger with factory context
+
+        # Create logger with builder context
         self.logger = get_logger(
             self.__class__.__name__,
             context={
                 "asset_name": asset_name,
                 "source": f"{self.source_type()}:{source_database}.{source_table}",
                 "destination": f"{self.destination_type()}:{destination_database}.{destination_table}",
+                "schema_path": schema_path,
                 "sync_method": sync_method,
             }
         )
-        
-        self.logger.info("factory_initialized", incremental_key=incremental_key, batch_size=batch_size)
-    
+
+        # Validate and store ClickHouse table options
+        self._validate_clickhouse_config(clickhouse_engine, clickhouse_order_by)
+        self.clickhouse_engine = clickhouse_engine
+        self.clickhouse_order_by = clickhouse_order_by
+        self.clickhouse_partition_by = clickhouse_partition_by
+        self.clickhouse_primary_key = clickhouse_primary_key
+        self.clickhouse_ttl = clickhouse_ttl
+        self.clickhouse_settings = clickhouse_settings or {}
+
+        self.logger.info(
+            "builder_initialized",
+            incremental_key=incremental_key,
+            batch_size=batch_size,
+            engine=clickhouse_engine,
+            order_by=clickhouse_order_by,
+            partition_by=clickhouse_partition_by,
+        )
+
     # ========================================================================
-    # ABSTRACT METHODS - Must be implemented by subclasses
+    # ABSTRACT METHODS - Source side, implemented by from_<source>/builder.py
     # ========================================================================
-    
+
     @abstractmethod
     def source_type(self) -> str:
         """Return source type identifier (e.g., 'mysql', 'postgres')"""
         pass
-    
-    @abstractmethod
-    def destination_type(self) -> str:
-        """Return destination type identifier (e.g., 'clickhouse')"""
-        pass
-    
+
     @abstractmethod
     def get_source_connector(self, context: AssetExecutionContext):
         """Create and return source connector instance"""
         pass
-    
-    @abstractmethod
-    def get_destination_connector(self, context: AssetExecutionContext):
-        """Create and return destination connector instance"""
-        pass
-    
-    @abstractmethod
+
+    # ========================================================================
+    # DESTINATION SIDE - ClickHouse, shared by every source
+    # ========================================================================
+
+    def destination_type(self) -> str:
+        return "clickhouse"
+
     def get_required_resource_keys(self) -> set:
+        """Return all required resource keys"""
+        return {
+            self.resource_key,
+            "clickhouse_resource",
+            "schema_loader",
+            "dagster_postgres_resource",
+        }
+
+    def get_destination_connector(self, context: AssetExecutionContext):
+        """Create ClickHouse destination connector"""
+        ch_res = getattr(context.resources, "clickhouse_resource", None)
+
+        if ch_res is None:
+            available = [attr for attr in dir(context.resources) if not attr.startswith('_')]
+            self.logger.error("clickhouse_resource_not_found", available=available)
+            raise ValueError(
+                f"ClickHouse resource 'clickhouse_resource' not found. "
+                f"Available resources: {available}"
+            )
+
+        config = {**ch_res.get_config()}
+        self.logger.debug("clickhouse_connector_created")
+        return ClickHouseSinkConnector(context, config)
+
+    def get_clickhouse_table_options(self) -> Dict[str, Any]:
+        """ClickHouse table creation options (engine, order_by, partition_by, primary_key, ttl, settings)"""
+        return {
+            "engine": self.clickhouse_engine,
+            "order_by": self.clickhouse_order_by,
+            "partition_by": self.clickhouse_partition_by,
+            "primary_key": self.clickhouse_primary_key,
+            "ttl": self.clickhouse_ttl,
+            "settings": self.clickhouse_settings,
+        }
+
+    def _validate_clickhouse_config(self, engine: Optional[str], order_by: Optional[list]):
         """
-        Return set of required resource keys
-        
-        IMPORTANT: Must include 'schema_loader'!
-        
-        Example:
-            return {"schema_loader", "mysql_source", "clickhouse_resource"}
+        Validate required ClickHouse configuration parameters
+
+        This ensures data engineers explicitly specify all critical settings.
         """
-        pass
-    
+        errors = []
+
+        # Engine is REQUIRED
+        if engine is None:
+            errors.append(
+                "❌ clickhouse_engine is REQUIRED. You must explicitly choose an engine.\n"
+                "   Common options:\n"
+                "   - 'MergeTree' for append-only data\n"
+                "   - 'ReplacingMergeTree' for deduplication\n"
+                "   - 'ReplacingMergeTree(version_column)' for versioned deduplication"
+            )
+
+        # ORDER BY is REQUIRED
+        if order_by is None:
+            errors.append(
+                "❌ clickhouse_order_by is REQUIRED. You must specify how data is sorted.\n"
+                "   Example: clickhouse_order_by=['id'] or ['tenant_id', 'created_at', 'id']"
+            )
+        elif not isinstance(order_by, list) or len(order_by) == 0:
+            errors.append(
+                "❌ clickhouse_order_by must be a non-empty list of column names.\n"
+                f"   Got: {order_by}"
+            )
+
+        if errors:
+            error_msg = "\n\n".join(errors)
+            error_msg += "\n\n💡 TIP: All ClickHouse table parameters must be explicitly specified."
+            logger.error("clickhouse_config_invalid", errors=errors, engine=engine, order_by=order_by)
+            raise ValueError(error_msg)
+
+        logger.debug("clickhouse_config_validated", engine=engine, order_by=order_by)
+
     # ========================================================================
     # OPTIONAL METHODS - Can be overridden by subclasses
     # ========================================================================
-    
+
     def validate_and_correct_incremental_key(
         self,
         context: AssetExecutionContext,
         schema: TableSchema
     ) -> Optional[str]:
         """
-        Validate and potentially correct incremental key
-        
-        Default: Returns key as-is if it exists in schema, None otherwise
-        
-        Override in subclasses for custom behavior (e.g., case-insensitive matching)
-        
-        Args:
-            context: Dagster execution context
-            schema: Loaded TableSchema
-        
+        Validate incremental key exists in schema (exact match)
+
+        Override in subclasses for source-specific behavior (e.g. Postgres
+        lowercase fallback).
+
         Returns:
-            Validated incremental key or None if invalid
+            The incremental key as provided, or None if no key is configured
+
+        Raises:
+            ValueError: If the key is not in the schema (with a case hint if applicable)
         """
         if not self.incremental_key:
+            self.logger.info("no_incremental_key")
             return None
-        
-        # Check if key exists in schema
-        if schema.has_column(self.incremental_key):
+
+        # Get column names from schema
+        column_names = schema.get_column_names(use_source_names=True)
+
+        # Check for exact match first
+        if self.incremental_key in column_names:
             self.logger.info("incremental_key_validated", key=self.incremental_key)
             return self.incremental_key
-        
-        available_columns = schema.get_column_names()
-        self.logger.error("incremental_key_not_found", requested_key=self.incremental_key, available_columns=available_columns)
-        context.log.error(
+
+        self._raise_incremental_key_not_found(column_names)
+
+    def _raise_incremental_key_not_found(self, column_names: List[str]):
+        """Raise a helpful error, pointing out a case mismatch if that's the cause"""
+        column_names_lower = {col.lower(): col for col in column_names}
+        incremental_key_lower = self.incremental_key.lower()
+
+        if incremental_key_lower in column_names_lower:
+            correct_case = column_names_lower[incremental_key_lower]
+            self.logger.error("incremental_key_case_mismatch", requested=self.incremental_key, correct=correct_case)
+            raise ValueError(
+                f"Incremental key '{self.incremental_key}' not found (case mismatch). "
+                f"Did you mean '{correct_case}'? Update your table config to use the exact column name."
+            )
+
+        self.logger.error("incremental_key_not_found", requested=self.incremental_key, available=column_names)
+        raise ValueError(
             f"Incremental key '{self.incremental_key}' not found in schema. "
-            f"Available columns: {available_columns}"
+            f"Available columns: {column_names}"
         )
-        return None
-    
-    def get_clickhouse_table_options(self) -> Dict[str, Any]:
-        """
-        Get ClickHouse table creation options
-        
-        Override to customize table creation.
-        
-        Returns:
-            Dictionary with table options:
-            - engine: Table engine (None = auto-select)
-            - order_by: ORDER BY columns (None = use primary keys)
-            - partition_by: PARTITION BY expression (None = no partitioning)
-            - primary_key: PRIMARY KEY columns (None = same as ORDER BY)
-            - ttl: TTL expression (None = no TTL)
-            - settings: Additional table settings dict
-        """
-        return {
-            "engine": None,
-            "order_by": None,
-            "partition_by": None,
-            "primary_key": None,
-            "ttl": None,
-            "settings": {},
-        }
-    
+
     def transform_batch(
         self,
         batch: List[Dict[str, Any]],
@@ -266,27 +368,32 @@ class BaseETLFactory(ABC):
             schema_loader = context.resources.schema_loader
             
             try:
-                schema = schema_loader.get_schema(
-                    self.source_type(),
-                    self.source_database,
-                    self.source_table
-                )
+                schema = schema_loader.get_schema_from_path(self.schema_path)
             except SchemaNotFoundError as e:
                 self.logger.error("schema_not_found", error=str(e))
                 raise ValueError(
-                    f"Schema not found: {self.source_type()}/{self.source_database}/{self.source_table}.yml. "
-                    f"Create schema file or check path. Error: {e}"
+                    f"Schema not found: schemas/{self.schema_path}. "
+                    f"Create schema file or check schema_path. Error: {e}"
                 ) from e
             except SchemaValidationError as e:
                 self.logger.error("schema_validation_error", error=str(e))
                 raise ValueError(f"Schema validation failed: {e}") from e
-            
+
             if schema is None:
                 self.logger.error("schema_returned_none")
+                raise ValueError(f"Schema not found: schemas/{self.schema_path}")
+
+            # Guard against schema_path pointing at another table's schema
+            schema_source = (schema.source_type.value, schema.database, schema.table)
+            expected_source = (self.source_type(), self.source_database, self.source_table)
+            if schema_source != expected_source:
+                self.logger.error("schema_source_mismatch", schema_source=schema_source, expected_source=expected_source)
                 raise ValueError(
-                    f"Schema not found: {self.source_type()}/{self.source_database}/{self.source_table}.yml"
+                    f"Schema schemas/{self.schema_path} describes "
+                    f"{schema_source[0]}:{schema_source[1]}.{schema_source[2]}, but this asset reads "
+                    f"{expected_source[0]}:{expected_source[1]}.{expected_source[2]}. Check schema_path."
                 )
-            
+
             validation_errors = schema_loader.validate_schema(schema)
             if validation_errors:
                 self.logger.error("schema_validation_failed", errors=validation_errors)
@@ -709,9 +816,9 @@ class BaseETLFactory(ABC):
         
         # Ensure schema_loader is in required keys
         if "schema_loader" not in required_keys:
-            self.logger.error("schema_loader_missing", factory=self.__class__.__name__)
+            self.logger.error("schema_loader_missing", builder=self.__class__.__name__)
             raise ValueError(
-                f"Factory {self.__class__.__name__} must include 'schema_loader' "
+                f"Builder {self.__class__.__name__} must include 'schema_loader' "
                 f"in get_required_resource_keys()"
             )
         
