@@ -18,8 +18,8 @@ This monorepo is my personal open-source project and working lab. I use it to te
 | **Databases** | PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch + Kibana, Neo4j, Trino (federated SQL) | — |
 | **Streaming & CDC** | Apache Kafka, Schema Registry, Kafka Connect, Debezium (Postgres CDC) | Redpanda |
 | **Data warehouse** | ClickHouse | — |
-| **Orchestration** | Apache Airflow, Dagster, Prefect, n8n | Temporal, Maestro |
-| **Pipelines & transformation** | dbt (run from Airflow), Apache NiFi, Airbyte | Spark, PeerDB |
+| **Orchestration & data movement** | Apache Airflow, Dagster, Prefect, n8n, Apache NiFi, Airbyte | Temporal, Maestro, PeerDB |
+| **Transformation & compute** | dbt (run from Airflow) | Spark |
 | **BI & dashboards** | Superset, Metabase, Redash, Grafana, Taipy, Svelte + FastAPI live dashboard | Streamlit |
 | **Monitoring** | Prometheus, Loki, Grafana, Postgres exporter | — |
 | **Metadata & catalog** | OpenMetadata, Amundsen | — |
@@ -134,14 +134,14 @@ Each stack can run on its own; start the databases a stack depends on first (not
 01-databases/            Postgres, MySQL, MongoDB, Redis, Elasticsearch, Neo4j, Trino
 02_apis/                 Express.js and Flask APIs
 03_messaging_services/   Kafka, Schema Registry, Kafka Connect, Debezium
-05_data_pipeline/        dbt, Spark, PeerDB notes
+05_data_processing/      Transformation & compute: dbt, Spark (notes)
 06_data_warehouse/       ClickHouse
 07_dashboards/           Superset, Metabase, Redash, Grafana stack, Taipy, Svelte + FastAPI
 ai/                      Open WebUI + Ollama
 metadata/                OpenMetadata, Amundsen
 ml-models/               MLflow, OCR pipeline, prediction APIs
 monitoring-and-observability/   Prometheus and Loki configuration
-workflows/               Airflow, Dagster, Prefect, n8n, NiFi, Airbyte
+workflows/               Orchestration & data movement: Airflow, Dagster, Prefect, n8n, NiFi, Airbyte (+ PeerDB, Temporal notes)
 10_documentation/        Docusaurus site
 docs/                    Architecture notes and the TODO backlog
 docker-compose.yml       Root compose (extends every stack's base file)
