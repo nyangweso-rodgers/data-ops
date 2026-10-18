@@ -1,0 +1,33 @@
+# 01-databases/neo4j/docker-compose-neo4j.prod.yml
+# Production override (single instance, self-hosted)
+#
+# Prerequisites:
+#   - NEO4J_PASSWORD set - compose refuses to start without it
+#   - 7474/7687 are published by base.yml - restrict them at the firewall / security group
+#
+# Usage:
+#   make neo4j-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.prod.yml up -d)
+
+services:
+  neo4j:
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?set NEO4J_PASSWORD}
+      NEO4J_dbms_memory_heap_initial__size: ${NEO4J_HEAP_INITIAL:-2G}
+      NEO4J_dbms_memory_heap_max__size: ${NEO4J_HEAP_MAX:-2G}
+      NEO4J_dbms_memory_pagecache_size: ${NEO4J_PAGECACHE:-1G}
+    restart: unless-stopped
+    deploy:
+      resources:
+        # heap + pagecache + ~1G overhead
+        limits:
+          cpus: "${NEO4J_CPU_LIMIT:-2}"
+          memory: ${NEO4J_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
