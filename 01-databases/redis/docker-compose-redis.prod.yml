@@ -1,0 +1,40 @@
+# 01-databases/redis/docker-compose-redis.prod.yml
+# Production override (self-hosted - see docs/architecture.md X5 re: managed redis)
+#
+# Prerequisites:
+#   - REDIS_PASSWORD set - compose refuses to start without it
+#   - 6379 is published by base.yml - restrict it at the firewall / security group
+#
+# RedisInsight is disabled in prod (profile "tools"). To start it anyway:
+#   docker-compose ... --profile tools up -d redisinsight
+#
+# Usage:
+#   make redis-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.prod.yml up -d)
+
+services:
+  redis:
+    # No maxmemory/eviction policy on purpose: Redash and Prefect keep queues/messages
+    # here, which must not be evicted. Size the limit for cache + queue growth.
+    command: [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${REDIS_PASSWORD:?set REDIS_PASSWORD}",
+      ]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: ${REDIS_MEMORY_LIMIT:-2G}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  redisinsight:
+    profiles: ["tools"] # not started by default in production
+    restart: "no"
