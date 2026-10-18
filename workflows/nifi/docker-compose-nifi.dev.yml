@@ -1,4 +1,4 @@
-# 05_data_pipeline/nifi/docker-compose-nifi.dev.yml
+# workflows/nifi/docker-compose-nifi.dev.yml
 # Development override
 #
 # Prerequisites:

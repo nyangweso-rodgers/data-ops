@@ -1,4 +1,4 @@
-# 05_data_pipeline/nifi/docker-compose-nifi.prod.yml
+# workflows/nifi/docker-compose-nifi.prod.yml
 # Production override
 #
 # Prerequisites:
@@ -14,7 +14,7 @@ services:
   nifi:
     environment:
       SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_SINGLE_USER_USERNAME:?set NIFI_SINGLE_USER_USERNAME}
-      SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_SINGLE_USER_PASSWORD:?set NIFI_SINGLE_USER_PASSWORD}
+      SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_SINGLE_USER_PASSWORD:?}
       NIFI_JVM_HEAP_INIT: ${NIFI_JVM_HEAP_MAX:-2g}
     restart: unless-stopped
     deploy:

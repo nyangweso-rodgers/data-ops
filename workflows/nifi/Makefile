@@ -1,4 +1,4 @@
-# 05_data_pipeline/nifi/Makefile
+# workflows/nifi/Makefile
 # NiFi commands (the root Makefile delegates nifi-* targets here, e.g. make nifi-dev-up)
 
 # Docker Compose file combinations

@@ -1,4 +1,4 @@
-# 05_data_pipeline/nifi/docker-compose-nifi.base.yml
+# workflows/nifi/docker-compose-nifi.base.yml
 # Base Apache NiFi configuration - shared across all environments
 #
 # Not part of the root docker-compose.yml - run it through its own Makefile.
