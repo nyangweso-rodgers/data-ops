@@ -1,10 +1,24 @@
+# Each service extends its stack's *.base.yml. Dependencies on services that live
+# in another stack's compose file (postgres, redis, neo4j, elasticsearch) are
+# declared here, since a base file can't depend_on a service it doesn't define.
+
+x-needs-postgres: &needs-postgres
+  postgres:
+    condition: service_healthy
+
+x-needs-postgres-redis: &needs-postgres-redis
+  postgres:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+
 services:
   # ============================================================================
   # PostgreSQL Services
   # ============================================================================
   postgres:
     extends:
-      file: 01-databases/01-postgres/docker-compose.postgres.yml
+      file: 01-databases/01-postgres/docker-compose-postgres.base.yml
       service: postgres
 
   # ============================================================================
@@ -12,7 +26,7 @@ services:
   # ============================================================================
   mysql:
     extends:
-      file: 01-databases/mysql/docker-compose.mysql.yml
+      file: 01-databases/mysql/docker-compose-mysql.base.yml
       service: mysql
 
   # ============================================================================
@@ -20,46 +34,51 @@ services:
   # ============================================================================
   metabase:
     extends:
-      file: 07_dashboards/04_metabase/docker-compose.metabase.yml
+      file: 07_dashboards/04_metabase/docker-compose-metabase.base.yml
       service: metabase
+    depends_on: *needs-postgres
 
   # ============================================================================
   # Dashboard - Superset
   # ============================================================================
   apache-superset:
     extends:
-      file: 07_dashboards/01_superset/docker-compose.superset.yml
+      file: 07_dashboards/01_superset/docker-compose-superset.base.yml
       service: apache-superset
+    depends_on: *needs-postgres-redis
 
   # ============================================================================
   # Dashboard - Redash
   # ============================================================================
   redash-server:
     extends:
-      file: 07_dashboards/03_redash/docker-compose.redash.yml
+      file: 07_dashboards/03_redash/docker-compose-redash.base.yml
       service: redash-server
+    depends_on: *needs-postgres-redis
 
   redash-scheduler:
     extends:
-      file: 07_dashboards/03_redash/docker-compose.redash.yml
+      file: 07_dashboards/03_redash/docker-compose-redash.base.yml
       service: redash-scheduler
+    depends_on: *needs-postgres-redis
 
   redash-worker:
     extends:
-      file: 07_dashboards/03_redash/docker-compose.redash.yml
+      file: 07_dashboards/03_redash/docker-compose-redash.base.yml
       service: redash-worker
+    depends_on: *needs-postgres-redis
 
   # ============================================================================
   # Redis Services
   # ============================================================================
   redis:
     extends:
-      file: 01-databases/redis/docker-compose.redis.yml
+      file: 01-databases/redis/docker-compose-redis.base.yml
       service: redis
 
   redisinsight:
     extends:
-      file: 01-databases/redis/docker-compose.redis.yml
+      file: 01-databases/redis/docker-compose-redis.base.yml
       service: redisinsight
 
   # ============================================================================
@@ -67,7 +86,7 @@ services:
   # ============================================================================
   elasticsearch:
     extends:
-      file: 01-databases/elasticsearch/docker-compose.elasticsearch.yml
+      file: 01-databases/elasticsearch/docker-compose-elasticsearch.base.yml
       service: elasticsearch
 
   # ============================================================================
@@ -75,7 +94,7 @@ services:
   # ============================================================================
   kibana:
     extends:
-      file: 01-databases/elasticsearch/docker-compose.elasticsearch.yml
+      file: 01-databases/elasticsearch/docker-compose-elasticsearch.base.yml
       service: kibana
 
   # ============================================================================
@@ -83,7 +102,7 @@ services:
   # ============================================================================
   neo4j:
     extends:
-      file: 01-databases/neo4j/docker-compose.neo4j.yml
+      file: 01-databases/neo4j/docker-compose-neo4j.base.yml
       service: neo4j
 
   # ============================================================================
@@ -91,17 +110,17 @@ services:
   # ============================================================================
   kafka-zookeeper:
     extends:
-      file: 03_messaging_services/01_kafka/docker-compose.kafka.yml
+      file: 03_messaging_services/kafka/docker-compose-kafka.base.yml
       service: kafka-zookeeper
 
   kafka:
     extends:
-      file: 03_messaging_services/01_kafka/docker-compose.kafka.yml
+      file: 03_messaging_services/kafka/docker-compose-kafka.base.yml
       service: kafka
 
   kafka-ui:
     extends:
-      file: 03_messaging_services/01_kafka/docker-compose.kafka.yml
+      file: 03_messaging_services/kafka/docker-compose-kafka.base.yml
       service: kafka-ui
 
   # ============================================================================
@@ -109,12 +128,12 @@ services:
   # ============================================================================
   airflow-webserver:
     extends:
-      file: workflows/airflow/docker-compose.airflow.yml
+      file: workflows/airflow/docker-compose-airflow.base.yml
       service: airflow-webserver
 
   airflow-scheduler:
     extends:
-      file: workflows/airflow/docker-compose.airflow.yml
+      file: workflows/airflow/docker-compose-airflow.base.yml
       service: airflow-scheduler
 
   # ============================================================================
@@ -140,25 +159,29 @@ services:
   # ============================================================================
   n8n:
     extends:
-      file: workflows/n8n/docker-compose.n8n.yml
+      file: workflows/n8n/docker-compose-n8n.base.yml
       service: n8n
+    depends_on:
+      - postgres
 
   # ============================================================================
   # Prefect Services
   # ============================================================================
   prefect-server:
     extends:
-      file: workflows/prefect/docker-compose.prefect.yml
+      file: workflows/prefect/docker-compose-prefect.base.yml
       service: prefect-server
+    depends_on: *needs-postgres-redis
 
   prefect-services:
     extends:
-      file: workflows/prefect/docker-compose.prefect.yml
+      file: workflows/prefect/docker-compose-prefect.base.yml
       service: prefect-services
+    depends_on: *needs-postgres-redis
 
   prefect-worker:
     extends:
-      file: workflows/prefect/docker-compose.prefect.yml
+      file: workflows/prefect/docker-compose-prefect.base.yml
       service: prefect-worker
 
   # ============================================================================
@@ -166,12 +189,12 @@ services:
   # ============================================================================
   clickhouse-server:
     extends:
-      file: 06_data_warehouse/01-clickhouse/docker-compose.clickhouse.yml
+      file: 06_data_warehouse/clickhouse/docker-compose-clickhouse.base.yml
       service: clickhouse-server
 
   clickhouse-tabix-web-client:
     extends:
-      file: 06_data_warehouse/01-clickhouse/docker-compose.clickhouse.yml
+      file: 06_data_warehouse/clickhouse/docker-compose-clickhouse.base.yml
       service: clickhouse-tabix-web-client
 
   # ============================================================================
@@ -179,17 +202,23 @@ services:
   # ============================================================================
   amundsen-metadata:
     extends:
-      file: metadata/amundsen/docker-compose.amundsen.yml
+      file: metadata/amundsen/docker-compose-amundsen.base.yml
       service: amundsen-metadata
+    depends_on:
+      neo4j:
+        condition: service_healthy
 
   amundsen-search:
     extends:
-      file: metadata/amundsen/docker-compose.amundsen.yml
+      file: metadata/amundsen/docker-compose-amundsen.base.yml
       service: amundsen-search
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
   amundsen-frontend:
     extends:
-      file: metadata/amundsen/docker-compose.amundsen.yml
+      file: metadata/amundsen/docker-compose-amundsen.base.yml
       service: amundsen-frontend
 
   # ============================================================================
@@ -197,20 +226,30 @@ services:
   # ============================================================================
   open-metadata-server:
     extends:
-      file: metadata/open-metadata/docker-compose.open-metadata.yml
+      file: metadata/open-metadata/docker-compose-open-metadata.base.yml
       service: open-metadata-server
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
 
   open-metadata-execute-migrate-all:
     extends:
-      file: metadata/open-metadata/docker-compose.open-metadata.yml
+      file: metadata/open-metadata/docker-compose-open-metadata.base.yml
       service: open-metadata-execute-migrate-all
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
 
   # ============================================================================
   # Grafana Services
   # ============================================================================
   grafana:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose-grafana.base.yml
       service: grafana
 
   # ============================================================================
@@ -226,7 +265,7 @@ services:
   # ============================================================================
   prometheus:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose-grafana.base.yml
       service: prometheus
 
   # ============================================================================
@@ -234,11 +273,11 @@ services:
   # ============================================================================
   loki:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose-grafana.base.yml
       service: loki
   postgres-db-exporter:
     extends:
-      file: 07_dashboards/grafana/docker-compose.grafana.yml
+      file: 07_dashboards/grafana/docker-compose-grafana.base.yml
       service: postgres-db-exporter
 
   # ============================================================================
@@ -246,7 +285,7 @@ services:
   # ============================================================================
   docusaurus:
     extends:
-      file: 10_documentation/docusaurus-site/docker-compose.docusaurus.yml
+      file: 10_documentation/docusaurus-site/docker-compose-docusaurus.base.yml
       service: docusaurus
 
   # ============================================================================
@@ -254,7 +293,7 @@ services:
   # ============================================================================
   ml-flow:
     extends:
-      file: ml-models/ml-flow/docker-compose-ml-flow.yml
+      file: ml-models/ml-flow/docker-compose-ml-flow.base.yml
       service: ml-flow
 
   # ============================================================================
@@ -270,7 +309,7 @@ services:
   # ============================================================================
   ollama:
     extends:
-      file: ai/open-webui/docker-compose.open-webui.yml
+      file: ai/open-webui/docker-compose-open-webui.base.yml
       service: ollama
 
   # ============================================================================
@@ -278,16 +317,19 @@ services:
   # ============================================================================
   open-webui:
     extends:
-      file: ai/open-webui/docker-compose.open-webui.yml
+      file: ai/open-webui/docker-compose-open-webui.base.yml
       service: open-webui
+    depends_on:
+      - postgres
 
   # ============================================================================
   # Trino Services
   # ============================================================================
   trino:
     extends:
-      file: 01-databases/trino/docker-compose.trino.yml
+      file: 01-databases/trino/docker-compose-trino.base.yml
       service: trino
+    depends_on: *needs-postgres
 
 # ============================================================================
 # Volumes

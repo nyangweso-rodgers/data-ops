@@ -47,7 +47,7 @@
       - `docker-compose-dagster-local.yml`
       - `docker-compose-dagster-prod.yml`
     - n8n/
-      - `docker-compose.n8n.yml`
+      - `docker-compose-n8n.{base,dev,prod}.yml`
   - metadata/
   - messaging/
 
