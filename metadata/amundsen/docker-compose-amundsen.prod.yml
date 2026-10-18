@@ -1,0 +1,56 @@
+# metadata/amundsen/docker-compose-amundsen.prod.yml
+# Production override
+#
+# Prerequisites:
+#   - neo4j (NEO4J_*) and elasticsearch (ELASTICSEARCH_*) reachable
+#   - NEO4J_PASSWORD set - compose refuses to start without it
+#
+# Usage:
+#   make amundsen-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.prod.yml up -d)
+
+x-amundsen-prod-logging: &amundsen-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  amundsen-metadata:
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      CREDENTIALS_PROXY_PASSWORD: ${NEO4J_PASSWORD:?}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    logging: *amundsen-prod-logging
+
+  amundsen-search:
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    logging: *amundsen-prod-logging
+
+  amundsen-frontend:
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      # TODO: TestConfig is a dev/test config - switch to a production config class
+      #       (and wire real auth) before exposing the frontend
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    logging: *amundsen-prod-logging

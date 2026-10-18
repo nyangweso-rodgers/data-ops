@@ -1,0 +1,43 @@
+# 01-databases/elasticsearch/docker-compose-elasticsearch.prod.yml
+# Production override (single-node, self-hosted)
+#
+# Prerequisites:
+#   - ELASTICSEARCH_PASSWORD set - compose refuses to start without it
+#   - Host vm.max_map_count >= 262144 (sysctl -w vm.max_map_count=262144)
+#   - 9200/9300/5601 are published by base.yml - restrict them at the firewall / security group
+#
+# Usage:
+#   make elasticsearch-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.prod.yml up -d)
+
+x-elasticsearch-prod-logging: &elasticsearch-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  elasticsearch:
+    environment:
+      ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:?}
+      bootstrap.memory_lock: "true"
+    restart: unless-stopped
+    deploy:
+      resources:
+        # Keep the limit at ~2x the heap (ELASTICSEARCH_JAVA_OPTS) for off-heap/page cache
+        limits:
+          cpus: "${ELASTICSEARCH_CPU_LIMIT:-2}"
+          memory: ${ELASTICSEARCH_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "1"
+          memory: 2G
+    logging: *elasticsearch-prod-logging
+
+  kibana:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    logging: *elasticsearch-prod-logging

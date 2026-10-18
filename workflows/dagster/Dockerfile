@@ -1,31 +1,28 @@
-# dagster_pipeline/Dockerfile
+# workflows/dagster/Dockerfile
 FROM python:3.10-slim
+
+# uv (pinned) - installs exactly what uv.lock specifies
+COPY --from=ghcr.io/astral-sh/uv:0.8.13 /uv /uvx /bin/
 
 WORKDIR /app
 
-# Install system dependencies
-# gcc, g++, libpq-dev (compilation tools)
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# No apt packages needed: every locked dependency ships a Linux wheel (psycopg2-binary
+# bundles libpq), and the compose healthchecks use Python instead of curl.
 
-# Copy pyproject.toml first (for Docker layer caching)
-# This layer will only rebuild if pyproject.toml changes
-COPY pyproject.toml README.md ./
+# The environment lives outside /app so compose's code mounts can never hide it
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/opt/venv/bin:$PATH"
 
-# Install Python dependencies
-# Note: We need to copy a minimal package structure for pip to recognize it
-COPY dagster_pipeline/__init__.py /app/dagster_pipeline/__init__.py
+# Dependencies first (cached until pyproject.toml / uv.lock change)
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-dev --no-install-project --no-cache
 
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
-
-# Now copy the full pipeline code
-# This layer rebuilds whenever code changes, but dependencies are cached
+# Then the pipeline code, installed editable (so compose's dev mount of
+# ./dagster_pipeline is what actually runs)
 COPY dagster_pipeline/ /app/dagster_pipeline/
+RUN uv sync --frozen --no-dev --no-cache
 
 # Create storage directories for Dagster
 RUN mkdir -p /app/dagster_home
@@ -37,7 +34,7 @@ ENV PYTHONPATH=/app
 ## for Webserver
 EXPOSE 3004
 ## for gRPC
-EXPOSE 4000 
+EXPOSE 4000
 
 # Default command (will be overridden in docker-compose)
 CMD ["dagster-webserver", "-h", "0.0.0.0", "-p", "3004"]

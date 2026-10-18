@@ -15,4 +15,4 @@ RUN echo "Installing ClickHouse plugin..." && \
 RUN ls -la /var/lib/grafana/plugins && echo "✅ Plugins installed successfully"
 
 # Copy provisioning files
-COPY datasources/ /etc/grafana/provisioning/datasources/
+COPY provisioning/ /etc/grafana/provisioning/

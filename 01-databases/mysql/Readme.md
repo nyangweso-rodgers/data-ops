@@ -4,30 +4,13 @@
 
 # How To Run Mysql In Docker With Data Persistence
 
-## Step 1. Create Dockerfile
-
-- Create a new file with the name `DockerFile`. Add the following lines of code to the file.
-
-  ```DockerFile
-    # Use the official MySQL image as the base image
-    FROM mysql:latest
-
-    # Expose the default MySQL port
-    EXPOSE 3306
-  ```
-
-## Step 2. Create `docker-compose.yml`
-
-- Create a new file with the name `docker-compose.yml` and add the following content to the file.
-  ```yml
-  services:
-  ```
-
-## Step 3. Run Docker Container
-
-- Run docker container by:
+- Runs the official `mysql:9.2.0` image directly (no Dockerfile). Config lives in `docker-compose-mysql.base.yml` (+ `.dev.yml` / `.prod.yml`).
+- Data persists in the external `mysql-data` volume (on a fresh machine: `docker volume create mysql-data`).
+- `init-scripts/` is mounted read-only into `/docker-entrypoint-initdb.d/` and runs only when the volume is empty.
+- Run it:
   ```sh
-    docker compose up -d
+    make mysql-dev-up     # from the repo root
+    make mysql-dev-cli    # mysql client inside the container
   ```
 
 # Database Initialization

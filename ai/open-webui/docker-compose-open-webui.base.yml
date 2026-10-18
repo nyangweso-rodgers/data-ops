@@ -1,0 +1,80 @@
+# ai/open-webui/docker-compose-open-webui.base.yml
+# Base Open WebUI + Ollama configuration - shared across all environments
+#
+# Open WebUI keeps its app DB in the shared postgres (PG_OPEN_WEBUI_*); uploads,
+# cache and the vector DB live in ./data.
+#
+# This file also works on its own (the root docker-compose.yml extends it and
+# adds the cross-file depends_on on postgres).
+#
+# Usage:
+#   Dev:  make open-webui-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.dev.yml up -d)
+#   Prod: make open-webui-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.prod.yml up -d)
+
+services:
+  # ============================================================================
+  # OLLAMA - local LLM runtime
+  # ============================================================================
+  ollama:
+    #image: ollama/ollama:latest
+    image: ollama/ollama:0.11.4 # https://hub.docker.com/layers/ollama/ollama/0.11.4/images/sha256-1514372d3cef7387b6202b253e761d820e00e44b28f268aad5029389d0479e99
+    container_name: ollama
+    ports:
+      - "${OLLAMA_HOST_PORT:?see ports.env}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_LLM_MAX_MEMORY: 6000MB
+      OLLAMA_NUM_THREADS: 6
+      OLLAMA_MAX_LOADED_MODELS: 1
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_NUM_PARALLEL: 1
+    deploy:
+      resources:
+        limits:
+          cpus: "6.0"
+        reservations:
+          cpus: "2.0"
+    networks:
+      - data-ops-network
+
+  # ============================================================================
+  # OPEN WEBUI - chat UI in front of Ollama
+  # ============================================================================
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "${OPEN_WEBUI_HOST_PORT:?see ports.env}:8080"
+    volumes:
+      - ./data:/app/backend/data
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:-your-secret-key}
+      WEBUI_JWT_SECRET_KEY: ${WEBUI_JWT_SECRET_KEY:-your-jwt-secret}
+      WEBUI_NAME: ${WEBUI_NAME:-Database Query Assistant}
+      DEFAULT_USER_ROLE: ${DEFAULT_USER_ROLE:-user}
+      ENABLE_SIGNUP: ${ENABLE_SIGNUP:-true}
+      # PostgreSQL connection to an existing DB (prod.yml points this at RDS)
+      DATABASE_URL: postgresql://${PG_OPEN_WEBUI_USER}:${PG_OPEN_WEBUI_PASSWORD}@${PG_OPEN_WEBUI_HOST:-postgres}:5432/${PG_OPEN_WEBUI_DB:-webui_db}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - ollama
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  ollama-data:
+    name: ollama-data

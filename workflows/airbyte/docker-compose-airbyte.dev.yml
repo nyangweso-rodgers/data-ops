@@ -1,0 +1,23 @@
+# workflows/airbyte/docker-compose-airbyte.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres ($LOCAL_PG_DB_HOST, default "postgres") running
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make airbyte-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.dev.yml up -d)
+
+services:
+  airbyte-temporal:
+    restart: "no" # No auto-restart for easier debugging
+
+  airbyte-server:
+    restart: "no"
+
+  airbyte-webapp:
+    restart: "no"
+
+  airbyte-worker:
+    restart: "no"

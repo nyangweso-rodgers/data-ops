@@ -1,0 +1,19 @@
+# ml-models/ml-flow/pyproject.toml
+# Runtime dependencies of the MLflow tracking server image. uv.lock pins every version.
+
+[project]
+name = "ml-flow-server"
+version = "0.1.0"
+description = "MLflow tracking server for the data-ops monorepo"
+requires-python = ">=3.10,<3.11" # = the image's Python (python:3.10-slim)
+dependencies = [
+    "mlflow",
+    "psycopg2-binary", # prod backend store on RDS postgres
+    "boto3",           # prod artifact store on S3
+]
+
+[tool.uv]
+package = false # just the server's environment
+
+[tool.ruff]
+extend = "../../pyproject.toml"

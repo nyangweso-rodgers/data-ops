@@ -1,0 +1,92 @@
+# workflows/airflow/docker-compose-airflow.prod.yml
+# Production override (metadata DB on AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the Airflow database user created
+#   - RDS_* and AIRFLOW_RDS_DB_NAME set in the env file
+#   - RDS_PASSWORD must be URL-safe (or URL-encoded) - it is embedded in the connection string
+#   - AIRFLOW_REMOTE_LOG_FOLDER set + S3 access for task logs (see TODOs below) - compose refuses to start without it
+#
+# Usage:
+#   docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.prod.yml up -d
+
+x-airflow-prod-env: &airflow-prod-env
+  ENVIRONMENT: production
+  # Metadata DB on RDS - keep AIRFLOW_DB_* and the connection string in sync
+  AIRFLOW_DB_HOST: ${RDS_HOSTNAME}
+  AIRFLOW_DB_PORT: ${RDS_PORT:-5432}
+  AIRFLOW_DB_USER: ${RDS_USERNAME}
+  AIRFLOW_DB_PASSWORD: ${RDS_PASSWORD}
+  AIRFLOW_DB_NAME: ${AIRFLOW_RDS_DB_NAME:-apache_airflow}
+  PGSSLMODE: require # used by psql in scripts/init.sh
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${RDS_USERNAME}:${RDS_PASSWORD}@${RDS_HOSTNAME}:${RDS_PORT:-5432}/${AIRFLOW_RDS_DB_NAME:-apache_airflow}?sslmode=require
+  # Runtime
+  AIRFLOW__LOGGING__LOGGING_LEVEL: INFO # WARNING would hide task logs
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+  # Task logs → S3 (remote logging). Tasks write locally, Airflow uploads each log when
+  # the task finishes, the UI reads it back from S3, and the local copy is deleted.
+  # TODO: create the bucket (with a lifecycle rule to expire old logs) and set
+  #       AIRFLOW_REMOTE_LOG_FOLDER=s3://<bucket>/airflow/logs in the env file.
+  # TODO: give the containers S3 access to that prefix (s3:PutObject, s3:GetObject,
+  #       s3:ListBucket) - preferably an IAM role (ECS task / EC2 instance profile).
+  #       aws:// = default boto3 credential chain (role, or AWS_* env vars).
+  AIRFLOW__LOGGING__REMOTE_LOGGING: "true"
+  AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER: ${AIRFLOW_REMOTE_LOG_FOLDER:?TODO set AIRFLOW_REMOTE_LOG_FOLDER=s3://<bucket>/airflow/logs}
+  AIRFLOW__LOGGING__REMOTE_LOG_CONN_ID: aws_default
+  AIRFLOW__LOGGING__DELETE_LOCAL_LOGS: "true"
+  AIRFLOW_CONN_AWS_DEFAULT: ${AIRFLOW_CONN_AWS_DEFAULT:-aws://}
+  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-} # TODO: bucket region, e.g. eu-west-1 (or set it on the role/host)
+  # Scheduler / DAG-processor logs stay local (not shipped to S3) - same cleanup DAG keeps them bounded
+  AIRFLOW_LOG_MAX_SIZE_MB: ${AIRFLOW_LOG_MAX_SIZE_MB:-2048}
+  AIRFLOW_LOG_RETENTION_DAYS: ${AIRFLOW_LOG_RETENTION_DAYS:-7}
+  # Alerting (if configured)
+  SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+  ALERT_EMAIL: ${ALERT_EMAIL:-}
+
+x-airflow-prod-volumes: &airflow-prod-volumes
+  # Code read-only in production; logs stay writable
+  - ./dags:/opt/airflow/dags:ro
+  - ./plugins:/opt/airflow/plugins:ro
+  - ./configs:/opt/airflow/configs:ro
+  - ./schemas:/opt/airflow/schemas:ro
+  - ./sql:/opt/airflow/sql:ro
+  - ./dataflow:/opt/airflow/dataflow:ro
+  # For sslmode=verify-full, add the CA bundle and set sslrootcert in the connection string:
+  # - ./certs/rds-ca-bundle.pem:/opt/airflow/certs/rds-ca-bundle.pem:ro
+
+x-airflow-prod-logging: &airflow-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  airflow-webserver:
+    environment: *airflow-prod-env
+    volumes: *airflow-prod-volumes
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${AIRFLOW_WEBSERVER_CPU_LIMIT:-1}"
+          memory: ${AIRFLOW_WEBSERVER_MEMORY_LIMIT:-2G}
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging: *airflow-prod-logging
+
+  airflow-scheduler:
+    environment: *airflow-prod-env
+    volumes: *airflow-prod-volumes
+    restart: always
+    deploy:
+      resources:
+        # LocalExecutor runs tasks inside the scheduler container - size it for the workload
+        limits:
+          cpus: "${AIRFLOW_SCHEDULER_CPU_LIMIT:-2}"
+          memory: ${AIRFLOW_SCHEDULER_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "1"
+          memory: 2G
+    logging: *airflow-prod-logging

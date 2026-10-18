@@ -1,0 +1,32 @@
+# workflows/nifi/docker-compose-nifi.prod.yml
+# Production override
+#
+# Prerequisites:
+#   - NIFI_SINGLE_USER_USERNAME / NIFI_SINGLE_USER_PASSWORD set (password >= 12 chars)
+#     - compose refuses to start without them
+#   - TODO: drop NIFI_WEB_HTTP_PORT from base and serve HTTPS on 8443 (NiFi 2.x default)
+#
+# Usage:
+#   make nifi-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.prod.yml up -d)
+
+services:
+  nifi:
+    environment:
+      SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_SINGLE_USER_USERNAME:?set NIFI_SINGLE_USER_USERNAME}
+      SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_SINGLE_USER_PASSWORD:?}
+      NIFI_JVM_HEAP_INIT: ${NIFI_JVM_HEAP_MAX:-2g}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${NIFI_CPU_LIMIT:-2}"
+          memory: ${NIFI_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

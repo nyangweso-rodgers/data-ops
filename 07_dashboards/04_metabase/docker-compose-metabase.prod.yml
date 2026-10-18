@@ -1,0 +1,37 @@
+# 07_dashboards/04_metabase/docker-compose-metabase.prod.yml
+# Production override (application DB on AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the Metabase database + user created
+#   - RDS_* (and optionally METABASE_RDS_DB_NAME) set in the env file
+#   - MB_SITE_URL set to the public URL - compose refuses to start without it
+#
+# Usage:
+#   make metabase-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.prod.yml up -d)
+
+services:
+  metabase:
+    environment:
+      ENVIRONMENT: production
+      # Application DB on RDS - the connection URI takes precedence over MB_DB_HOST/PORT/DBNAME
+      MB_DB_CONNECTION_URI: postgres://${RDS_HOSTNAME}:${RDS_PORT:-5432}/${METABASE_RDS_DB_NAME:-metabase}?sslmode=require
+      MB_DB_USER: ${RDS_USERNAME}
+      MB_DB_PASS: ${RDS_PASSWORD}
+      MB_SITE_URL: ${MB_SITE_URL:?set MB_SITE_URL to the public Metabase URL}
+      MB_ANON_TRACKING_ENABLED: "false"
+      JAVA_OPTS: ${METABASE_JAVA_OPTS:--Xmx2g}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${METABASE_CPU_LIMIT:-2}"
+          memory: ${METABASE_MEMORY_LIMIT:-3G}
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

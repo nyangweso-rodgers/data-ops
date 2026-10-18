@@ -1,0 +1,13 @@
+# 01-databases/neo4j/docker-compose-neo4j.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make neo4j-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.dev.yml up -d)
+
+services:
+  neo4j:
+    restart: "no" # No auto-restart for easier debugging

@@ -1,26 +1,18 @@
-# Use the official Prefect 3 image as base
-FROM prefecthq/prefect:3-latest
+# Official Prefect image, pinned - keep in sync with prefect== in pyproject.toml
+FROM prefecthq/prefect:3.4.20-python3.11
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (if needed, e.g., for compiling packages)
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    curl \ 
-    && rm -rf /var/lib/apt/lists/*
+# No apt packages needed: every locked dependency ships a Linux wheel (psycopg2-binary
+# bundles libpq), and the compose healthcheck uses Python instead of curl.
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install dependencies
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Install exactly what uv.lock specifies. The base image ships uv and sets
+# UV_SYSTEM_PYTHON=1, so this installs into the same environment as Prefect itself.
+COPY pyproject.toml uv.lock /app/
+RUN uv export --frozen --no-dev --no-hashes -o /tmp/requirements.txt && \
+    uv pip install --no-cache -r /tmp/requirements.txt && \
+    rm /tmp/requirements.txt
 
 # Optional: Copy custom scripts or configs
 # COPY ./my_scripts /app/my_scripts

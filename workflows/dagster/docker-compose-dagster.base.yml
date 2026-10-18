@@ -1,9 +1,8 @@
 # Base Dagster configuration - shared across all environments
 #
-# Usage:
-#   Local: docker-compose --env-file ../../.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.local.yml up
-#   RDS:   docker-compose --env-file ../../.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.local-rds.yml up
-#   Prod:  docker-compose --env-file ../../.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.prod.yml up
+# Usage (or see Makefile: make dev-up / make prod-up):
+#   Dev:  docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.dev.yml up
+#   Prod: docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-dagster.base.yml -f docker-compose-dagster.prod.yml up
 
 services:
   # ============================================================================
@@ -31,7 +30,7 @@ services:
       # Core Dagster settings
       - DAGSTER_HOME=/app/dagster_home
       - PYTHONPATH=/app
-      # DB settings will be set in override files (local.yml, local-rds.yml, prod.yml)
+      # DB settings will be set in override files (dev.yml, prod.yml)
     volumes:
       - ./dagster_home/:/app/dagster_home
       - ./dagster_pipeline:/app/dagster_pipeline
@@ -76,7 +75,7 @@ services:
     networks:
       - data-ops-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3004"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3004')"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,0 +1,30 @@
+# 07_dashboards/grafana/docker-compose-grafana.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres ($LOCAL_PG_DB_HOST, default "postgres") running, for postgres-db-exporter
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make grafana-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.dev.yml up -d)
+
+services:
+  grafana:
+    environment:
+      ENVIRONMENT: dev
+      GF_LOG_LEVEL: info # switch to debug only when needed
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      # Development: mount provisioning so datasource/dashboard edits apply on restart without a rebuild
+      - ./provisioning:/etc/grafana/provisioning
+    restart: "no" # No auto-restart for easier debugging
+
+  prometheus:
+    restart: "no"
+
+  loki:
+    restart: "no"
+
+  postgres-db-exporter:
+    restart: "no"

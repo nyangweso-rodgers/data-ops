@@ -1,0 +1,13 @@
+# 01-databases/mongodb/docker-compose-mongodb.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make mongodb-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.dev.yml up -d)
+
+services:
+  mongo-db-community-server:
+    restart: "no" # No auto-restart for easier debugging

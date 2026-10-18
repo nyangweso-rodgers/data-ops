@@ -1,0 +1,13 @@
+# workflows/nifi/docker-compose-nifi.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make nifi-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.dev.yml up -d)
+
+services:
+  nifi:
+    restart: "no" # No auto-restart for easier debugging

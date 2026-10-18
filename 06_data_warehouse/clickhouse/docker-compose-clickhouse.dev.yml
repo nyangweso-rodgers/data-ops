@@ -1,0 +1,18 @@
+# 06_data_warehouse/clickhouse/docker-compose-clickhouse.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make clickhouse-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.dev.yml up -d)
+
+services:
+  clickhouse-server:
+    environment:
+      ENVIRONMENT: dev
+    restart: "no" # No auto-restart for easier debugging
+
+  clickhouse-tabix-web-client:
+    restart: "no"

@@ -1,0 +1,61 @@
+# 07_dashboards/03_redash/docker-compose-redash.prod.yml
+# Production override (metadata DB on AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the Redash database + user created
+#   - RDS_* (and optionally REDASH_RDS_DB_NAME) set in the env file
+#   - RDS_PASSWORD must be URL-safe (or URL-encoded) - it is embedded in the connection string
+#   - REDASH_COOKIE_SECRET / REDASH_SECRET_KEY set - compose refuses to start without them
+#   - First start only: make redash-init-db against prod
+#
+# Usage:
+#   make redash-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.prod.yml up -d)
+
+x-redash-prod-env: &redash-prod-env
+  ENVIRONMENT: production
+  REDASH_LOG_LEVEL: INFO
+  REDASH_DATABASE_URL: postgresql://${RDS_USERNAME}:${RDS_PASSWORD}@${RDS_HOSTNAME}:${RDS_PORT:-5432}/${REDASH_RDS_DB_NAME:-redash}?sslmode=require
+  # TODO: point at a managed redis (e.g. ElastiCache) once one exists - still the shared container for now
+  REDASH_REDIS_URL: ${REDASH_PROD_REDIS_URL:-redis://:${REDIS_PASSWORD}@redis:6379/2}
+  REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET:?}
+  REDASH_SECRET_KEY: ${REDASH_SECRET_KEY:?}
+  REDASH_WEB_WORKERS: 4
+
+x-redash-prod-logging: &redash-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  redash-server:
+    environment: *redash-prod-env
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+    logging: *redash-prod-logging
+
+  redash-scheduler:
+    environment: *redash-prod-env
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    logging: *redash-prod-logging
+
+  redash-worker:
+    environment: *redash-prod-env
+    restart: unless-stopped
+    deploy:
+      resources:
+        # Workers run the queries - size for the workload
+        limits:
+          cpus: "${REDASH_WORKER_CPU_LIMIT:-2}"
+          memory: ${REDASH_WORKER_MEMORY_LIMIT:-2G}
+    logging: *redash-prod-logging

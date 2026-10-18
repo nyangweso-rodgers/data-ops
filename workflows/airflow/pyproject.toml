@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=62.3", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airflow-dataflow"
+version = "0.1.0"
+description = "Config-driven data pipelines (ingestion, reverse ETL, APIs) orchestrated by Airflow"
+requires-python = ">=3.10"
+authors = [
+    {name = "Rodgers Nyangweso"}
+]
+
+# Runtime dependencies of the dataflow package (connectors + engine).
+# Airflow itself is NOT listed: it comes with the apache/airflow base image, and
+# the Dockerfile pins apache-airflow==$AIRFLOW_VERSION during install so pip can
+# never up/downgrade it. Libraries Airflow already ships use lower bounds only,
+# so they can't conflict with Airflow's own pins.
+dependencies = [
+    # Database drivers
+    "psycopg2-binary==2.9.10",
+    "mysqlclient==2.2.7",
+
+    # Utilities
+    "pyyaml>=6.0",
+    "requests>=2.31",
+    "python-dateutil>=2.8",
+]
+
+[project.optional-dependencies]
+# Extras the DAGs need on top of the base image (incl. legacy DAGs in dags/legacy/).
+# The mysql/postgres/common-sql providers are NOT pinned here: apache/airflow:2.10.5
+# already ships the versions tested with it (6.0.0 / 6.0.0 / 1.21.0, per Airflow's
+# constraints file). Newer provider pins conflict with apache-airflow==2.10.5.
+airflow = [
+    "connexion[swagger-ui]",
+    "clickhouse-connect==0.8.17",
+]
+
+# dbt projects in dbt/ - installed into a SEPARATE venv in the Dockerfile (never with
+# [airflow]): dbt-core 1.7 needs sqlparse<0.5, which breaks Airflow's common-sql provider
+dbt = [
+    "dbt-core==1.7.0",
+    "dbt-postgres==1.7.0",
+    "dbt-mysql==1.7.0",
+    "dbt-clickhouse==1.7.0",
+    "protobuf>=4,<5",  # dbt-core 1.7.0 doesn't cap it; protobuf 5+ breaks `dbt parse` (MessageToJson)
+]
+
+[dependency-groups]
+# Local development only (uv sync installs it; the image never does)
+dev = [
+    "pytest==8.0.0",
+    "pytest-cov>=4.1.0",
+    "ruff==0.2.0",
+]
+
+[tool.uv]
+# [airflow] and [dbt] are installed into separate environments in the image (dbt-core 1.7
+# needs sqlparse<0.5, which breaks Airflow's common-sql provider) - never resolve them together.
+conflicts = [
+    [{ extra = "airflow" }, { extra = "dbt" }],
+]
+
+# ============================================================================
+# Tool Configurations
+# ============================================================================
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["dataflow*"]
+
+[tool.pytest.ini_options]
+# Run from workflows/airflow: `pytest` (pythonpath makes dataflow importable without installing it)
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+markers = [
+    "integration: needs live databases/APIs",
+]
+
+[tool.ruff]
+extend = "../../pyproject.toml" # line length, target, rule selection
+
+[tool.ruff.lint.isort]
+known-first-party = ["dataflow"]
+
+[tool.coverage.run]
+source = ["dataflow"]

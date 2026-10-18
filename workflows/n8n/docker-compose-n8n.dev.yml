@@ -1,0 +1,19 @@
+# workflows/n8n/docker-compose-n8n.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres (N8N_DB_HOST, default "postgres") running, n8n DB created: make n8n-init-db
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make n8n-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.dev.yml up -d)
+
+services:
+  n8n:
+    environment:
+      ENVIRONMENT: dev
+      N8N_LOG_LEVEL: info # switch to debug only when needed
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    # Note: Can't use depends_on across compose files
+    restart: "no" # No auto-restart for easier debugging

@@ -1,0 +1,36 @@
+# 01-databases/01-postgres/docker-compose-postgres.prod.yml
+# Production override - self-hosted Postgres
+#
+# The other stacks' prod overrides use AWS RDS, so this is only for running a
+# self-hosted Postgres in production (e.g. a single-VM deployment).
+#
+# Prerequisites:
+#   - LOCAL_USERS_PG_DB_PASSWORD set - compose refuses to start without it
+#     (only applied when the data volume is first initialised)
+#   - 5432 is published by base.yml - restrict it at the firewall / security group
+#
+# Usage:
+#   make postgres-prod-up
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-postgres.base.yml -f docker-compose-postgres.prod.yml up -d)
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${LOCAL_USERS_PG_DB_PASSWORD:?}
+    volumes:
+      # Init scripts read-only in production; data stays writable
+      - ./init-scripts:/docker-entrypoint-initdb.d/:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${POSTGRES_CPU_LIMIT:-2}"
+          memory: ${POSTGRES_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

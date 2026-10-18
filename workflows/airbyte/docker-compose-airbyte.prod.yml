@@ -1,0 +1,44 @@
+# workflows/airbyte/docker-compose-airbyte.prod.yml
+# Production override
+#
+# TODO: Airbyte 1.x is deployed with abctl / Helm, not docker-compose. Before running
+#       this in production, decide whether to migrate (see docs/architecture.md AB1).
+#       If keeping compose, point the DB settings at RDS here like the other stacks.
+#
+# Usage:
+#   make airbyte-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.prod.yml up -d)
+
+x-airbyte-prod-logging: &airbyte-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  airbyte-temporal:
+    restart: unless-stopped
+    logging: *airbyte-prod-logging
+
+  airbyte-server:
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2G
+    logging: *airbyte-prod-logging
+
+  airbyte-webapp:
+    restart: always
+    logging: *airbyte-prod-logging
+
+  airbyte-worker:
+    restart: always
+    deploy:
+      resources:
+        # Syncs run here - size for the workload
+        limits:
+          cpus: "${AIRBYTE_WORKER_CPU_LIMIT:-2}"
+          memory: ${AIRBYTE_WORKER_MEMORY_LIMIT:-4G}
+    logging: *airbyte-prod-logging

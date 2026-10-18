@@ -1,39 +1,32 @@
-# workflows/dagster_v2/Makefile
+# workflows/dagster/Makefile
 # Dagster-specific commands
 
 # Docker Compose file combinations
 COMPOSE_BASE := docker-compose-dagster.base.yml
-COMPOSE_LOCAL := -f $(COMPOSE_BASE) -f docker-compose-dagster.local.yml
-COMPOSE_LOCAL_RDS := -f $(COMPOSE_BASE) -f docker-compose-dagster.local-rds.yml
+COMPOSE_DEV := -f $(COMPOSE_BASE) -f docker-compose-dagster.dev.yml
 COMPOSE_PROD := -f $(COMPOSE_BASE) -f docker-compose-dagster.prod.yml
 
 # Docker Compose command with root .env file
 # Use relative path to avoid Windows path issues
-DOCKER_COMPOSE := docker-compose --env-file ../../.env
+DOCKER_COMPOSE := docker-compose --env-file ../../.env --env-file ../../ports.env
 
-.PHONY: help local-up-build local-up local-stop local-down local-logs local-restart \
-        local-rds-up-build local-rds-up local-rds-stop local-rds-down local-rds-logs local-rds-restart \
+# Host port registry (single source of truth) - make reads it for the URLs below
+include ../../ports.env
+
+.PHONY: help dev-up-build dev-up dev-stop dev-down dev-logs dev-restart \
         prod-up prod-down prod-logs build clean env-info
 
 # Default target
 help:
 	@echo "Dagster Commands:"
 	@echo ""
-	@echo "Local Development (local postgres):"
-	@echo "  make local-up-build - Build and start local Dagster"
-	@echo "  make local-up       - Start local Dagster"
-	@echo "  make local-stop     - Stop local Dagster"
-	@echo "  make local-down     - Stop and remove local Dagster"
-	@echo "  make local-logs     - View local logs"
-	@echo "  make local-restart  - Restart local"
-	@echo ""
-	@echo "Local + RDS (real AWS RDS instead of local postgres container):"
-	@echo "  make local-rds-up-build - Build and start local Dagster (using RDS)"
-	@echo "  make local-rds-up       - Start local Dagster (using RDS)"
-	@echo "  make local-rds-stop     - Stop local Dagster (RDS mode)"
-	@echo "  make local-rds-down     - Stop and remove local Dagster (RDS mode)"
-	@echo "  make local-rds-logs     - View logs for local Dagster (RDS mode)"
-	@echo "  make local-rds-restart  - Restart local Dagster (RDS mode)"
+	@echo "Development (metadata DB per DAGSTER_PG_DB_* in .env - local postgres or RDS):"
+	@echo "  make dev-up-build   - Build and start dev Dagster"
+	@echo "  make dev-up         - Start dev Dagster"
+	@echo "  make dev-stop       - Stop dev Dagster"
+	@echo "  make dev-down       - Stop and remove dev Dagster"
+	@echo "  make dev-logs       - View dev logs"
+	@echo "  make dev-restart    - Restart dev"
 	@echo ""
 	@echo "Production:"
 	@echo "  make prod-up        - Start production Dagster (RDS)"
@@ -42,7 +35,9 @@ help:
 	@echo ""
 	@echo "Other:"
 	@echo "  make build          - Rebuild Docker image"
-	@echo "  make clean          - Remove all containers and volumes"
+	@echo "  make lock           - Re-resolve uv.lock after editing pyproject.toml"
+	@echo "  make sync           - Create/update the local .venv from uv.lock (editor, tests)"
+	@echo "  make clean          - Remove dev containers and volumes"
 	@echo "  make env-info       - Show environment file location"
 
 # Show which .env file is being used
@@ -58,60 +53,32 @@ env-info:
 	fi
 
 # ──────────────────────────────────────────────────────────────
-# Local development (with local postgres)
+# Development
 # ──────────────────────────────────────────────────────────────
-local-up-build:
-	@echo "Building and starting local Dagster..."
+dev-up-build:
+	@echo "Building and starting dev Dagster..."
 	@echo "Using .env from: ../../.env"
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL) up -d --build
-	@echo "✓ Dagster UI: http://localhost:3004"
+	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) up -d --build
+	@echo "✓ Dagster UI: http://localhost:$(DAGSTER_HOST_PORT)"
 
-local-up:
-	@echo "Starting local Dagster..."
+dev-up:
+	@echo "Starting dev Dagster..."
 	@echo "Using .env from: ../../.env"
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL) up -d
-	@echo "✓ Dagster UI: http://localhost:3004"
+	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) up -d
+	@echo "✓ Dagster UI: http://localhost:$(DAGSTER_HOST_PORT)"
 
-local-stop:
-	@echo "Stopping local Dagster..."
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL) stop
+dev-stop:
+	@echo "Stopping dev Dagster..."
+	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) stop
 
-local-down:
-	@echo "Stopping and removing local Dagster..."
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL) down
+dev-down:
+	@echo "Stopping and removing dev Dagster..."
+	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) down
 
-local-logs:
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL) logs -f
+dev-logs:
+	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) logs -f
 
-local-restart: local-down local-up
-
-# ──────────────────────────────────────────────────────────────
-# Local + RDS (real AWS RDS instead of local postgres container)
-# ──────────────────────────────────────────────────────────────
-local-rds-up-build:
-	@echo "Building and starting local Dagster (using RDS)..."
-	@echo "Using .env from: ../../.env"
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL_RDS) up -d --build
-	@echo "✓ Dagster UI: http://localhost:3004 (connected to RDS)"
-
-local-rds-up:
-	@echo "Starting local Dagster (using RDS)..."
-	@echo "Using .env from: ../../.env"
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL_RDS) up -d
-	@echo "✓ Dagster UI: http://localhost:3004 (connected to RDS)"
-
-local-rds-stop:
-	@echo "Stopping local Dagster (RDS mode)..."
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL_RDS) stop
-
-local-rds-down:
-	@echo "Stopping and removing local Dagster (RDS mode)..."
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL_RDS) down
-
-local-rds-logs:
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL_RDS) logs -f
-
-local-rds-restart: local-rds-down local-rds-up
+dev-restart: dev-down dev-up
 
 # ──────────────────────────────────────────────────────────────
 # Production
@@ -138,6 +105,18 @@ build:
 	@echo "✓ Build complete"
 
 clean:
-	@echo "Cleaning up local environment..."
-	@$(DOCKER_COMPOSE) $(COMPOSE_LOCAL) down -v
-	@echo "✓ Cleaned up local environment"
+	@echo "Cleaning up dev environment..."
+	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) down -v
+	@echo "✓ Cleaned up dev environment"
+
+# ──────────────────────────────────────────────────────────────
+# Python dependencies (uv) - pyproject.toml + uv.lock in this folder
+# ──────────────────────────────────────────────────────────────
+.PHONY: lock sync
+
+lock:
+	@uv lock
+	@echo "✓ uv.lock updated - rebuild the image to apply it"
+
+sync:
+	@uv sync

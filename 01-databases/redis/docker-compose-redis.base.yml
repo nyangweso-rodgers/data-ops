@@ -1,0 +1,90 @@
+# 01-databases/redis/docker-compose-redis.base.yml
+# Base Redis + RedisInsight configuration - shared across all environments
+#
+# Shared by Superset (db 1), Redash (db 2) and Prefect (db 0).
+# This file also works on its own (the root docker-compose.yml extends it).
+#
+# Usage:
+#   Dev:  make redis-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.dev.yml up -d)
+#   Prod: make redis-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.prod.yml up -d)
+
+services:
+  # ============================================================================
+  # REDIS
+  # ============================================================================
+  redis:
+    image: redis:8.2.0
+    container_name: redis
+    command: [
+        "redis-server",
+        "--appendonly", # Redis logs all writes to the appendonly.aof file in /data.
+        "yes",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+      ]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "${REDIS_HOST_PORT:?see ports.env}:6379"
+    env_file:
+      - ../../.env
+    networks:
+      - data-ops-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ============================================================================
+  # REDISINSIGHT - Web UI
+  # ============================================================================
+  redisinsight:
+    image: redislabs/redisinsight:2.70
+    container_name: redisinsight
+    ports:
+      - "${REDISINSIGHT_HOST_PORT:?see ports.env}:5540"
+    environment:
+      REDISINSIGHT_HOST: 0.0.0.0
+      # RI_REDIS_* auto-provisions a database connection on startup (RedisInsight's
+      # own pre-setup discovery mechanism -- scans for RI_REDIS_HOST* env vars).
+      # Re-applied idempotently on every container start, so no manual "Add
+      # Database" click in the UI. Defaults to db 1 since that's where Superset's
+      # DATA_CACHE_CONFIG writes; switch db from the UI to browse others.
+      RI_REDIS_HOST: redis
+      RI_REDIS_PORT: 6379
+      RI_REDIS_ALIAS: Superset Data Cache
+      RI_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      RI_REDIS_DB: 1
+      # Without this, RedisInsight tries OS-keychain encryption (keytar) for the
+      # stored password, which fails on this Alpine-based image (missing
+      # libsecret) and silently drops the auto-provisioned database with no
+      # visible error -- falls back to the app's own AES encryption instead.
+      RI_ENCRYPTION_KEYTAR: "false"
+    env_file:
+      - ../../.env
+    volumes:
+      - redisinsight-data:/data
+    networks:
+      - data-ops-network
+    depends_on:
+      - redis
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+# Pinned names so the same volumes are used whether the stack is started from
+# here (project "redis") or from the root docker-compose.yml
+volumes:
+  redis-data:
+    name: redis-data
+  redisinsight-data:
+    name: redisinsight-data

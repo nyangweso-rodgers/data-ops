@@ -1,0 +1,49 @@
+# workflows/n8n/docker-compose-n8n.prod.yml
+# Production override (DB on AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the n8n database + user created
+#   - RDS_* (and optionally N8N_RDS_DB_NAME) set in the env file
+#   - N8N_ENCRYPTION_KEY and WEBHOOK_URL set - compose refuses to start without them
+#     (keep N8N_ENCRYPTION_KEY identical across restarts or stored credentials become unreadable)
+#   - HTTPS in front of n8n (N8N_PROTOCOL=https, secure cookies)
+#
+# Usage:
+#   make n8n-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.prod.yml up -d)
+
+services:
+  n8n:
+    environment:
+      ENVIRONMENT: production
+      # DB on RDS
+      DB_POSTGRESDB_HOST: ${RDS_HOSTNAME}
+      DB_POSTGRESDB_PORT: ${RDS_PORT:-5432}
+      DB_POSTGRESDB_DATABASE: ${N8N_RDS_DB_NAME:-n8n}
+      DB_POSTGRESDB_USER: ${RDS_USERNAME}
+      DB_POSTGRESDB_PASSWORD: ${RDS_PASSWORD}
+      DB_POSTGRESDB_SSL_ENABLED: "true"
+      # Runtime
+      N8N_PROTOCOL: https
+      N8N_SECURE_COOKIE: "true"
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?}
+      WEBHOOK_URL: ${WEBHOOK_URL:?set WEBHOOK_URL to the public n8n URL}
+      N8N_LOG_LEVEL: warn
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      # Keep the executions table bounded
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: ${N8N_EXECUTIONS_MAX_AGE_HOURS:-336}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${N8N_CPU_LIMIT:-2}"
+          memory: ${N8N_MEMORY_LIMIT:-2G}
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

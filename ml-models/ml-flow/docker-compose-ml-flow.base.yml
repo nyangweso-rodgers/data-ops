@@ -1,0 +1,46 @@
+# ml-models/ml-flow/docker-compose-ml-flow.base.yml
+# Base MLflow tracking server configuration - shared across all environments
+#
+# Backend store + artifacts default to ./data (SQLite + local files); prod.yml
+# points them at RDS + S3. Artifacts are proxied by the server
+# (--artifacts-destination), so clients only need the tracking URL.
+#
+# This file also works on its own (the root docker-compose.yml extends it).
+#
+# Usage:
+#   Dev:  make ml-flow-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-ml-flow.base.yml -f docker-compose-ml-flow.dev.yml up -d)
+#   Prod: make ml-flow-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-ml-flow.base.yml -f docker-compose-ml-flow.prod.yml up -d)
+
+services:
+  ml-flow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ml-flow
+    container_name: ml-flow
+    working_dir: /app
+    environment:
+      MLFLOW_BACKEND_STORE_URI: sqlite:////mlflow/mlflow.db
+      MLFLOW_ARTIFACTS_DESTINATION: /mlflow/mlruns
+    volumes:
+      - ./data:/mlflow # mlflow.db + mlruns/
+    ports:
+      - "${MLFLOW_HOST_PORT:?see ports.env}:5000"
+    command:
+      - sh
+      - -c
+      - >-
+        mlflow server
+        --backend-store-uri "$$MLFLOW_BACKEND_STORE_URI"
+        --artifacts-destination "$$MLFLOW_ARTIFACTS_DESTINATION"
+        --host 0.0.0.0
+        --port 5000
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true

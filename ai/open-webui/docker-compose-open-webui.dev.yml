@@ -1,0 +1,21 @@
+# ai/open-webui/docker-compose-open-webui.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres (PG_OPEN_WEBUI_HOST, default "postgres") running with the webui DB created
+#   - Network must exist: docker network create data-ops-network
+#   - Pull a model once Ollama is up: make open-webui-dev-pull-model MODEL=llama3.2
+#
+# Usage:
+#   make open-webui-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.dev.yml up -d)
+
+services:
+  ollama:
+    restart: "no" # No auto-restart for easier debugging
+
+  open-webui:
+    environment:
+      ENVIRONMENT: dev
+    # Note: Can't use depends_on across compose files
+    restart: "no"

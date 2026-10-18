@@ -1,0 +1,21 @@
+# 01-databases/01-postgres/docker-compose-postgres.dev.yml
+# Development override
+#
+# Unlike the app stacks, dev keeps restart: always (from base) - other local
+# services depend on postgres being up.
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make postgres-dev-up
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-postgres.base.yml -f docker-compose-postgres.dev.yml up -d)
+
+services:
+  postgres:
+    # Keep local logs bounded on a long-running dev machine
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"

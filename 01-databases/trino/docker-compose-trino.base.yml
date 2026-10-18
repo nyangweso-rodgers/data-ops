@@ -1,0 +1,32 @@
+# 01-databases/trino/docker-compose-trino.base.yml
+# Base Trino configuration - shared across all environments
+#
+# This file also works on its own (the root docker-compose.yml extends it and
+# adds the cross-file depends_on on postgres).
+#
+# Usage:
+#   Dev:  make trino-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-trino.base.yml -f docker-compose-trino.dev.yml up -d)
+#   Prod: make trino-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-trino.base.yml -f docker-compose-trino.prod.yml up -d)
+
+services:
+  trino:
+    image: trinodb/trino:477 # Full image with connectors built-in
+    container_name: trino
+    ports:
+      - "${TRINO_HOST_PORT:?see ports.env}:8080"
+    volumes:
+      #- ./etc:/etc/trino  # Mount your catalog configs here
+      - ./etc/catalog:/etc/trino/catalog # Mount *only* catalogs—keeps base configs intact
+    environment:
+      CATALOG_MANAGEMENT: dynamic
+    env_file:
+      - ../../.env
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true

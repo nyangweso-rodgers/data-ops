@@ -1,0 +1,47 @@
+# 07_dashboards/01_superset/docker-compose-superset.base.yml
+# Base Apache Superset configuration - shared across all environments
+#
+# superset_config.py, entrypoint.sh and provisioning/ are baked into the image
+# (see Dockerfile). The metadata DB comes from LOCAL_POSTGRES_SUPERSET_DB_*,
+# which prod.yml points at RDS.
+#
+# This file also works on its own (the root docker-compose.yml extends it and
+# adds the cross-file depends_on on postgres/redis).
+#
+# Usage:
+#   Dev:  make superset-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.dev.yml up -d)
+#   Prod: make superset-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.prod.yml up -d)
+
+services:
+  apache-superset:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: superset
+    ports:
+      - "${SUPERSET_HOST_PORT:?see ports.env}:8088"
+    env_file:
+      - ../../.env
+    environment:
+      SUPERSET_SECRET_KEY: ${APACHE_SUPERSET_SECRET_KEY}
+      APACHE_SUPERSET_ADMIN_USERNAME: ${APACHE_SUPERSET_ADMIN_USERNAME}
+      APACHE_SUPERSET_ADMIN_PASSWORD: ${APACHE_SUPERSET_ADMIN_PASSWORD}
+      APACHE_SUPERSET_PORT: 8088 # port superset listens on inside the container (entrypoint.sh); host side: SUPERSET_HOST_PORT
+    volumes:
+      - superset-volume:/app/superset_home
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  superset-volume:
+    name: superset-volume

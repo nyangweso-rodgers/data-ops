@@ -1,0 +1,33 @@
+# 01-databases/mysql/docker-compose-mysql.prod.yml
+# Production override - self-hosted MySQL
+#
+# The other stacks' prod overrides use AWS RDS, so this is only for running a
+# self-hosted MySQL in production (e.g. a single-VM deployment).
+#
+# Prerequisites:
+#   - LOCAL_MYSQL_DB_PASSWORD set - compose refuses to start without it
+#     (only applied when the data volume is first initialised)
+#   - 3306 is published by base.yml - restrict it at the firewall / security group
+#
+# Usage:
+#   make mysql-prod-up
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-mysql.base.yml -f docker-compose-mysql.prod.yml up -d)
+
+services:
+  mysql:
+    environment:
+      MYSQL_ROOT_PASSWORD: ${LOCAL_MYSQL_DB_PASSWORD:?}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${MYSQL_CPU_LIMIT:-2}"
+          memory: ${MYSQL_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

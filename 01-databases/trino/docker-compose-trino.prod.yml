@@ -1,0 +1,32 @@
+# 01-databases/trino/docker-compose-trino.prod.yml
+# Production override (single coordinator, no workers)
+#
+# Prerequisites:
+#   - Catalog sources in etc/catalog reachable from the host
+#   - 8080 is published by base.yml - restrict it at the firewall / security group
+#     (Trino has no authentication configured)
+#
+# Usage:
+#   make trino-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-trino.base.yml -f docker-compose-trino.prod.yml up -d)
+
+services:
+  trino:
+    volumes:
+      # Catalogs read-only in production
+      # NB: with CATALOG_MANAGEMENT=dynamic, CREATE/DROP CATALOG writes here and will fail
+      - ./etc/catalog:/etc/trino/catalog:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${TRINO_CPU_LIMIT:-4}"
+          memory: ${TRINO_MEMORY_LIMIT:-8G}
+        reservations:
+          cpus: "1"
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

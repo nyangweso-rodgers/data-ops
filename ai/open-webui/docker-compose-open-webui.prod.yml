@@ -1,0 +1,42 @@
+# ai/open-webui/docker-compose-open-webui.prod.yml
+# Production override (app DB on AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the Open WebUI database + user created
+#   - RDS_* (and optionally OPEN_WEBUI_RDS_DB_NAME) set in the env file
+#   - RDS_PASSWORD must be URL-safe (or URL-encoded) - it is embedded in the connection string
+#   - WEBUI_SECRET_KEY set - compose refuses to start without it (no insecure default in prod)
+#   - 11434 (Ollama API, unauthenticated) is published by base.yml - restrict it at the
+#     firewall / security group
+#
+# Usage:
+#   make open-webui-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.prod.yml up -d)
+
+x-open-webui-prod-logging: &open-webui-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  ollama:
+    restart: unless-stopped
+    logging: *open-webui-prod-logging
+
+  open-webui:
+    environment:
+      ENVIRONMENT: production
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?}
+      DATABASE_URL: postgresql://${RDS_USERNAME}:${RDS_PASSWORD}@${RDS_HOSTNAME}:${RDS_PORT:-5432}/${OPEN_WEBUI_RDS_DB_NAME:-webui_db}?sslmode=require
+      ENABLE_SIGNUP: ${ENABLE_SIGNUP:-false} # admins create accounts in prod
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${OPEN_WEBUI_CPU_LIMIT:-2}"
+          memory: ${OPEN_WEBUI_MEMORY_LIMIT:-2G}
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    logging: *open-webui-prod-logging

@@ -1,0 +1,52 @@
+# 01-databases/neo4j/docker-compose-neo4j.base.yml
+# Base Neo4j configuration - shared across all environments (Amundsen's metadata store)
+#
+# NEO4J_AUTH only applies when the data volume is first initialised - changing
+# NEO4J_PASSWORD later requires changing it inside neo4j too.
+#
+# This file also works on its own (the root docker-compose.yml extends it).
+#
+# Usage:
+#   Dev:  make neo4j-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.dev.yml up -d)
+#   Prod: make neo4j-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.prod.yml up -d)
+
+services:
+  neo4j:
+    image: neo4j:4.4.46
+    container_name: neo4j
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD}
+      # Exposed to the healthcheck (cypher-shell) - not read by neo4j itself
+      NEO4J_HEALTHCHECK_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_HEALTHCHECK_PASSWORD: ${NEO4J_PASSWORD}
+      NEO4J_dbms_memory_heap_initial__size: 1G
+      NEO4J_dbms_memory_heap_max__size: 2G
+      NEO4J_dbms_memory_pagecache_size: 512M
+    ports:
+      - "${NEO4J_HTTP_HOST_PORT:?see ports.env}:7474"
+      - "${NEO4J_BOLT_HOST_PORT:?see ports.env}:7687"
+    volumes:
+      - neo4j_data:/data # named volume
+      - ./logs/neo4j:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u \"$$NEO4J_HEALTHCHECK_USER\" -p \"$$NEO4J_HEALTHCHECK_PASSWORD\" 'RETURN 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  neo4j_data:
+    name: neo4j_data

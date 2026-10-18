@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=62.3", "wheel"]  # 62.3+ for recursive ** globs in package-data
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "dagster-pipeline"
 version = "0.1.0"
 description = "Data orchestration pipeline with Dagster for ETL, maintenance, and snapshots"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.11" # = the image's Python. mysql-connector-python==8.0.33 needs protobuf<=3.20.3, which dagster 1.12 only allows on 3.10
 authors = [
     {name = "Rodgers Nyangweso", email = "team@example.com"}
 ]
@@ -48,8 +48,8 @@ dependencies = [
     "structlog==25.5.0",
 ]
 
-[project.optional-dependencies]
-# Development dependencies
+[dependency-groups]
+# Local development only (uv sync installs it; the image uses --no-dev)
 dev = [
     "pytest==8.0.0",
     "pytest-cov>=4.1.0",
@@ -58,11 +58,6 @@ dev = [
     "ruff==0.2.0",
     "mypy>=1.8.0",
     "pre-commit>=3.6.0",
-]
-
-# All optional dependencies
-all = [
-    "dagster-pipeline[dev]",
 ]
 
 [project.urls]
@@ -78,6 +73,14 @@ Documentation = "https://github.com/yourorg/dagster-pipeline/tree/main/docs"
 where = ["."]
 include = ["dagster_pipeline*"]
 exclude = ["tests*", "docs*"]
+
+# Non-Python files the loaders read from inside the package
+# (utils/ingest_config_loader.py → config/, utils/schema_loader.py → schemas/)
+[tool.setuptools.package-data]
+dagster_pipeline = [
+    "config/**/*.yml",
+    "schemas/**/*.yml",
+]
 
 [tool.black]
 line-length = 100
@@ -98,8 +101,8 @@ extend-exclude = '''
 '''
 
 [tool.ruff]
+extend = "../../pyproject.toml" # shared base; overrides below
 line-length = 100
-target-version = "py310"
 
 [tool.ruff.lint]
 select = [

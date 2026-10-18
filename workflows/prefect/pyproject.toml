@@ -1,0 +1,27 @@
+# workflows/prefect/pyproject.toml
+# Runtime dependencies of the Prefect flows (installed into the prefect-server image).
+#
+# prefect / prefect-redis are pinned to what the base image ships
+# (prefecthq/prefect:3.4.20-python3.11) - keep them in sync with the Dockerfile's FROM.
+# The image installs exactly what uv.lock specifies (see Dockerfile).
+
+[project]
+name = "prefect-flows"
+version = "0.1.0"
+description = "Prefect flows, tasks and deployments for the data-ops monorepo"
+requires-python = ">=3.11,<3.12" # = the image's Python
+dependencies = [
+    "prefect==3.4.20",
+    "prefect-redis==0.2.5", # PREFECT_MESSAGING_BROKER=prefect_redis.messaging
+    "pandas==2.2.3",
+    "requests==2.32.3",
+    "pymysql==1.1.0",
+    "psycopg2-binary==2.9.9",
+    "SQLAlchemy==2.0.23",
+]
+
+[tool.uv]
+package = false # flows/, tasks/, deployments/ are copied into the image, not installed
+
+[tool.ruff]
+extend = "../../pyproject.toml"

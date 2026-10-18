@@ -1,0 +1,46 @@
+# 06_data_warehouse/clickhouse/docker-compose-clickhouse.prod.yml
+# Production override (self-hosted ClickHouse)
+#
+# Prerequisites:
+#   - CLICKHOUSE_DEFAULT_USER_PASSWORD set - compose refuses to start without it
+#   - Ports 9000/8123/9009/9181 are published by base.yml - restrict them at the
+#     firewall / security group to the clients that need them
+#
+# Tabix is disabled in prod (profile "tools"). To start it anyway:
+#   docker-compose ... --profile tools up -d clickhouse-tabix-web-client
+#
+# Usage:
+#   make clickhouse-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.prod.yml up -d)
+
+services:
+  clickhouse-server:
+    environment:
+      ENVIRONMENT: production
+      CLICKHOUSE_DEFAULT_USER_PASSWORD: ${CLICKHOUSE_DEFAULT_USER_PASSWORD:?}
+    volumes:
+      # Config read-only in production; logs + data stay writable
+      - ./config/config.xml:/etc/clickhouse-server/config.xml:ro
+      - ./users/users.xml:/etc/clickhouse-server/users.d/users.xml:ro
+    restart: always
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    deploy:
+      resources:
+        limits:
+          cpus: "${CLICKHOUSE_CPU_LIMIT:-4}"
+          memory: ${CLICKHOUSE_MEMORY_LIMIT:-8G}
+        reservations:
+          cpus: "1"
+          memory: 2G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  clickhouse-tabix-web-client:
+    profiles: ["tools"] # not started by default in production
+    restart: "no"

@@ -1,0 +1,16 @@
+# 01-databases/redis/docker-compose-redis.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make redis-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.dev.yml up -d)
+
+services:
+  redis:
+    restart: "no" # No auto-restart for easier debugging
+
+  redisinsight:
+    restart: "no"

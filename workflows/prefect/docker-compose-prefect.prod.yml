@@ -1,0 +1,62 @@
+# workflows/prefect/docker-compose-prefect.prod.yml
+# Production override (DB on AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the Prefect database + user created
+#   - PREFECT_RDS_DB_URL set, e.g.
+#       postgresql+asyncpg://<user>:<password>@<rds-host>:5432/prefect?ssl=require
+#     - compose refuses to start without it
+#   - PREFECT_PUBLIC_URL set to the URL the UI is served on (e.g. https://prefect.example.com)
+#
+# Usage:
+#   make prefect-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.prod.yml up -d)
+
+x-prefect-prod-logging: &prefect-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  prefect-server:
+    environment:
+      ENVIRONMENT: production
+      PREFECT_LOGGING_LEVEL: INFO
+      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_RDS_DB_URL:?set PREFECT_RDS_DB_URL}
+      PREFECT_UI_URL: ${PREFECT_PUBLIC_URL:?set PREFECT_PUBLIC_URL}
+      PREFECT_UI_API_URL: ${PREFECT_PUBLIC_URL:?set PREFECT_PUBLIC_URL}/api
+      # TODO: point PREFECT_REDIS_MESSAGING_* at a managed redis (e.g. ElastiCache) once one exists
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+    logging: *prefect-prod-logging
+
+  prefect-services:
+    environment:
+      ENVIRONMENT: production
+      PREFECT_LOGGING_LEVEL: INFO
+      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_RDS_DB_URL:?set PREFECT_RDS_DB_URL}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    logging: *prefect-prod-logging
+
+  prefect-worker:
+    environment:
+      ENVIRONMENT: production
+      PREFECT_LOGGING_LEVEL: INFO
+    restart: always
+    deploy:
+      resources:
+        # Flows run inside the worker container - size it for the workload
+        limits:
+          cpus: "${PREFECT_WORKER_CPU_LIMIT:-2}"
+          memory: ${PREFECT_WORKER_MEMORY_LIMIT:-4G}
+    logging: *prefect-prod-logging

@@ -1,0 +1,28 @@
+# metadata/amundsen/docker-compose-amundsen.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - neo4j and elasticsearch running (01-databases/)
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make amundsen-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.dev.yml up -d)
+
+x-amundsen-dev-env: &amundsen-dev-env
+  ENVIRONMENT: dev
+  LOG_LEVEL: DEBUG
+
+services:
+  amundsen-metadata:
+    environment: *amundsen-dev-env
+    # Note: Can't use depends_on across compose files
+    restart: "no" # No auto-restart for easier debugging
+
+  amundsen-search:
+    environment: *amundsen-dev-env
+    restart: "no"
+
+  amundsen-frontend:
+    environment: *amundsen-dev-env
+    restart: "no"

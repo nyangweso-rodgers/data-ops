@@ -1,0 +1,27 @@
+# 10_documentation/docusaurus-site/docker-compose-docusaurus.prod.yml
+# Production override - static build served by `docusaurus serve`
+#
+# Prerequisites:
+#   - Rebuild the image to publish doc changes (make docusaurus-prod-up does --build)
+#   - TODO: for real traffic, serve build/ from nginx or S3 + CloudFront instead
+#
+# Usage:
+#   make docusaurus-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.prod.yml up -d)
+
+services:
+  docusaurus:
+    environment:
+      NODE_ENV: production
+    command: ["sh", "-c", "npm run build && npm run serve -- --host 0.0.0.0 --port 3000"]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
