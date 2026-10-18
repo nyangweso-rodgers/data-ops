@@ -1,0 +1,33 @@
+# workflows/prefect/docker-compose-prefect.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres (PREFECT_PG_DB_URL) and redis running
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make prefect-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.dev.yml up -d)
+
+x-prefect-dev-env: &prefect-dev-env
+  ENVIRONMENT: dev
+  PREFECT_LOGGING_LEVEL: INFO
+
+services:
+  prefect-server:
+    environment: *prefect-dev-env
+    # Note: Can't use depends_on across compose files
+    restart: "no" # No auto-restart for easier debugging
+
+  prefect-services:
+    environment: *prefect-dev-env
+    restart: "no"
+
+  prefect-worker:
+    environment: *prefect-dev-env
+    volumes:
+      # Development: mount code so flow edits are picked up without a rebuild
+      - ./flows:/app/flows
+      - ./tasks:/app/tasks
+      - ./deployments:/app/deployments
+    restart: "no"

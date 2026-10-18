@@ -1,0 +1,90 @@
+# workflows/prefect/docker-compose-prefect.base.yml
+# Base Prefect configuration - shared across all environments
+# (API/UI server, background services, local-pool worker)
+#
+# flows/, tasks/ and deployments/ are baked into the image (see Dockerfile);
+# dev.yml mounts them for live editing.
+#
+# This file also works on its own (the root docker-compose.yml extends it and
+# adds the cross-file depends_on on postgres/redis).
+#
+# Usage:
+#   Dev:  make prefect-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.dev.yml up -d)
+#   Prod: make prefect-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.prod.yml up -d)
+
+x-prefect-redis-env: &prefect-redis-env
+  PREFECT_MESSAGING_BROKER: prefect_redis.messaging
+  PREFECT_MESSAGING_CACHE: prefect_redis.messaging
+  PREFECT_REDIS_MESSAGING_HOST: redis # not $REDIS_HOST - that is localhost for host-side scripts
+  PREFECT_REDIS_MESSAGING_PORT: 6379
+  PREFECT_REDIS_MESSAGING_DB: 0
+  PREFECT_REDIS_MESSAGING_PASSWORD: ${REDIS_PASSWORD}
+
+services:
+  # ============================================================================
+  # PREFECT SERVER - API + UI
+  # ============================================================================
+  prefect-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prefect-server
+    container_name: prefect-server
+    env_file:
+      - ../../.env
+    environment:
+      <<: *prefect-redis-env
+      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_PG_DB_URL}
+      PREFECT_SERVER_API_HOST: 0.0.0.0 # This allows the server to accept connections from any interface within the container
+      PREFECT_UI_URL: http://localhost:${PREFECT_HOST_PORT:?see ports.env} # Where to access the UI (browser, host port)
+      PREFECT_UI_API_URL: http://localhost:${PREFECT_HOST_PORT:?see ports.env}/api # Where the UI (browser) reaches the API
+      PREFECT_UI_ENABLED: "true"
+    command: prefect server start --no-services
+    ports:
+      - "${PREFECT_HOST_PORT:?see ports.env}:4200"
+    networks:
+      - data-ops-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4200/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================================
+  # PREFECT SERVICES - scheduler, event processing, etc.
+  # ============================================================================
+  prefect-services:
+    image: prefect-server # Reuse built image, no build section
+    container_name: prefect-services
+    env_file:
+      - ../../.env
+    environment:
+      <<: *prefect-redis-env
+      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_PG_DB_URL}
+    command: prefect server services start
+    networks:
+      - data-ops-network
+
+  # ============================================================================
+  # PREFECT WORKER - runs flows from the local-pool work pool
+  # ============================================================================
+  prefect-worker:
+    image: prefect-server # Reuse built image, no build section
+    container_name: prefect-worker
+    depends_on:
+      prefect-server:
+        condition: service_healthy
+    env_file:
+      - ../../.env
+    environment:
+      PREFECT_API_URL: http://prefect-server:4200/api
+    command: prefect worker start --pool local-pool
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
