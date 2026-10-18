@@ -1,0 +1,17 @@
+# 01-databases/elasticsearch/docker-compose-elasticsearch.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#   - Low on RAM? set ELASTICSEARCH_JAVA_OPTS="-Xms1g -Xmx1g" in the env file
+#
+# Usage:
+#   make elasticsearch-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.dev.yml up -d)
+
+services:
+  elasticsearch:
+    restart: "no" # No auto-restart for easier debugging
+
+  kibana:
+    restart: "no"
