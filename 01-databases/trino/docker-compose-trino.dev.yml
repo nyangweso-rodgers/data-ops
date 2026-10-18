@@ -1,0 +1,15 @@
+# 01-databases/trino/docker-compose-trino.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres (and any other catalog sources in etc/catalog) running
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make trino-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-trino.base.yml -f docker-compose-trino.dev.yml up -d)
+
+services:
+  trino:
+    # Note: Can't use depends_on across compose files
+    restart: "no" # No auto-restart for easier debugging
