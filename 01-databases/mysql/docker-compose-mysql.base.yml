@@ -1,0 +1,52 @@
+# 01-databases/mysql/docker-compose-mysql.base.yml
+# Base MySQL configuration - shared across all environments
+# (open-metadata's DB + local test/reporting databases)
+#
+# Keeps restart: always (other local services expect it up). Any change here
+# changes the config hash and recreates the running container on the next `up`
+# (check first: docker-compose up --dry-run --no-deps -d mysql).
+#
+# Usage:
+#   Dev:  make mysql-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-mysql.base.yml -f docker-compose-mysql.dev.yml up -d)
+#   Prod: make mysql-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-mysql.base.yml -f docker-compose-mysql.prod.yml up -d)
+
+services:
+  mysql:
+    image: mysql:9.2.0 # official image - all config is below, no custom build needed
+    container_name: mysql
+    restart: always
+    ports:
+      - "${MYSQL_HOST_PORT:?see ports.env}:3306"
+    env_file:
+      - ../../.env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${LOCAL_MYSQL_DB_PASSWORD}
+    command: --bind-address=0.0.0.0 --wait_timeout=28800 --interactive_timeout=28800
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Run once, only when the data volume is empty (first init)
+      - ./init-scripts:/docker-entrypoint-initdb.d/:ro
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+# External: the volume already exists and holds the data. Compose never creates
+# or deletes it (a fresh machine needs: docker volume create mysql-data)
+volumes:
+  mysql-data:
+    name: mysql-data
+    external: true

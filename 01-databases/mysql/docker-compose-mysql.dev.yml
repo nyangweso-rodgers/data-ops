@@ -1,0 +1,21 @@
+# 01-databases/mysql/docker-compose-mysql.dev.yml
+# Development override
+#
+# Unlike the app stacks, dev keeps restart: always (from base) - other local
+# services depend on mysql being up.
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make mysql-dev-up
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-mysql.base.yml -f docker-compose-mysql.dev.yml up -d)
+
+services:
+  mysql:
+    # Keep local logs bounded on a long-running dev machine
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
