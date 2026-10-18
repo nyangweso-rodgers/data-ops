@@ -63,8 +63,8 @@
 - **Step 2**: **Rebuild and Restart NiFi**
 
   ```sh
-    docker-compose -f docker-compose.nifi.yml down
-    docker-compose -f docker-compose.nifi.yml up -d --build
+    make nifi-dev-down
+    make nifi-dev-up-build
   ```
 
 - **Step 3**: **Configure ClickHouse Connection Pool in NiFi**
