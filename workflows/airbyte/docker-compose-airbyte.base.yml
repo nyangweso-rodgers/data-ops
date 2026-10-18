@@ -1,4 +1,4 @@
-# 05_data_pipeline/airbyte/docker-compose-airbyte.base.yml
+# workflows/airbyte/docker-compose-airbyte.base.yml
 # Base Airbyte configuration - shared across all environments
 # (temporal, server, webapp, worker)
 #

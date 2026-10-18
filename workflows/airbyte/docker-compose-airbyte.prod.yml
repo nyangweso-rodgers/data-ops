@@ -1,4 +1,4 @@
-# 05_data_pipeline/airbyte/docker-compose-airbyte.prod.yml
+# workflows/airbyte/docker-compose-airbyte.prod.yml
 # Production override
 #
 # TODO: Airbyte 1.x is deployed with abctl / Helm, not docker-compose. Before running

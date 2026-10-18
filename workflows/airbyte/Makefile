@@ -1,4 +1,4 @@
-# 05_data_pipeline/airbyte/Makefile
+# workflows/airbyte/Makefile
 # Airbyte commands (the root Makefile delegates airbyte-* targets here, e.g. make airbyte-dev-up)
 
 # Docker Compose file combinations
