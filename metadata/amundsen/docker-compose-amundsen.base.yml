@@ -1,0 +1,121 @@
+# metadata/amundsen/docker-compose-amundsen.base.yml
+# Base Amundsen configuration - shared across all environments
+# (metadata service -> neo4j, search service -> elasticsearch, frontend)
+#
+# This file also works on its own (the root docker-compose.yml extends it and
+# adds the cross-file depends_on on neo4j/elasticsearch).
+#
+# Usage:
+#   Dev:  make amundsen-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.dev.yml up -d)
+#   Prod: make amundsen-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.prod.yml up -d)
+
+x-amundsen-logging: &amundsen-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ============================================================================
+  # AMUNDSEN METADATA - backed by neo4j
+  # ============================================================================
+  amundsen-metadata:
+    image: amundsendev/amundsen-metadata:3.13.0
+    container_name: amundsen-metadata
+    ports:
+      - "${AMUNDSEN_METADATA_HOST_PORT:?see ports.env}:5002"
+    networks:
+      - data-ops-network
+    env_file:
+      - ../../.env
+    environment:
+      PROXY_HOST: bolt://${NEO4J_HOST:-neo4j}
+      PROXY_PORT: 7687
+      CREDENTIALS_PROXY_USER: ${NEO4J_USER:-neo4j}
+      CREDENTIALS_PROXY_PASSWORD: ${NEO4J_PASSWORD}
+      PROXY_ENCRYPTED: "False"
+      PROXY_VALIDATE_SSL: "False"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./logs/amundsen/metadata:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5002/healthcheck').read()\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    logging: *amundsen-logging
+
+  # ============================================================================
+  # AMUNDSEN SEARCH - backed by elasticsearch
+  # ============================================================================
+  amundsen-search:
+    image: amundsendev/amundsen-search:4.2.0
+    container_name: amundsen-search
+    ports:
+      - "${AMUNDSEN_SEARCH_HOST_PORT:?see ports.env}:5001"
+    networks:
+      - data-ops-network
+    env_file:
+      - ../../.env
+    environment:
+      PROXY_ENDPOINT: ${ELASTICSEARCH_HOST:-elasticsearch}
+      PROXY_PORT: 9200
+      PROXY_USER: ${ELASTICSEARCH_USER}
+      PROXY_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      PROXY_CLIENT: elasticsearch
+      CREDENTIALS_PROXY_USER: ${ELASTICSEARCH_USER}
+      CREDENTIALS_PROXY_PASSWORD: ${ELASTICSEARCH_PASSWORD}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./logs/amundsen/search:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5001/healthcheck').read()\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    logging: *amundsen-logging
+
+  # ============================================================================
+  # AMUNDSEN FRONTEND
+  # ============================================================================
+  amundsen-frontend:
+    image: amundsendev/amundsen-frontend:4.3.0
+    container_name: amundsen-frontend
+    depends_on:
+      amundsen-metadata:
+        condition: service_healthy
+      amundsen-search:
+        condition: service_healthy
+    ports:
+      - "${AMUNDSEN_FRONTEND_HOST_PORT:?see ports.env}:5000"
+    networks:
+      - data-ops-network
+    env_file:
+      - ../../.env
+    environment:
+      SEARCHSERVICE_BASE: http://amundsen-search:5001
+      METADATASERVICE_BASE: http://amundsen-metadata:5002
+      #FRONTEND_SVC_CONFIG_MODULE_CLASS: amundsen_application.config.LocalConfig
+      #CREDENTIALS_AUTH_USER_METHOD: amundsen_application.models.user.load_user
+      AUTH_USER_METHOD: amundsen_application.models.user.load_user
+      FRONTEND_SVC_CONFIG_MODULE_CLASS: amundsen_application.config.TestConfig # Use TestConfig instead of LocalConfig
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./logs/amundsen/frontend:/app/logs
+      #- ./config/frontend_config.py:/app/amundsen_application/config.py:ro
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/healthcheck').read()\" || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    logging: *amundsen-logging
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
