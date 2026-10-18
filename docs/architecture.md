@@ -2,140 +2,188 @@
 
 ## Table of Contents
 
-1. [Compose convention: base / dev / prod](#compose-convention-base--dev--prod)
-2. [Known issues backlog](#known-issues-backlog)
+1. [Conventions](#conventions)
+2. [Services](#services)
+3. [Pending TODOs](#pending-todos)
    - [Cross-cutting](#cross-cutting)
-   - [Kafka](#kafka)
-   - [Grafana stack](#grafana-stack)
-   - [Superset](#superset)
-   - [Redash](#redash)
-   - [Metabase](#metabase)
-   - [ClickHouse](#clickhouse)
-   - [Amundsen](#amundsen)
-   - [n8n](#n8n)
-   - [Prefect](#prefect)
-3. [Required env vars for prod](#required-env-vars-for-prod)
+   - [Databases](#databases)
+   - [Messaging & warehouse](#messaging--warehouse)
+   - [Orchestration & pipelines](#orchestration--pipelines)
+   - [Dashboards](#dashboards)
+   - [Metadata](#metadata)
+   - [ML / AI & docs](#ml--ai--docs)
 
-## Compose convention: base / dev / prod
+## Conventions
 
-Each stack lives in its own folder with:
+- **One stack per folder**, each with `docker-compose-<stack>.base.yml` (shared definition), `.dev.yml` (no auto-restart, live-edit mounts) and `.prod.yml` (RDS where a metadata DB exists, required secrets via `${VAR:?}`, restart policies, resource limits, log rotation).
+- **Root `docker-compose.yml`** `extends` each stack's base file. Dependencies on services from *other* stacks (postgres, redis, mysql, neo4j, elasticsearch) are declared there, since a base file can't `depends_on` a service it doesn't define.
+- **Makefiles:** `make <stack>-<target>` in the root delegates to `<stack-dir>/Makefile` (`dev-up`, `dev-up-build`, `dev-logs`, `prod-up`, ... ; `make <stack>-help` lists all).
+- **Ports:** every host port is defined once, in the committed root `ports.env` (`<SERVICE>_HOST_PORT`, values unique). Compose maps `"${<SERVICE>_HOST_PORT:?see ports.env}:<container port>"` with no default, so a missing entry fails fast; the container port is set by the image and stays literal. Makefiles pass `--env-file .env --env-file ports.env` (registry wins) and `include` it for URLs; the root Makefile exports `COMPOSE_ENV_FILES=.env,ports.env` (for plain `docker-compose` by hand, export it in your shell). `make ports` fails on duplicates, hardcoded or defaulted host ports, and unregistered/unused entries.
+- **Python (uv):** each Python service has its own `pyproject.toml` + `uv.lock` in its folder (airflow, dagster, prefect, ml-flow) and its image installs from that lock. They are deliberately separate resolutions, not one workspace: Airflow 2.x needs SQLAlchemy<2 while Dagster/Prefect need >=2. The root `pyproject.toml` is only for repo tooling (ruff, pytest, pre-commit), host-side scripts (provisioning) and the shared ruff config that projects `extend`. Airflow's image is the exception: Airflow's own pins come from the base image (`apache-airflow==$AIRFLOW_VERSION`); its `uv.lock` covers the `dataflow` package for local tests. `make py-sync` / `py-lock` / `py-lint` at the root; `make -C <project> lock` / `sync` per project.
+- **Network:** every container joins the external `data-ops-network` and is reachable by container name.
+- **Volumes:** named volumes use a pinned `name:` so root and stack-level runs share data.
+- **Prod-only tooling** (admin UIs) is disabled in prod with `profiles: ["tools"]`.
+- **Images:** use the official image directly and configure it in compose (`environment`, `command`, mounts, `healthcheck`). Add a Dockerfile only when the image itself must change: plugins/drivers (cp-kafka-connect, nifi, superset, grafana) or your own code/dependencies (airflow, dagster, prefect, ml-flow, docusaurus).
 
-| File                               | Purpose                                                                                                   |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `docker-compose-<stack>.base.yml`  | Shared definition. Works on its own, and the root `docker-compose.yml` `extends` it.                       |
-| `docker-compose-<stack>.dev.yml`   | Dev override: no auto-restart, debug-friendly logging, source/config mounted for live edits.              |
-| `docker-compose-<stack>.prod.yml`  | Prod override: RDS for metadata DBs, required secrets (`${VAR:?}`), restart policies, limits, log rotation. |
-| `Makefile`                         | `dev-*`, `prod-*`, `build`/`pull` targets plus stack-specific extras.                                      |
+## Services
 
-The root `Makefile` delegates `make <stack>-<target>` to the stack Makefile (e.g. `make superset-dev-up`).
+Host ports live only in [`ports.env`](../ports.env); `make ports` lists them with the file that publishes each. "Root" = included in the root `docker-compose.yml`.
 
-**Converted:** airflow, dagster, grafana, metabase, redash, superset, clickhouse, kafka, amundsen, n8n, prefect.
+| Stack | Path | Containers | State | Depends on | Prod backend | Root |
+| --- | --- | --- | --- | --- | --- | --- |
+| postgres | `01-databases/01-postgres` | postgres 14.18 | `postgres-data` | – | self-hosted | ✓ |
+| mysql | `01-databases/mysql` | mysql 9.2.0 | `mysql-data` | – | self-hosted | ✓ |
+| redis | `01-databases/redis` | redis, redisinsight (tools) | `redis-data` | – | self-hosted | ✓ |
+| mongodb | `01-databases/mongodb` | mongo-db-community-server 7.0 | `mongo-db-community-server-volume` | – | self-hosted | – |
+| elasticsearch | `01-databases/elasticsearch` | elasticsearch 9.2, kibana | `elasticsearch_data` | – | self-hosted | ✓ |
+| neo4j | `01-databases/neo4j` | neo4j 4.4 | `neo4j_data` | – | self-hosted | ✓ |
+| trino | `01-databases/trino` | trino 477 | `etc/catalog` | postgres | self-hosted | ✓ |
+| kafka | `03_messaging_services/kafka` | zookeeper, kafka, schema-registry, cp-kafka-connect, debezium-connect, kafka-ui + debezium-ui (tools) | `kafka-data`, `kafka-zookeeper-data` | postgres (connectors) | self-hosted | partial¹ |
+| clickhouse | `06_data_warehouse/clickhouse` | clickhouse-server 24.8, tabix (tools) | `clickhouse-server-data` | – | self-hosted | ✓ |
+| airflow | `workflows/airflow` | webserver, scheduler (LocalExecutor) | metadata DB | postgres | RDS + S3 task logs | ✓ |
+| dagster | `workflows/dagster` | gRPC server, webserver, daemon | metadata DB | postgres | RDS | ✓ |
+| prefect | `workflows/prefect` | server, services, worker | metadata DB | postgres, redis | RDS | ✓ |
+| n8n | `workflows/n8n` | n8n | `n8n-data` + DB | postgres | RDS | ✓ |
+| nifi | `workflows/nifi` | nifi 2.3 | `nifi-vol`, `nifi-flows` | – | self-hosted | – |
+| airbyte | `workflows/airbyte` | temporal, server, webapp, worker | DB | postgres | – (see AB1) | – |
+| superset | `07_dashboards/01_superset` | superset | `superset-volume` + DB | postgres, redis (db 1) | RDS | ✓ |
+| redash | `07_dashboards/03_redash` | server, scheduler, worker | DB | postgres, redis (db 2) | RDS | ✓ |
+| metabase | `07_dashboards/04_metabase` | metabase 0.61 | DB | postgres | RDS | ✓ |
+| grafana | `07_dashboards/grafana` | grafana, prometheus, loki, postgres-db-exporter | `grafana-vol`, `prometheus-vol`, `loki-vol` | postgres (exporter) | self-hosted, exporter → RDS | ✓ |
+| amundsen | `metadata/amundsen` | frontend, search, metadata | – | neo4j, elasticsearch | self-hosted | ✓ |
+| open-metadata | `metadata/open-metadata` | migrate job, server 1.6.7 | DB | mysql, elasticsearch | self-hosted | ✓ |
+| ml-flow | `ml-models/ml-flow` | mlflow server | `./data` (sqlite + artifacts) | – | RDS + S3 | ✓ |
+| open-webui | `ai/open-webui` | open-webui, ollama | `./data`, `ollama-data` + DB | postgres | RDS | ✓ |
+| docusaurus | `10_documentation/docusaurus-site` | docusaurus (dev server / static serve) | – | – | static build | ✓ |
 
-**Rules of thumb**
+¹ Root includes zookeeper, kafka and kafka-ui only.
 
-- A base file must not `depends_on` a service defined in another compose file: standalone validation fails, even with `required: false`. Declare those dependencies in the root `docker-compose.yml`, which defines every service.
-- Named volumes use a pinned `name:` so the root project and the stack project share the same data.
-- Admin/UI tools that shouldn't run in prod get `profiles: ["tools"]` in the prod override.
+**Notes**
 
-## Known issues backlog
+- **postgres / mysql** were last started via `make postgres-dev-up` / `make mysql-dev-up`; the root compose (base only, no dev log rotation) sees a different config and would recreate them, so keep using the stack targets (see X1). Their Makefiles run with `-p data-ops` (same project as the root compose). Compose then warns about "orphan containers"; never add `--remove-orphans` to those commands, as it removes every other service. Their data volumes are `external`, so Compose never creates or deletes them (on a fresh machine run `docker volume create postgres-data` / `mysql-data` first). Both run the official images directly (no Dockerfile); `init-scripts/` is mounted and runs only on an empty volume. Postgres runs with `wal_level=logical` for Debezium CDC.
+- **redash** doesn't migrate its schema on boot: run `make redash-init-db` (or `redash-prod-init-db`) once per database.
+- **neo4j** `NEO4J_AUTH` only applies on first init; rotating `NEO4J_PASSWORD` also requires `ALTER CURRENT USER SET PASSWORD` inside neo4j.
+- **docusaurus** dev keeps the image's `node_modules` in an anonymous volume; after dependency changes run `make docusaurus-dev-down` then `make docusaurus-dev-up-build`.
 
-Status as of 2026-10-18. All files pass `docker-compose config`, but **none of the converted stacks have been built or started yet.** Most items below will only show up at `up` time.
+**Not converted yet:** taipy (`07_dashboards/taipy`), ML model services (`ml-models/01_diabetes_predictor`, `ml-models/ocr-pipeline`).
+
+## Pending TODOs
+
+IDs are referenced from comments in the compose files.
 
 ### Cross-cutting
 
-| #   | Issue                                                                                                                                                                                                              | Impact                                                                                     | Suggested fix                                                                                                         |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| X1  | Containers have fixed `container_name`s. The root project (`data-ops`) and each stack project (folder name) both try to own them.                                                                                  | `make <stack>-dev-up` fails with "container name already in use" if started from root first. | Pick one entry point per stack, or drop `container_name` and rely on service DNS names.                               |
-| X2  | Cross-file `depends_on` exists only in the root compose.                                                                                                                                                            | Standalone `make <stack>-dev-up` doesn't wait for postgres/redis/neo4j/elasticsearch.       | Start dependencies first (noted in each dev file header), or add a wait-for step in entrypoints.                        |
-| X3  | Ports published in base can't be removed in prod overrides (`!reset` needs a newer compose than we can assume).                                                                                                    | Prometheus, Loki, exporter, ClickHouse, Kafka ports are exposed in prod.                   | Restrict at firewall/security group, or require compose ≥ 2.24 and use `ports: !reset []`.                               |
-| X4  | `.env` has `REDIS_HOST=localhost` (for host-side scripts).                                                                                                                                                          | Using `${REDIS_HOST}` inside containers breaks redis connections.                         | Keep containers on the hardcoded `redis` host, or add a separate `REDIS_CONTAINER_HOST`.                                |
-| X5  | Superset, Redash and Prefect use the shared redis container in prod.                                                                                                                                               | No managed/HA redis in prod.                                                               | Move to ElastiCache (TODOs in the prod files).                                                                         |
-| X6  | Several images are unpinned `:latest`: `prom/prometheus`, `prometheuscommunity/postgres-exporter`, `provectuslabs/kafka-ui`, `debezium/connect`, `debezium/debezium-ui`, `spoonest/clickhouse-tabix-web-client`. | Non-reproducible builds.                                                                   | Pin versions.                                                                                                          |
-| X7  | Stacks not yet converted: postgres, mysql, redis, elasticsearch/kibana, neo4j, trino, open-metadata, taipy, docusaurus, ml-flow, ml models, open-webui.                                                             | Inconsistent convention.                                                                   | Convert as they're touched.                                                                                            |
-| X8  | Dagster's root targets use `dagster-local-*`; every other stack uses `<stack>-dev-*`.                                                                                                                              | Naming inconsistency.                                                                      | Rename to `dagster-dev-*`.                                                                                              |
+- **X1** Fixed `container_name`s clash between the root project and per-stack projects (`make <stack>-dev-up` fails with "container name already in use" if started from root). Apply `-p data-ops` to the remaining stack Makefiles, as postgres/mysql already do.
+- **X2** Standalone `make <stack>-dev-up` doesn't wait for cross-stack dependencies (only the root compose declares them). Start dependencies first, or add wait-for logic to entrypoints.
+- **X3** Ports published in base can't be removed in prod overrides on older compose. Restrict at the firewall / security group, or require compose ≥ 2.24 and use `ports: !reset []`.
+- **X4** `.env` has `REDIS_HOST=localhost` (for host-side scripts). Containers must keep using `redis`; consider a separate `REDIS_CONTAINER_HOST`.
+- **X5** Superset, Redash and Prefect use the shared redis container in prod. Move to a managed redis (ElastiCache).
+- **X6** Pin unpinned images: `prom/prometheus`, `prometheuscommunity/postgres-exporter`, `provectuslabs/kafka-ui`, `debezium/connect`, `debezium/debezium-ui`, `spoonest/clickhouse-tabix-web-client`, `ghcr.io/open-webui/open-webui:main`.
+- **X7** Convert taipy, customers-api and the ML model services (their host ports are already in `ports.env`). Two of them don't validate standalone: customers-api `depends_on` an undefined `postgres`, and ocr-pipeline's `env_file: ../.env` resolves to `ml-models/.env`, which doesn't exist.
+- **X8** Rename dagster's `dagster-local-*` targets to `dagster-dev-*`.
+- **X12** Host-side scripts still hardcode host ports: `ml-models/ml-flow/app/test.py` (5005), `metadata/amundsen/test/test_search_service.py` (5003), `ml-models/01_diabetes_predictor/test/test.py` (8000), `07_dashboards/svelte-fastapi-dashboard/frontend` (8000, a non-Docker service). Read them from the environment / `ports.env` instead.
+- **X13** Remove the old publish-port vars from `.env` (now superseded by `ports.env`): `APACHE_SUPERSET_PORT`, `REDASH_PORT`, `WEBUI_PORT`, `PROMETHEUS_PORT`, `LOKI_PORT`, `LOCAL_KAFKA_UI_PORT`, `APACHE_AIRFLOW_PORT`. Keep client connection ports (`PG_DB_PORT`, `REDIS_PORT`, `ELASTICSEARCH_PORT`, ...).
+- **X10** First build + `dev-up` of every converted stack except postgres/mysql (so far only `docker-compose config` has been validated). Next up: the uv-based images in this order - dagster, prefect, ml-flow (no apt step, so they don't depend on the Debian mirror), then airflow (still needs apt for `mysqlclient`). Smoke-test each: `dagster --version`; a real Prefect flow run (checks the pydantic 2.14 upgrade from the lock); `mlflow --version` + `import psycopg2, boto3`; `airflow version` + `dbt --version` + `import dataflow`.
+- **X15** Grafana is the only stack that isn't self-contained: it mounts `../../monitoring-and-observability/{02-prometheus,03-loki}` configs. Move them into `07_dashboards/grafana/` so the stack can be extracted like the others (see README "Take any service and deploy it on its own").
+- **X14** `python:3.10-slim` (dagster, ml-flow) is flagged with high-severity CVEs. Move to a newer Python slim image once DG1 is resolved; ml-flow can move now.
+- **X11** Add the prod env vars that are still missing from `.env`: `RDS_HOSTNAME`, `RDS_PORT`, `RDS_USERNAME`, `RDS_PASSWORD`, `KAFKA_ADVERTISED_HOST`, `PREFECT_RDS_DB_URL`, `PREFECT_PUBLIC_URL`, `GRAFANA_ROOT_URL`, `NIFI_SINGLE_USER_USERNAME`, `NIFI_SINGLE_USER_PASSWORD`, `MLFLOW_ARTIFACTS_S3_URI`. `WEBHOOK_URL`, `N8N_ENCRYPTION_KEY`, `MB_SITE_URL`, `WEBUI_SECRET_KEY` and the DB passwords exist, but with dev values.
 
-### Kafka
+### Databases
 
-| #   | Issue                                                                                                                                       | Impact                                                    | Suggested fix                                                                   |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| K1  | `kafka-ui` and `debezium-ui` both publish host port `8082`.                                                                                 | Second container fails to start.                          | Move debezium-ui to another host port.                                         |
-| K2  | `debezium-ui` maps `8082:8082`, but the app listens on `8080`.                                                                               | UI unreachable.                                           | Map `<host>:8080`.                                                              |
-| K3  | `debezium-ui` uses `KAFKA_CONNECT_URIS: http://debezium:8084`, but the container is `debezium-connect`.                                     | UI can't reach Connect.                                   | `http://debezium-connect:8084` (and check Connect actually listens on 8084).     |
-| K4  | `KAFKA_DEFAULT_REPLICATION_FACTOR: "2"` and debezium `*_STORAGE_REPLICATION_FACTOR: 2` on a single broker.                                  | Auto-created topics and debezium internal topics fail.    | Set to `1` while there's one broker.                                            |
-| K5  | `cp-kafka-connect` mounts `./cp-kafka-connect/plugins/bigquery-keyfile.json`, a path that doesn't exist (connector lives in `01-connectors/01-cp-kafka-connect/`). | Docker creates an empty directory in place of the keyfile. | Fix the path, and keep the keyfile out of git.                                  |
-| K6  | `cp-kafka-connect` has `CONNECT_ZOOKEEPER_CONNECT: zookeeper:2181`, but the container is `kafka-zookeeper`.                                  | Wrong host if anything uses it.                           | `kafka-zookeeper:2181`, or remove (Connect doesn't need ZooKeeper).              |
-| K7  | Connect converters point at `http://schema-registry:8081`, but the container is `kafka-schema-registry`.                                     | Schema-registry lookups fail.                             | `http://kafka-schema-registry:8081`.                                            |
-| K8  | Connect and debezium need postgres, but the dependency was removed from base (it pointed at a non-existent `postgres-db` service).          | Must start postgres manually first.                       | Neither is in the root compose. Add them there with `depends_on: postgres` if needed. |
-| K9  | `SCHEMA_REGISTRY_DEBUG` now defaults to `false` in base (dev turns it on).                                                                   | Behaviour change for root-compose runs.                   | None needed. Noted for awareness.                                               |
+**redis**
+- **RD1** `--requirepass` is on the command line (visible in `docker inspect`). Move to a mounted `redis.conf`.
+- **RD2** No eviction policy, since queues (Redash, Prefect) share the instance with Superset's cache. Split cache (evictable) and queues (`noeviction`).
 
-### Grafana stack
+**elasticsearch**
+- **E1** Prod host needs `vm.max_map_count >= 262144` (prod enables `bootstrap.memory_lock`).
 
-| #   | Issue                                                                                                          | Impact                                    | Suggested fix                                        |
-| --- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------- |
-| G1  | `prometheus.yml` scrapes `apache-kafka:9999`, but the container is `kafka` and JMX on 9999 isn't configured.    | Scrape target permanently down.           | Point at `kafka` and enable a JMX exporter, or drop the job. |
-| G2  | `scrape_interval: 3600s`.                                                                                      | Hourly metrics only; most dashboards look empty. | Lower (e.g. `30s`) unless that was a deliberate cost choice. |
-| G3  | Grafana's healthcheck uses `wget`, which hasn't been verified in `grafana/grafana:12.0.2`.                     | Healthcheck may always fail.              | Verify after first build; switch to `curl` if needed. |
-| G4  | Grafana's own DB is sqlite on `grafana-vol`.                                                                   | Single-instance only, backups by volume.  | Optional RDS block is commented in the prod file.    |
-| G5  | `provisioning/datasources/pg-datasource.yml` is empty (`apiVersion: 1` only).                                  | No Postgres datasource provisioned.       | Fill in or delete.                                   |
+**neo4j**
+- **NJ2** Upgrade off the 4.4 line together with Amundsen's metadata service.
 
-### Superset
+**trino**
+- **T2** Prod mounts `etc/catalog` read-only, which breaks `CATALOG_MANAGEMENT=dynamic`. Drop `:ro` or use static catalogs in prod.
+- **T3** No authentication. Configure password/OAuth auth + HTTPS before prod.
 
-| #   | Issue                                                                                     | Impact                               | Suggested fix                                                     |
-| --- | ----------------------------------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------- |
-| S1  | `superset_config.py` hardcodes port `5432` and has no `sslmode` in `SQLALCHEMY_DATABASE_URI`. | Prod RDS connection is unencrypted / not configurable. | Read port + sslmode from env (e.g. `?sslmode=require`). |
+### Messaging & warehouse
 
-### Redash
+**kafka**
+- **K2** debezium-ui maps `${DEBEZIUM_UI_HOST_PORT}:8082`, but the app listens on 8080 inside the container. Change the container side to 8080.
+- **K3** debezium-ui `KAFKA_CONNECT_URIS` points at `debezium:8084`; the container is `debezium-connect`.
+- **K4** Replication factor 2 (`KAFKA_DEFAULT_REPLICATION_FACTOR`, debezium storage topics) on a single broker. Set to 1.
+- **K5** cp-kafka-connect mounts `./cp-kafka-connect/plugins/bigquery-keyfile.json`, which doesn't exist (the connector lives in `01-connectors/01-cp-kafka-connect/`). Keep the keyfile out of git.
+- **K6** cp-kafka-connect `CONNECT_ZOOKEEPER_CONNECT: zookeeper:2181`. Should be `kafka-zookeeper`, or remove it.
+- **K7** Connect converters point at `schema-registry:8081`. Should be `kafka-schema-registry`.
+- **K8** Connect/debezium need postgres but aren't in the root compose. Add them there with `depends_on: postgres` if used.
 
-| #   | Issue                                                                                                              | Impact                          | Suggested fix                          |
-| --- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------- | -------------------------------------- |
-| R1  | Default host port `5001` (`REDASH_PORT`) is the same as Amundsen search's default (`SEARCH_PORT`).                  | Port clash if both run on defaults. | Give one of them a different default.  |
-| R2  | Redash doesn't migrate its schema on boot.                                                                         | Fresh DB needs a manual step.   | `make redash-init-db` (dev) / `make redash-prod-init-db` (prod), once per database. |
+**clickhouse**
+- No service-specific TODOs (see X3 for published ports).
 
-### Metabase
+### Orchestration & pipelines
 
-| #   | Issue                                                                                                   | Impact                         | Suggested fix               |
-| --- | ------------------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------- |
-| M1  | Prod uses `MB_DB_CONNECTION_URI` (with `sslmode=require`) together with separate `MB_DB_USER`/`MB_DB_PASS`. Unverified on v0.61. | Prod may fail to connect to RDS. | Verify on first prod start. |
+**airflow**
+- Create the S3 log bucket (with a lifecycle rule), set `AIRFLOW_REMOTE_LOG_FOLDER`, and grant the containers S3 access (IAM role preferred).
 
-### ClickHouse
+**dagster**
+- Prod expects `certs/rds-ca-bundle.pem` for RDS SSL; download it before `make dagster-prod-up`.
+- **DG1** Locked to Python 3.10 because `mysql-connector-python==8.0.33` needs `protobuf<=3.20.3`, which Dagster 1.12 only allows on 3.10. Bump the connector (or drop it in favour of `pymysql`, which is also installed) to move the image off `python:3.10-slim` (see X14).
+- See X8.
 
-| #   | Issue                                                                                    | Impact                       | Suggested fix                                     |
-| --- | ---------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------- |
-| C1  | Tabix receives the default user's password via env.                                       | Credentials exposed to a web client. | Disabled in prod (`profiles: ["tools"]`). Keep it dev-only. |
-| C2  | Native (9000), HTTP (8123), interserver (9009) and keeper (9181) ports all published.    | Larger attack surface in prod. | See X3.                                         |
+**prefect**
+- **P2** Prod needs `PREFECT_RDS_DB_URL` and `PREFECT_PUBLIC_URL` (X11).
 
-### Amundsen
+**n8n**
+- **N1** `N8N_BASIC_AUTH_*` was removed in n8n 1.0 (image is 2.43.7); delete those env vars and rely on n8n's built-in user management.
+- **N2** Verify `DB_POSTGRESDB_SSL_ENABLED` is honoured for RDS on the n8n version in use.
 
-| #   | Issue                                                                                     | Impact                                  | Suggested fix                                         |
-| --- | ----------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------- |
-| A1  | Frontend runs `amundsen_application.config.TestConfig` with no real auth.                  | Not production-ready.                   | Switch config class and wire auth before exposing it.  |
-| A2  | neo4j credentials were hardcoded; base now uses `NEO4J_USER` / `NEO4J_PASSWORD` from `.env`. | Behaviour change if `.env` differs from the old hardcoded values. | Confirm the values match the neo4j container.         |
+**nifi**
+- **NF1** Image is HTTPS-only (2.x), but base sets `NIFI_WEB_HTTP_PORT=8443`. Drop it and serve HTTPS with single-user credentials.
+- **NF3** `conf/` is a named volume, so image upgrades won't refresh config. Mount only customised files.
 
-### n8n
+**airbyte**
+- **AB1** Airbyte 1.x (images are 1.4.1) doesn't support docker-compose; the supported path is `abctl` / Helm. Decide: migrate, or pin an old 0.x compose release.
+- **AB2** `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_USERS_DB` are missing from `.env`.
+- **AB3** Server/worker use the `users` database. Give Airbyte its own.
+- **AB4** Webapp calls `airbyte-server:8001` while the server publishes 8002. Align.
 
-| #   | Issue                                                                                     | Impact                                  | Suggested fix                                |
-| --- | ----------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------- |
-| N1  | `N8N_BASIC_AUTH_*` is likely ignored in n8n 1.x (replaced by built-in user management).   | False sense of protection.              | Verify against the image version; remove if unused. |
-| N2  | Prod sets `DB_POSTGRESDB_SSL_ENABLED: "true"`. Unverified for the n8n version in the Dockerfile. | RDS connection may not use TLS.         | Verify on first prod start.                  |
-| N3  | `n8n-data` volume changed from `external: true` to `name: n8n-data` in base.              | Compose now creates it if missing instead of erroring. | None needed. Noted for awareness.            |
+### Dashboards
 
-### Prefect
+**superset**
+- **S1** `superset_config.py` hardcodes port 5432 and has no `sslmode`. Read both from env for RDS.
 
-| #   | Issue                                                                                      | Impact                                         | Suggested fix                                     |
-| --- | ------------------------------------------------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------- |
-| P1  | Worker used to mount host `/flows` over `/app/flows`. Base now uses the flows baked into the image; dev mounts `./flows`, `./tasks`, `./deployments`. | Behaviour change: prod needs a rebuild to pick up new flows. | None needed. Noted for awareness.                 |
-| P2  | Prod needs `PREFECT_RDS_DB_URL` (asyncpg + SSL) and `PREFECT_PUBLIC_URL`. Neither is in `.env` yet. | `make prefect-prod-up` refuses to start.       | Add to `.env` (see below).                        |
+**metabase**
+- **M1** Verify `MB_DB_CONNECTION_URI` + separate `MB_DB_USER`/`MB_DB_PASS` works on v0.61 against RDS.
 
-## Required env vars for prod
+**grafana**
+- **G1** `prometheus.yml` scrapes `apache-kafka:9999`. The container is `kafka`, and JMX isn't exposed.
+- **G2** `scrape_interval: 3600s`. Lower it unless hourly is intentional.
+- **G3** Verify the `wget` healthcheck works in `grafana/grafana:12.0.2`.
+- **G4** Optional: move Grafana's own DB from sqlite to RDS (block commented in the prod file).
+- **G5** `provisioning/datasources/pg-datasource.yml` is empty. Fill in or delete.
+- **G6** The Dockerfile only installs 2 plugins + copies provisioning. On 12.0.2 the compose-only alternatives don't fit (`GF_PLUGINS_PREINSTALL_SYNC` installs nothing, `GF_PLUGINS_PREINSTALL` is async, `GF_INSTALL_PLUGINS` is deprecated). When upgrading Grafana, retest `GF_PLUGINS_PREINSTALL_SYNC`; if it works, drop the Dockerfile and mount `provisioning/` (`:ro` in prod). Note: plugins baked into the image only reach `grafana-vol` when the volume is first created.
 
-Prod overrides either refuse to start without these (`:?`) or fall back to empty values. "In `.env`" reflects the root `.env` on 2026-10-18; the local (dev) values still need prod equivalents.
+### Metadata
 
-| Variable                                      | Used by                                              | In `.env`? |
-| --------------------------------------------- | ---------------------------------------------------- | ---------- |
-| `RDS_HOSTNAME`, `RDS_PORT`, `RDS_USERNAME`, `RDS_PASSWORD` | metabase, redash, superset, n8n, grafana exporter (also airflow, dagster) | No |
-| `METABASE_RDS_DB_NAME`, `REDASH_RDS_DB_NAME`, `SUPERSET_RDS_DB_NAME`, `N8N_RDS_DB_NAME` | optional, default to the service name | No |
-| `PREFECT_RDS_DB_URL`, `PREFECT_PUBLIC_URL`    | prefect (required)                                   | No         |
-| `KAFKA_ADVERTISED_HOST`                       | kafka (required)                                     | No         |
-| `GRAFANA_ROOT_URL`                            | grafana                                              | No         |
-| `WEBHOOK_URL`, `N8N_ENCRYPTION_KEY`           | n8n (required)                                       | Yes (dev values) |
-| `MB_SITE_URL`                                 | metabase (required)                                  | Yes (dev value)  |
+**amundsen**
+- **A1** Frontend runs `TestConfig` with no real auth. Switch the config class and wire auth before exposing it.
+
+**open-metadata**
+- **OM1** `PIPELINE_SERVICE_CLIENT_ENDPOINT` points at `apache-airflow-webserver`; the container is `airflow-webserver`.
+- **OM2** No Elasticsearch credentials passed, but ES has security enabled. Add `ELASTICSEARCH_USER` / `ELASTICSEARCH_PASSWORD`.
+- **OM3** Uses the MySQL root user without SSL. Create a dedicated user.
+- **OM4** Optional: restore the `open-metadata-ingestion` service (git history of `docker-compose.open-metadata.yml`) for UI-driven ingestion.
+
+### ML / AI & docs
+
+**ml-flow**
+- **MF4** Add a healthcheck (python one-liner; no curl in `python:3.10-slim`).
+- **MF5** Prod needs `MLFLOW_ARTIFACTS_S3_URI` and S3 access (IAM role preferred).
+
+**open-webui**
+- **OW2** `.env` `WEBUI_URL` says `http://localhost:3000`, but the UI is published on `OPEN_WEBUI_HOST_PORT` (8087). Fix `WEBUI_URL` (and drop `WEBUI_PORT`, see X13).
+- **OW3** Drop `WEBUI_JWT_SECRET_KEY` (likely not an Open WebUI setting) and the insecure dev secret fallbacks.
+- **OW5** `ai/open-webui/config/branding.json` / `custom_models.json` aren't read by Open WebUI. Set branding via env (`WEBUI_NAME` already is) and add the custom model via the admin UI or `OPENAI_API_BASE_URLS`, then delete `config/`.
+- **OW6** Verify `OLLAMA_LLM_MAX_MEMORY` / `OLLAMA_NUM_THREADS` are real Ollama settings; remove if not.
+- **OW7** Ollama's API (11434) is unauthenticated and published. Stop publishing it, or firewall it.
+
+**docusaurus**
+- **D3** Prod builds at container start and serves via Node. Move to a multi-stage build and serve `build/` from nginx or S3 + CloudFront.
