@@ -1,0 +1,61 @@
+# 01-databases/01-postgres/docker-compose-postgres.base.yml
+# Base Postgres configuration - shared across all environments
+#
+# Shared metadata DB for airflow, dagster, metabase, redash, superset, n8n,
+# prefect, open-webui, ... (databases created by ./init-scripts on first init).
+#
+# Keeps restart: always (other local services expect it up). Any change here
+# changes the config hash and recreates the running container on the next `up`
+# (check first: docker-compose up --dry-run --no-deps -d postgres).
+#
+# Usage:
+#   Dev:  make postgres-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-postgres.base.yml -f docker-compose-postgres.dev.yml up -d)
+#   Prod: make postgres-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-postgres.base.yml -f docker-compose-postgres.prod.yml up -d)
+
+services:
+  postgres:
+    image: postgres:14.18 # official image - all config is below, no custom build needed
+    container_name: postgres
+    restart: always
+    ports:
+      - "${POSTGRES_HOST_PORT:?see ports.env}:5432"
+    env_file:
+      - ../../.env
+    environment:
+      PGUSER: ${LOCAL_USERS_PG_DB_USER} # default user for psql inside the container
+      POSTGRES_PASSWORD: ${LOCAL_USERS_PG_DB_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements # query stats
+      - -c
+      - wal_level=logical # required by Debezium CDC (pgoutput)
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d/
+    healthcheck:
+      # No password needed (keeps it out of `docker inspect`). $$ = resolved inside the
+      # container. -h localhost: skip the socket-only temp server used during first init.
+      test: ["CMD-SHELL", "pg_isready -h localhost -U \"$$LOCAL_USERS_PG_DB_USER\" -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+# External: the volume already exists and holds the data. Compose never creates
+# or deletes it (a fresh machine needs: docker volume create postgres-data)
+volumes:
+  postgres-data:
+    name: postgres-data
+    external: true
