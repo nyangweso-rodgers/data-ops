@@ -1,0 +1,29 @@
+# 07_dashboards/03_redash/docker-compose-redash.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres ($LOCAL_POSTGRES_REDASH_DB_HOST) and redis running
+#   - Network must exist: docker network create data-ops-network
+#   - First start only: make redash-init-db
+#
+# Usage:
+#   make redash-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.dev.yml up -d)
+
+x-redash-dev-env: &redash-dev-env
+  ENVIRONMENT: dev
+  REDASH_LOG_LEVEL: INFO
+
+services:
+  redash-server:
+    environment: *redash-dev-env
+    # Note: Can't use depends_on across compose files
+    restart: "no" # No auto-restart for easier debugging
+
+  redash-scheduler:
+    environment: *redash-dev-env
+    restart: "no"
+
+  redash-worker:
+    environment: *redash-dev-env
+    restart: "no"
