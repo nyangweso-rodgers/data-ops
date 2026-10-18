@@ -60,7 +60,7 @@ services:
       - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
       - DAGSTER_POSTGRES_SSLMODE=require
     ports:
-      - "${DAGSTER_WEBSERVER_PORT:-3004}:3004"
+      - "${DAGSTER_HOST_PORT:?see ports.env}:3004"
     restart: unless-stopped
     volumes:
       - ./dagster_home:/app/dagster_home:ro
@@ -92,7 +92,7 @@ services:
       - DAGSTER_POSTGRES_PASSWORD=${RDS_PASSWORD}
       - DAGSTER_POSTGRES_DB=${RDS_DB_NAME}
       - DAGSTER_POSTGRES_PORT=${RDS_PORT:-5432}
-      - DAGSTER_POSTGRES_SSLMODE=requir
+      - DAGSTER_POSTGRES_SSLMODE=require
     restart: always
     volumes:
       - ./dagster_home:/app/dagster_home:ro

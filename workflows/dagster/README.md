@@ -31,6 +31,22 @@
   5. Reverse ETL Assets (`assets/reverse_etl`)
      - **Purpose**: Extract, Tranform and Load data from data warehouse to a Production DB (MySQL, PostgreSQL, e.t.c.,)
 
+- mysql/
+  - ingest/
+    - mysql/
+    - postgres/
+    - clickhouse/
+    - e.t.c/
+  - export/
+    - s3/
+    - clickhouse/
+    - e.t.c/
+- clickhouse/
+  - ingest/
+    - mysql/
+    - postgres/
+  - export/
+
 # Project Structure
 
 - dagster_v2/
@@ -106,15 +122,6 @@
         - `table_schema_template.yml` # ← Template with comments
 
     - utils/
-      - factories/
-        - `__init__.py`
-        - `etl_base_factory.py` # ← Abstract base class
-        - `etl_mysql_to_clickhouse_factory.py` # ← MySQL-specific
-        - `etl_postgres_to_clickhouse_factory.py` # ← Postgres-specific
-      - `logging_config.py`
-      - `schema_loader.py`
-      - `state_manager.py`
-      - `type_mapper.py`
     - scripts/
       - `__init__.py`
       - `validate_schemas.py`
@@ -127,10 +134,9 @@
     - `.dockerignore`
     - `.gitignore`
     - `CHANGELOG.md`
-    - `docker-compose-dagster.base.yml`
-    - `docker-compose-dagster.local-rds.yml`
-    - `docker-compose-dagster.local.yml`
-    - `docker-compose-dagster.prod.yml`
+    - `docker-compose-dagster.base.yml` # Shared services (gRPC server, webserver, daemon)
+    - `docker-compose-dagster.dev.yml` # Dev override - `make dev-up`
+    - `docker-compose-dagster.prod.yml` # Prod override (RDS) - `make prod-up`
     - `Dockerfile`
     - `Makefile`
     - `pyproject.toml`
