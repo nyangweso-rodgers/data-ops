@@ -1,0 +1,100 @@
+# metadata/open-metadata/docker-compose-open-metadata.base.yml
+# Base OpenMetadata configuration - shared across all environments
+# (one-shot migration job + server; DB on mysql, search on elasticsearch)
+#
+# This file also works on its own (the root docker-compose.yml extends it and
+# adds the cross-file depends_on on mysql/elasticsearch).
+#
+# Usage:
+#   Dev:  make open-metadata-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.dev.yml up -d)
+#   Prod: make open-metadata-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.prod.yml up -d)
+
+x-open-metadata-db-env: &open-metadata-db-env
+  # Database configuration (MySQL)
+  DB_DRIVER_CLASS: com.mysql.cj.jdbc.Driver
+  DB_SCHEME: mysql
+  DB_PARAMS: allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  DB_USE_SSL: "false"
+  DB_USER: ${MYSQL_DB_ROOT_USER}
+  DB_USER_PASSWORD: ${MYSQL_DB_ROOT_PASSWORD}
+  DB_HOST: ${MYSQL_DB_HOST}
+  DB_PORT: ${MYSQL_DB_PORT}
+  OM_DATABASE: open_metadata
+  # Elasticsearch configuration
+  ELASTICSEARCH_HOST: elasticsearch
+  ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
+  ELASTICSEARCH_SCHEME: http
+  SEARCH_TYPE: elasticsearch
+  # Authentication
+  AUTHORIZER_CLASS_NAME: org.openmetadata.service.security.DefaultAuthorizer
+  AUTHORIZER_REQUEST_FILTER: org.openmetadata.service.security.JwtFilter
+  AUTHORIZER_ADMIN_PRINCIPALS: "[admin]" # Only admin is an admin
+  AUTHORIZER_PRINCIPAL_DOMAIN: "open-metadata.org"
+  AUTHENTICATION_PROVIDER: basic
+  JWT_ISSUER: "open-metadata.org"
+  #FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+
+services:
+  # ============================================================================
+  # MIGRATION JOB - runs once, the server waits for it to complete
+  # ============================================================================
+  open-metadata-execute-migrate-all:
+    image: docker.getcollate.io/openmetadata/server:1.6.7
+    container_name: open-metadata-execute-migrate-all
+    command: "./bootstrap/openmetadata-ops.sh migrate"
+    restart: on-failure
+    env_file:
+      - ../../.env
+    environment:
+      <<: *open-metadata-db-env
+      AUTHENTICATION_PUBLIC_KEYS: "[http://localhost:8585/api/v1/system/config/jwks]"
+    networks:
+      - data-ops-network
+
+  # ============================================================================
+  # OPENMETADATA SERVER
+  # ============================================================================
+  open-metadata-server:
+    image: docker.getcollate.io/openmetadata/server:1.6.7
+    container_name: open-metadata-server
+    ports:
+      - "${OPEN_METADATA_HOST_PORT:?see ports.env}:8585"
+    depends_on:
+      open-metadata-execute-migrate-all:
+        condition: service_completed_successfully
+    env_file:
+      - ../../.env
+    environment:
+      <<: *open-metadata-db-env
+      # Basic server settings
+      #OPENMETADATA_CLUSTER_NAME: openmetadata
+      #SERVER_PORT: 8585
+      #LOG_LEVEL: INFO
+
+      # Pipeline Service Client Configuration
+      PIPELINE_SERVICE_CLIENT_CLASS_NAME: org.openmetadata.service.clients.pipeline.airflow.AirflowRESTClient
+
+      # Airflow Parameters
+      PIPELINE_SERVICE_CLIENT_ENDPOINT: http://apache-airflow-webserver:8080
+      AIRFLOW_USERNAME: ${APACHE_AIRFLOW_ADMIN_USERNAME}
+      AIRFLOW_PASSWORD: ${APACHE_AIRFLOW_ADMIN_PASSWORD}
+
+      PIPELINE_SERVICE_CLIENT_VERIFY_SSL: no-ssl
+      SERVER_HOST_API_URL: http://open-metadata-server:8585/api
+
+      AUTHENTICATION_PUBLIC_KEYS: "[http://open-metadata-server:8585/api/v1/system/config/jwks]"
+      # Heap settings
+      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
+    networks:
+      - data-ops-network
+
+  # OpenMetadata Ingestion (Airflow with openmetadata-managed-apis) - for UI-driven
+  # ingestion workflows. Disabled; see git history of docker-compose.open-metadata.yml
+  # for the previous commented-out definition.
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true

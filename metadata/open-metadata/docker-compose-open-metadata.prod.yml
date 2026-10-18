@@ -1,0 +1,34 @@
+# metadata/open-metadata/docker-compose-open-metadata.prod.yml
+# Production override
+#
+# Prerequisites:
+#   - mysql (MYSQL_DB_*) and elasticsearch reachable
+#   - TODO: use a dedicated MySQL user (not root) and DB_USE_SSL=true for a managed DB
+#
+# Usage:
+#   make open-metadata-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.prod.yml up -d)
+
+x-open-metadata-prod-logging: &open-metadata-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  open-metadata-execute-migrate-all:
+    logging: *open-metadata-prod-logging
+
+  open-metadata-server:
+    environment:
+      OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx2G -Xms2G}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${OPENMETADATA_CPU_LIMIT:-2}"
+          memory: ${OPENMETADATA_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 2G
+    logging: *open-metadata-prod-logging

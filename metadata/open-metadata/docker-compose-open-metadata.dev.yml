@@ -1,0 +1,15 @@
+# metadata/open-metadata/docker-compose-open-metadata.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - mysql and elasticsearch running (01-databases/)
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make open-metadata-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.dev.yml up -d)
+
+services:
+  open-metadata-server:
+    # Note: Can't use depends_on across compose files
+    restart: "no" # No auto-restart for easier debugging
