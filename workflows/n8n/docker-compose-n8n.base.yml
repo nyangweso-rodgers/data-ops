@@ -1,0 +1,89 @@
+# workflows/n8n/docker-compose-n8n.base.yml
+# Base n8n configuration - shared across all environments
+#
+# The DB defaults to the local postgres container (database created by
+# `make n8n-init-db`). prod.yml points it at RDS.
+#
+# This file also works on its own (the root docker-compose.yml extends it and
+# adds the cross-file depends_on on postgres).
+#
+# Usage:
+#   Dev:  make n8n-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.dev.yml up -d)
+#   Prod: make n8n-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.prod.yml up -d)
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:2.43.7 # official image - no custom build needed
+    container_name: n8n
+    ports:
+      - "${N8N_HOST_PORT:?see ports.env}:5678"
+    environment:
+      # Database Configuration - Uses existing postgres from monorepo
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: ${N8N_DB_HOST:-postgres}
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_DATABASE: ${N8N_DB_NAME:-n8n}
+      DB_POSTGRESDB_USER: ${N8N_DB_USER:-n8n}
+      DB_POSTGRESDB_PASSWORD: ${N8N_DB_PASSWORD}
+
+      # Basic Configuration
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+
+      # Timezone
+      GENERIC_TIMEZONE: ${TIMEZONE:-Africa/Nairobi}
+      TZ: ${TIMEZONE:-Africa/Nairobi}
+
+      # Execution Data
+      EXECUTIONS_DATA_SAVE_ON_ERROR: all
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: all
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: "true"
+
+      # Webhook URL
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://localhost:${N8N_HOST_PORT:?see ports.env}/}
+
+      # Security
+      N8N_BASIC_AUTH_ACTIVE: ${N8N_BASIC_AUTH_ACTIVE:-true}
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
+
+      # Encryption key
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+
+      # Performance
+      N8N_PAYLOAD_SIZE_MAX: 16
+      N8N_METRICS: ${N8N_METRICS:-false}
+
+      # Auto-create owner account
+      N8N_OWNER_EMAIL: ${N8N_OWNER_EMAIL}
+      N8N_OWNER_PASSWORD: ${N8N_OWNER_PASSWORD}
+      N8N_OWNER_FIRST_NAME: ${N8N_OWNER_FIRST_NAME:-Admin}
+      N8N_OWNER_LAST_NAME: ${N8N_OWNER_LAST_NAME:-User}
+    volumes:
+      # Persist n8n data
+      - n8n-data:/home/node/.n8n
+      # Optional: Mount local files if you need to access them in workflows
+      # - ./local-files:/files
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  n8n-data:
+    name: n8n-data
