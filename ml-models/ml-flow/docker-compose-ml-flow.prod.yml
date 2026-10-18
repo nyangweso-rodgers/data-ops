@@ -1,0 +1,37 @@
+# ml-models/ml-flow/docker-compose-ml-flow.prod.yml
+# Production override (backend store on AWS RDS, artifacts on S3)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the MLflow database + user created
+#   - RDS_* (and optionally MLFLOW_RDS_DB_NAME) set in the env file
+#   - RDS_PASSWORD must be URL-safe (or URL-encoded) - it is embedded in the connection string
+#   - MLFLOW_ARTIFACTS_S3_URI set (e.g. s3://<bucket>/mlflow) - compose refuses to start without it
+#   - S3 access for that prefix - preferably an IAM role (ECS task / EC2 instance profile);
+#     otherwise AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in the env file
+#   - Image includes psycopg2-binary + boto3 (see Dockerfile)
+#
+# Usage:
+#   make ml-flow-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-ml-flow.base.yml -f docker-compose-ml-flow.prod.yml up -d)
+
+services:
+  ml-flow:
+    environment:
+      ENVIRONMENT: production
+      MLFLOW_BACKEND_STORE_URI: postgresql://${RDS_USERNAME}:${RDS_PASSWORD}@${RDS_HOSTNAME}:${RDS_PORT:-5432}/${MLFLOW_RDS_DB_NAME:-mlflow}?sslmode=require
+      MLFLOW_ARTIFACTS_DESTINATION: ${MLFLOW_ARTIFACTS_S3_URI:?set MLFLOW_ARTIFACTS_S3_URI=s3://<bucket>/mlflow}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${MLFLOW_CPU_LIMIT:-1}"
+          memory: ${MLFLOW_MEMORY_LIMIT:-2G}
+        reservations:
+          cpus: "0.25"
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

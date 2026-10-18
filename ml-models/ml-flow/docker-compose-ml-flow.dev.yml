@@ -1,0 +1,15 @@
+# ml-models/ml-flow/docker-compose-ml-flow.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make ml-flow-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-ml-flow.base.yml -f docker-compose-ml-flow.dev.yml up -d)
+
+services:
+  ml-flow:
+    environment:
+      ENVIRONMENT: dev
+    restart: "no" # No auto-restart for easier debugging
