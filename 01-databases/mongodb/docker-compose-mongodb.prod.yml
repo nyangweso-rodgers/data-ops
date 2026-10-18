@@ -1,0 +1,30 @@
+# 01-databases/mongodb/docker-compose-mongodb.prod.yml
+# Production override (self-hosted)
+#
+# Prerequisites:
+#   - MONGODB_INITDB_ROOT_PASSWORD set - compose refuses to start without it
+#     (only applied when the data volume is first initialised)
+#   - 27017 is published by base.yml - restrict it at the firewall / security group
+#
+# Usage:
+#   make mongodb-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.prod.yml up -d)
+
+services:
+  mongo-db-community-server:
+    environment:
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD:?}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${MONGODB_CPU_LIMIT:-2}"
+          memory: ${MONGODB_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

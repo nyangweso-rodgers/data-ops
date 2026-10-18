@@ -1,0 +1,46 @@
+# 01-databases/mongodb/docker-compose-mongodb.base.yml
+# Base MongoDB (community server) configuration - shared across all environments
+#
+# Not part of the root docker-compose.yml - run it through its own Makefile.
+#
+# Usage:
+#   Dev:  make mongodb-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.dev.yml up -d)
+#   Prod: make mongodb-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.prod.yml up -d)
+
+services:
+  mongo-db-community-server:
+    image: mongodb/mongodb-community-server:7.0.7-ubi8 # official image - no custom build needed
+    container_name: mongo-db-community-server
+    command: ["mongod", "--bind_ip_all"]
+    ports:
+      - "${MONGODB_HOST_PORT:?see ports.env}:27017"
+    env_file:
+      - ../../.env
+    environment:
+      MONGODB_INITDB_ROOT_USERNAME: ${MONGODB_INITDB_ROOT_USERNAME}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongo-db-community-server-volume:/data/db
+    healthcheck:
+      # ping needs no credentials, so no password ends up in `docker inspect`
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # first start creates the root user, then restarts mongod
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
+
+# ============================================================================
+# Volumes
+# ============================================================================
+volumes:
+  mongo-db-community-server-volume:
+    name: mongo-db-community-server-volume
