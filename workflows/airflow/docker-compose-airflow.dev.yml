@@ -1,0 +1,31 @@
+# workflows/airflow/docker-compose-airflow.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres ($LOCAL_PG_DB_HOST, default "postgres") must be running
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make airflow-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.dev.yml up -d)
+
+x-airflow-dev-env: &airflow-dev-env
+  ENVIRONMENT: dev
+  AIRFLOW__LOGGING__LOGGING_LEVEL: INFO # DEBUG is very noisy in Airflow; switch only when needed
+  AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: "30" # pick up new DAG files quickly
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+  # Local logs/ is kept bounded by the hourly airflow_log_cleanup DAG: files older than
+  # RETENTION_DAYS go, then oldest-first until under 80% of MAX_SIZE_MB
+  AIRFLOW_LOG_MAX_SIZE_MB: ${AIRFLOW_LOG_MAX_SIZE_MB:-1024}
+  AIRFLOW_LOG_RETENTION_DAYS: ${AIRFLOW_LOG_RETENTION_DAYS:-14}
+
+services:
+  airflow-webserver:
+    environment: *airflow-dev-env
+    # Note: Can't use depends_on with health check across compose files
+    restart: "no" # No auto-restart for easier debugging
+
+  airflow-scheduler:
+    environment: *airflow-dev-env
+    restart: "no"

@@ -1,0 +1,11 @@
+# Keep the build context small - only pyproject.toml, dataflow/ and scripts/ are COPY'd;
+# everything else is mounted by docker-compose
+logs/
+dag_generated_configs/
+data/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+dbt/**/target/
+dbt/**/logs/
+.env

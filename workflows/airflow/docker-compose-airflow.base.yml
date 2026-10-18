@@ -1,0 +1,88 @@
+# workflows/airflow/docker-compose-airflow.base.yml
+# Base Airflow configuration - shared across all environments
+#
+# The metadata DB defaults to the local postgres container so this file also
+# works on its own (the root docker-compose.yml extends it). prod.yml overrides
+# the AIRFLOW_DB_* values.
+#
+# Usage:
+#   Dev:  make airflow-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.dev.yml up -d)
+#   Prod: make airflow-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.prod.yml up -d)
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: airflow
+  entrypoint: ["/opt/airflow/scripts/entrypoint.sh"]
+  env_file:
+    - ../../.env
+  environment: &airflow-common-env
+    # Metadata DB - AIRFLOW_DB_* is used by scripts/init.sh (psql), the
+    # connection string by Airflow itself. Override both together.
+    AIRFLOW_DB_HOST: ${LOCAL_PG_DB_HOST:-postgres}
+    AIRFLOW_DB_PORT: ${LOCAL_PG_DB_PORT:-5432}
+    AIRFLOW_DB_USER: ${LOCAL_PG_DB_USER}
+    AIRFLOW_DB_PASSWORD: ${LOCAL_PG_DB_PASSWORD}
+    AIRFLOW_DB_NAME: ${APACHE_AIRFLOW_POSTGRES_DB:-apache_airflow}
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${LOCAL_PG_DB_USER}:${LOCAL_PG_DB_PASSWORD}@${LOCAL_PG_DB_HOST:-postgres}:${LOCAL_PG_DB_PORT:-5432}/${APACHE_AIRFLOW_POSTGRES_DB:-apache_airflow}
+    # Core settings
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.session,airflow.api.auth.backend.basic_auth
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    # Code layout (see Readme): dataflow/ is importable via /opt/airflow
+    PYTHONPATH: /opt/airflow/plugins:/opt/airflow
+    CONFIGS_DIR: /opt/airflow/configs/sync_configs
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./configs:/opt/airflow/configs
+    - ./schemas:/opt/airflow/schemas
+    - ./sql:/opt/airflow/sql
+    - ./dataflow:/opt/airflow/dataflow
+  networks:
+    - data-ops-network
+
+services:
+  # ============================================================================
+  # AIRFLOW WEBSERVER - UI and REST API
+  # ============================================================================
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    command: webserver
+    ports:
+      - "${AIRFLOW_HOST_PORT:?see ports.env}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ============================================================================
+  # AIRFLOW SCHEDULER - Parses DAGs and runs tasks (LocalExecutor)
+  # ============================================================================
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    command: scheduler
+    environment:
+      <<: *airflow-common-env # YAML merge is shallow - re-merge the shared env, then add to it
+      AIRFLOW_INIT_DB: "true" # This service creates/migrates the metadata DB; the webserver waits for it
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true

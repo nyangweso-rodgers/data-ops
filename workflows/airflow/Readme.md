@@ -83,14 +83,9 @@
 
 - **Dependecies**:
   1. `clickhouse_connect`
-     - Install to Airflow Comtainer by:
-       ```sh
-        docker exec -it apache-airflow-webserver pip install clickhouse-connect
-       ```
-     - Or, Update `Dockerfile`
-       ```Dockerfile
-        RUN pip install clickhouse-connect
-       ```
+     - Already installed: it's in the `[airflow]` extra of `pyproject.toml`, which the
+       `Dockerfile` installs with `uv pip install`. To add another package, add it there
+       and rebuild (`make airflow-build`); for local tests run `make -C workflows/airflow lock`.
 - Create a ClickHouse Connection in Apache Airflow UI
   - Access the Airflow Web UI on `http://localhost:8080`
   - Navigate to **Admin** > **Connections** and Create a New Connection by clicking the `+` button
