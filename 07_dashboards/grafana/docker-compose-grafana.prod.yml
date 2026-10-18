@@ -1,0 +1,86 @@
+# 07_dashboards/grafana/docker-compose-grafana.prod.yml
+# Production override
+#
+# Prerequisites:
+#   - GF_SECURITY_ADMIN_PASSWORD set in the env file - compose refuses to start without it
+#   - GRAFANA_ROOT_URL set to the public URL Grafana is served on (behind TLS)
+#   - Postgres exporter target (RDS_*) reachable
+#   - Prometheus/Loki/exporter ports are published by base.yml - restrict them at the
+#     firewall / security group; only Grafana should be reachable from outside
+#
+# Usage:
+#   make grafana-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.prod.yml up -d)
+
+x-grafana-prod-logging: &grafana-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  grafana:
+    environment:
+      ENVIRONMENT: production
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-}
+      GF_LOG_LEVEL: warn
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_COOKIE_SECURE: "true" # requires HTTPS in front of Grafana
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      # Provisioning comes from the image (see Dockerfile) - rebuild to change it.
+      # TODO (optional): move Grafana's own DB from sqlite (grafana-vol) to RDS, e.g.
+      #   GF_DATABASE_TYPE: postgres
+      #   GF_DATABASE_HOST: ${RDS_HOSTNAME}:${RDS_PORT:-5432}
+      #   GF_DATABASE_NAME: ${GRAFANA_RDS_DB_NAME:-grafana}
+      #   GF_DATABASE_USER: ${RDS_USERNAME}
+      #   GF_DATABASE_PASSWORD: ${RDS_PASSWORD}
+      #   GF_DATABASE_SSL_MODE: require
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${GRAFANA_CPU_LIMIT:-1}"
+          memory: ${GRAFANA_MEMORY_LIMIT:-1G}
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    logging: *grafana-prod-logging
+
+  prometheus:
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}"
+    volumes:
+      - ../../monitoring-and-observability/02-prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+    logging: *grafana-prod-logging
+
+  loki:
+    volumes:
+      - ../../monitoring-and-observability/03-loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+    logging: *grafana-prod-logging
+
+  postgres-db-exporter:
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${RDS_USERNAME}:${RDS_PASSWORD}@${RDS_HOSTNAME}:${RDS_PORT:-5432}/postgres?sslmode=require"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    logging: *grafana-prod-logging
