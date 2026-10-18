@@ -1,0 +1,22 @@
+# 10_documentation/docusaurus-site/docker-compose-docusaurus.dev.yml
+# Development override - hot-reload dev server
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make docusaurus-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.dev.yml up -d)
+
+services:
+  docusaurus:
+    environment:
+      NODE_ENV: development
+    command: ["npm", "start", "--", "--host", "0.0.0.0", "--port", "3000"]
+    volumes:
+      # Development: mount the site so edits hot-reload without a rebuild.
+      # The anonymous volume keeps the image's node_modules (Linux binaries)
+      # instead of the host's Windows node_modules.
+      - .:/app
+      - /app/node_modules
+    restart: "no" # No auto-restart for easier debugging

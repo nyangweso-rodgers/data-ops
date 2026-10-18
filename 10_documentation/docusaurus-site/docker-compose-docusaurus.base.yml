@@ -1,0 +1,28 @@
+# 10_documentation/docusaurus-site/docker-compose-docusaurus.base.yml
+# Base Docusaurus documentation site configuration - shared across all environments
+#
+# This file also works on its own (the root docker-compose.yml extends it).
+#
+# Usage:
+#   Dev:  make docusaurus-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.dev.yml up -d)
+#   Prod: make docusaurus-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.prod.yml up -d)
+
+services:
+  docusaurus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: docusaurus
+    container_name: docusaurus
+    ports:
+      - "${DOCUSAURUS_HOST_PORT:?see ports.env}:3000"
+    user: "node" # Run as non-root user for security
+    networks:
+      - data-ops-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true
