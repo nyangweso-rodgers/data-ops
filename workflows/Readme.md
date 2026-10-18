@@ -22,7 +22,7 @@
 
 - Popular orchestration tools include:
   1. Airflow
-     - The `01-apache-airflow/` directory contains a custom `Dockerfile` for setting up airflow and a `dags/` directory to create and schedule the tasks.
+     - The `airflow/` directory contains a custom `Dockerfile` for setting up airflow and a `dags/` directory to create and schedule the tasks.
   2. Prefect
   3. Temporal
   4. Kestra
@@ -34,6 +34,9 @@
   10. Cadence
   11. Kedro
   12. n8n
+  13. Apache NiFi (`nifi/`) - flow-based data routing and transformation
+  14. Airbyte (`airbyte/`) - ELT connectors (source → destination syncs)
+  15. PeerDB (`peerdb/`) - Postgres CDC / replication into warehouses (notes, not yet implemented)
 
 # Comparing Tools
 
