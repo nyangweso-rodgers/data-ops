@@ -54,6 +54,7 @@ __pycache__/
 ## Python virtual environments
 *.pyc
 venv/
+.venv/
 data-ops-venv/
 
 

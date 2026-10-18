@@ -37,7 +37,7 @@ export ROOT_DIR
 include ports.env
 export COMPOSE_ENV_FILES := .env,ports.env
 
-.PHONY: help env-check ports \
+.PHONY: help env-check ports py-sync py-lock py-lint \
 		dagster-local-up-build dagster-local-up dagster-local-stop \
         dagster-local-down dagster-local-logs dagster-local-restart \
         dagster-prod-up dagster-prod-down dagster-prod-logs dagster-build \
@@ -125,6 +125,11 @@ help:
 	@echo "  make postgres-db-exporter-down - Remove Postgres exporter"
 	@echo "  make postgres-db-exporter-logs - View Postgres exporter logs"
 	@echo ""
+	@echo "Python (uv):"
+	@echo "  make py-sync                - Create/update the root .venv (provisioning scripts + dev tools)"
+	@echo "  make py-lock                - Re-resolve uv.lock for the root and every Python project"
+	@echo "  make py-lint                - ruff check the repo (shared config in pyproject.toml)"
+	@echo ""
 	@echo "Ports:"
 	@echo "  make ports                  - List host ports (ports.env) and where they're published;"
 	@echo "                                fails on duplicates, hardcoded/defaulted or unregistered ports"
@@ -139,6 +144,24 @@ help:
 # ──────────────────────────────────────────────────────────────
 ports:
 	@bash scripts/check_ports.sh
+
+# ──────────────────────────────────────────────────────────────
+# Python (uv)
+# Root pyproject.toml = repo tooling + host-side scripts. Each service keeps its own
+# pyproject.toml + uv.lock (separate resolutions - see pyproject.toml header).
+# ──────────────────────────────────────────────────────────────
+PY_PROJECTS := $(AIRFLOW_DIR) $(DAGSTER_DIR) $(PREFECT_DIR) $(ML_FLOW_DIR)
+
+py-sync:
+	@uv sync
+
+py-lock:
+	@uv lock
+	@for d in $(PY_PROJECTS); do echo "→ $$d"; (cd $$d && uv lock) || exit 1; done
+	@echo "✓ all uv.lock files resolved - rebuild affected images to apply"
+
+py-lint:
+	@uv run ruff check .
 
 env-check:
 	@if [ ! -f .env ]; then \
@@ -317,20 +340,20 @@ mysql-%:
 # ──────────────────────────────────────────────────────────────
 metabase-provision:
 	@echo "🔌 Provisioning Metabase database connections..."
-	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" python 07_dashboards/04_metabase/provisioning/provision_metabase.py
+	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" uv run python 07_dashboards/04_metabase/provisioning/provision_metabase.py
 
 metabase-provision-dry-run:
-	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" python 07_dashboards/04_metabase/provisioning/provision_metabase.py --dry-run
+	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" uv run python 07_dashboards/04_metabase/provisioning/provision_metabase.py --dry-run
 
 # ──────────────────────────────────────────────────────────────
 # Redash provisioning (runs from the repo root)
 # ──────────────────────────────────────────────────────────────
 redash-provision:
 	@echo "🔌 Provisioning Redash data sources and dashboards..."
-	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" python 07_dashboards/03_redash/provisioning/provision_redash.py
+	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" uv run python 07_dashboards/03_redash/provisioning/provision_redash.py
 
 redash-provision-dry-run:
-	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" python 07_dashboards/03_redash/provisioning/provision_redash.py --dry-run
+	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" uv run python 07_dashboards/03_redash/provisioning/provision_redash.py --dry-run
 
 # ──────────────────────────────────────────────────────────────
 # Prometheus Commands

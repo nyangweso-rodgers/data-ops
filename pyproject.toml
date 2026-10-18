@@ -1,0 +1,51 @@
+# pyproject.toml (repo root)
+#
+# Repo-level Python environment for the data-ops monorepo - NOT a service and never
+# installed into an image. It holds:
+#   - dependencies of host-side scripts run from the root Makefile
+#     (07_dashboards/*/provisioning/*.py)
+#   - dev tooling shared across the repo (ruff, pytest, pre-commit)
+#   - the base ruff config that each project extends
+#
+# Each service keeps its own pyproject.toml + uv.lock in its folder (workflows/airflow,
+# workflows/dagster, workflows/prefect, ml-models/ml-flow). They are deliberately NOT
+# one uv workspace: Airflow 2.x needs SQLAlchemy<2 while Dagster/Prefect need >=2, so
+# they can't share a single resolution.
+#
+# Usage:  make py-sync   (= uv sync)       make py-lint   (= uv run ruff check .)
+
+[project]
+name = "data-ops"
+version = "0.1.0"
+description = "Repo-level tooling and host-side scripts for the data-ops monorepo"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0", # provisioning scripts (metabase, redash)
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "pytest>=8.0",
+    "pre-commit>=3.6",
+]
+
+[tool.uv]
+package = false # just an environment for scripts + tools, nothing to build/install
+
+# ============================================================================
+# Shared tool config - projects inherit it with `extend = "../../pyproject.toml"`
+# ============================================================================
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle errors
+    "W", # pycodestyle warnings
+    "F", # pyflakes
+    "I", # isort
+    "B", # flake8-bugbear
+]
