@@ -1,4 +1,4 @@
-# 07_dashboards/04_metabase/docker-compose-metabase.prod.yml
+# 07_dashboards/metabase/docker-compose-metabase.prod.yml
 # Production override (application DB on AWS RDS)
 #
 # Prerequisites:

@@ -1,4 +1,4 @@
-# 07_dashboards/04_metabase/Makefile
+# 07_dashboards/metabase/Makefile
 # Metabase commands (the root Makefile delegates metabase-* targets here, e.g. make metabase-dev-up)
 
 # Docker Compose file combinations

@@ -1,4 +1,4 @@
-# 07_dashboards/04_metabase/docker-compose-metabase.base.yml
+# 07_dashboards/metabase/docker-compose-metabase.base.yml
 # Base Metabase configuration - shared across all environments
 #
 # This file also works on its own (the root docker-compose.yml extends it and
