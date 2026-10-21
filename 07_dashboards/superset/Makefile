@@ -1,4 +1,4 @@
-# 07_dashboards/01_superset/Makefile
+# 07_dashboards/superset/Makefile
 # Superset commands (the root Makefile delegates superset-* targets here, e.g. make superset-dev-up)
 
 # Docker Compose file combinations

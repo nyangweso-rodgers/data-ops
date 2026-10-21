@@ -1,4 +1,4 @@
-# 07_dashboards/01_superset/docker-compose-superset.dev.yml
+# 07_dashboards/superset/docker-compose-superset.dev.yml
 # Development override
 #
 # Prerequisites:

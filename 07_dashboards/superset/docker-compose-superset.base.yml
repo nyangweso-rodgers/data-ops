@@ -1,4 +1,4 @@
-# 07_dashboards/01_superset/docker-compose-superset.base.yml
+# 07_dashboards/superset/docker-compose-superset.base.yml
 # Base Apache Superset configuration - shared across all environments
 #
 # superset_config.py, entrypoint.sh and provisioning/ are baked into the image
@@ -17,6 +17,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: superset
     container_name: superset
     ports:
       - "${SUPERSET_HOST_PORT:?see ports.env}:8088"

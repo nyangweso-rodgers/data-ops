@@ -1,4 +1,4 @@
-# 07_dashboards/01_superset/docker-compose-superset.prod.yml
+# 07_dashboards/superset/docker-compose-superset.prod.yml
 # Production override (metadata DB on AWS RDS)
 #
 # Prerequisites:
