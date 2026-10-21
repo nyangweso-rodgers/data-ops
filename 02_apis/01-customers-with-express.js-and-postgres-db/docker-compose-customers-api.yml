@@ -6,7 +6,7 @@ services:
     image: customers-api
     container_name: customers-api
     ports:
-      - "3001:3001"
+      - "${CUSTOMERS_API_HOST_PORT:?see ports.env}:3001"
     env_file:
       #- ../../.env
       - ./02-apis/01-customers-with-express.js-and-postgres-db/.env

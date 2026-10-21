@@ -1,0 +1,37 @@
+# 07_dashboards/superset/docker-compose-superset.prod.yml
+# Production override (metadata DB on AWS RDS)
+#
+# Prerequisites:
+#   - RDS instance reachable, with the Superset database + user created
+#   - RDS_* (and optionally SUPERSET_RDS_DB_NAME) set in the env file
+#   - APACHE_SUPERSET_SECRET_KEY set - compose refuses to start without it
+#
+# Usage:
+#   make superset-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.prod.yml up -d)
+
+services:
+  apache-superset:
+    environment:
+      ENVIRONMENT: production
+      SUPERSET_SECRET_KEY: ${APACHE_SUPERSET_SECRET_KEY:?}
+      # superset_config.py builds SQLALCHEMY_DATABASE_URI from these - point them at RDS
+      # TODO: superset_config.py hardcodes port 5432 and has no sslmode - add ?sslmode=require for RDS
+      LOCAL_POSTGRES_SUPERSET_DB_HOST: ${RDS_HOSTNAME}
+      LOCAL_POSTGRES_SUPERSET_DB_USER: ${RDS_USERNAME}
+      LOCAL_POSTGRES_SUPERSET_DB_PASSWORD: ${RDS_PASSWORD}
+      LOCAL_POSTGRES_SUPERSET_DB_NAME: ${SUPERSET_RDS_DB_NAME:-superset}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${SUPERSET_CPU_LIMIT:-2}"
+          memory: ${SUPERSET_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"

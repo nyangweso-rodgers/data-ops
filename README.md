@@ -16,7 +16,7 @@ This monorepo is my personal open-source project and working lab. I use it to te
 | Layer | Implemented (runs in this repo) | Explored (notes only, for now) |
 | --- | --- | --- |
 | **Databases** | PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch + Kibana, Neo4j, Trino (federated SQL) | — |
-| **Streaming & CDC** | Apache Kafka, Schema Registry, Kafka Connect, Debezium (Postgres CDC) | Redpanda |
+| **Streaming & CDC** | Apache Kafka (KRaft, no ZooKeeper), Schema Registry, Kafka Connect, Debezium (Postgres CDC), kafbat Kafka UI | Redpanda |
 | **Data warehouse** | ClickHouse | — |
 | **Orchestration & data movement** | Apache Airflow, Dagster, Prefect, n8n, Apache NiFi, Airbyte | Temporal, Maestro, PeerDB |
 | **Transformation & compute** | dbt (run from Airflow) | Spark |
@@ -73,7 +73,7 @@ flowchart LR
 
 - **Config-driven pipelines on Airflow** ([`workflows/airflow`](workflows/airflow)) — ingestion, reverse ETL and API syncs defined in YAML and generated into DAGs by a factory, with dbt projects running in their own isolated environment (dbt and Airflow have conflicting dependencies, so they don't share one).
 - **A Dagster asset library** ([`workflows/dagster`](workflows/dagster)) — ingestion into ClickHouse from MySQL, Postgres, MongoDB and S3, plus exports to BigQuery, Redshift, S3 and more, deployable to AWS (ECS run launcher, S3 compute logs).
-- **Change data capture** ([`03_messaging_services/kafka`](03_messaging_services/kafka)) — Debezium and Kafka Connect streaming Postgres changes through Kafka with Schema Registry (JSON / Avro).
+- **Change data capture** ([`03_streaming/kafka`](03_streaming/kafka)) — Debezium and Kafka Connect streaming Postgres changes through Kafka with Schema Registry (JSON / Avro).
 - **BI tools compared on the same data** ([`07_dashboards`](07_dashboards)) — Superset, Metabase, Redash and Grafana side by side. Database connections and dashboards are provisioned from code rather than clicked together, and Metabase query caching is tuned to cut warehouse cost.
 - **Local AI** ([`ai/open-webui`](ai/open-webui), [`ml-models`](ml-models)) — local LLMs via Ollama + Open WebUI, MLflow experiment tracking, an OCR pipeline and a model served as an API.
 
@@ -91,7 +91,7 @@ Design decisions and the open TODO list for each service live in [`docs/architec
 
 ## Take any service and deploy it on its own
 
-Living in a monorepo doesn't tie a service to the rest of it. Each stack folder (`workflows/dagster`, `07_dashboards/04_metabase`, `01-databases/01-postgres`, …) is a self-contained deployable unit: its own compose files, Makefile, Dockerfile (if any) and, for Python services, `pyproject.toml` + `uv.lock`. Its `docker-compose-<stack>.prod.yml` is a real production config: metadata databases on AWS RDS, artifacts on S3, required secrets, restart policies, resource limits and log rotation. So an extracted service doesn't need the rest of this repo running next to it.
+Living in a monorepo doesn't tie a service to the rest of it. Each stack folder (`workflows/dagster`, `07_dashboards/metabase`, `01-databases/01-postgres`, …) is a self-contained deployable unit: its own compose files, Makefile, Dockerfile (if any) and, for Python services, `pyproject.toml` + `uv.lock`. Its `docker-compose-<stack>.prod.yml` is a real production config: metadata databases on AWS RDS, artifacts on S3, required secrets, restart policies, resource limits and log rotation. So an extracted service doesn't need the rest of this repo running next to it.
 
 To lift one out, e.g. Dagster:
 
@@ -133,7 +133,7 @@ Each stack can run on its own; start the databases a stack depends on first (not
 ```
 01-databases/            Postgres, MySQL, MongoDB, Redis, Elasticsearch, Neo4j, Trino
 02_apis/                 Express.js and Flask APIs
-03_messaging_services/   Kafka, Schema Registry, Kafka Connect, Debezium
+03_streaming/            Kafka, Schema Registry, Kafka Connect, Debezium
 05_data_processing/      Transformation & compute: dbt, Spark (notes)
 06_data_warehouse/       ClickHouse
 07_dashboards/           Superset, Metabase, Redash, Grafana stack, Taipy, Svelte + FastAPI

@@ -1,0 +1,72 @@
+# 03_streaming/kafka/docker-compose-kafka.prod.yml
+# Production override (single self-hosted broker)
+#
+# Prerequisites:
+#   - KAFKA_ADVERTISED_HOST set to the hostname/IP external clients use to reach the
+#     broker - compose refuses to start without it
+#   - Broker/registry/connect ports are published by base.yml - restrict them at the
+#     firewall / security group
+#
+# kafka-ui is disabled in prod (profile "tools"). To start it anyway:
+#   docker-compose ... --profile tools up -d kafka-ui
+#
+# Usage:
+#   make kafka-prod-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.prod.yml up -d)
+
+x-kafka-prod-logging: &kafka-prod-logging
+  driver: "json-file"
+  options:
+    max-size: "100m"
+    max-file: "10"
+
+services:
+  kafka:
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://${KAFKA_ADVERTISED_HOST:?set KAFKA_ADVERTISED_HOST}:${KAFKA_HOST_PORT:?see ports.env}
+      KAFKA_JMX_HOSTNAME: ${KAFKA_ADVERTISED_HOST:?set KAFKA_ADVERTISED_HOST}
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false" # create topics explicitly in production
+      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS:-168}
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "${KAFKA_CPU_LIMIT:-2}"
+          memory: ${KAFKA_MEMORY_LIMIT:-4G}
+        reservations:
+          cpus: "1"
+          memory: 2G
+    logging: *kafka-prod-logging
+
+  kafka-ui:
+    profiles: ["tools"] # not started by default in production
+    restart: "no"
+
+  kafka-schema-registry:
+    environment:
+      SCHEMA_REGISTRY_DEBUG: "false"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+    logging: *kafka-prod-logging
+
+  cp-kafka-connect:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 3G
+    logging: *kafka-prod-logging
+
+  debezium-connect:
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 3G
+    logging: *kafka-prod-logging

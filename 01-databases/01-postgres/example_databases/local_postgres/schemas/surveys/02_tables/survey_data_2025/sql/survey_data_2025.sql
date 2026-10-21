@@ -9,7 +9,8 @@ survey_data_2025_cte as (
 agg_survey_data_2025_cte as (
 	select distinct branch_attended,
 	participant_type,
-	count(*) as record_count
+	count(*) as record_count,
+	max(_sync_at) as max_sync_at
 	from survey_data_2025_cte
 	group by 1,2
 	order by 1,2

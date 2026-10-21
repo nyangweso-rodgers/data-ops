@@ -1,0 +1,28 @@
+# 03_streaming/kafka/docker-compose-kafka.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres running (01-databases/) if you use cp-kafka-connect / debezium-connect
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make kafka-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.dev.yml up -d)
+
+services:
+  kafka:
+    restart: "no" # No auto-restart for easier debugging
+
+  kafka-ui:
+    restart: "no"
+
+  kafka-schema-registry:
+    environment:
+      SCHEMA_REGISTRY_DEBUG: "true"
+    restart: "no"
+
+  cp-kafka-connect:
+    restart: "no"
+
+  debezium-connect:
+    restart: "no"

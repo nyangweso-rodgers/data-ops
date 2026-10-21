@@ -1,2 +1,2 @@
 DELETE FROM dagster.kvs
-WHERE id = 59;
+WHERE id = 60;

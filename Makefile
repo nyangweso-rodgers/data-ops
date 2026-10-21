@@ -4,11 +4,11 @@
 DAGSTER_DIR := workflows/dagster
 AIRFLOW_DIR := workflows/airflow
 GRAFANA_DIR := 07_dashboards/grafana
-METABASE_DIR := 07_dashboards/04_metabase
-REDASH_DIR := 07_dashboards/03_redash
-SUPERSET_DIR := 07_dashboards/01_superset
+METABASE_DIR := 07_dashboards/metabase
+REDASH_DIR := 07_dashboards/redash
+SUPERSET_DIR := 07_dashboards/superset
 CLICKHOUSE_DIR := 06_data_warehouse/clickhouse
-KAFKA_DIR := 03_messaging_services/kafka
+KAFKA_DIR := 03_streaming/kafka
 AMUNDSEN_DIR := metadata/amundsen
 N8N_DIR := workflows/n8n
 PREFECT_DIR := workflows/prefect
@@ -262,8 +262,8 @@ airflow-clean:
 # ──────────────────────────────────────────────────────────────
 # Each stack has its own Makefile + docker-compose-<stack>.{base,dev,prod}.yml.
 # `make <stack>-<target>` runs `<target>` in that stack's Makefile, e.g.
-#   make superset-dev-up   -> make -C 07_dashboards/01_superset dev-up
-#   make kafka-prod-logs   -> make -C 03_messaging_services/kafka prod-logs
+#   make superset-dev-up   -> make -C 07_dashboards/superset dev-up
+#   make kafka-prod-logs   -> make -C 03_streaming/kafka prod-logs
 # Explicit root targets (e.g. metabase-provision) take precedence over these rules.
 # (Pattern rules must NOT be listed in .PHONY, or make skips them.)
 metabase-%:
@@ -340,20 +340,20 @@ mysql-%:
 # ──────────────────────────────────────────────────────────────
 metabase-provision:
 	@echo "🔌 Provisioning Metabase database connections..."
-	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" uv run python 07_dashboards/04_metabase/provisioning/provision_metabase.py
+	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" uv run python 07_dashboards/metabase/provisioning/provision_metabase.py
 
 metabase-provision-dry-run:
-	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" uv run python 07_dashboards/04_metabase/provisioning/provision_metabase.py --dry-run
+	@METABASE_URL="$${METABASE_URL:-http://localhost:$(METABASE_HOST_PORT)}" uv run python 07_dashboards/metabase/provisioning/provision_metabase.py --dry-run
 
 # ──────────────────────────────────────────────────────────────
 # Redash provisioning (runs from the repo root)
 # ──────────────────────────────────────────────────────────────
 redash-provision:
 	@echo "🔌 Provisioning Redash data sources and dashboards..."
-	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" uv run python 07_dashboards/03_redash/provisioning/provision_redash.py
+	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" uv run python 07_dashboards/redash/provisioning/provision_redash.py
 
 redash-provision-dry-run:
-	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" uv run python 07_dashboards/03_redash/provisioning/provision_redash.py --dry-run
+	@REDASH_URL="$${REDASH_URL:-http://localhost:$(REDASH_HOST_PORT)}" uv run python 07_dashboards/redash/provisioning/provision_redash.py --dry-run
 
 # ──────────────────────────────────────────────────────────────
 # Prometheus Commands

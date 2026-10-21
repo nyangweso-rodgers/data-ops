@@ -20,6 +20,7 @@
 - **Makefiles:** `make <stack>-<target>` in the root delegates to `<stack-dir>/Makefile` (`dev-up`, `dev-up-build`, `dev-logs`, `prod-up`, ... ; `make <stack>-help` lists all).
 - **Ports:** every host port is defined once, in the committed root `ports.env` (`<SERVICE>_HOST_PORT`, values unique). Compose maps `"${<SERVICE>_HOST_PORT:?see ports.env}:<container port>"` with no default, so a missing entry fails fast; the container port is set by the image and stays literal. Makefiles pass `--env-file .env --env-file ports.env` (registry wins) and `include` it for URLs; the root Makefile exports `COMPOSE_ENV_FILES=.env,ports.env` (for plain `docker-compose` by hand, export it in your shell). `make ports` fails on duplicates, hardcoded or defaulted host ports, and unregistered/unused entries.
 - **Python (uv):** each Python service has its own `pyproject.toml` + `uv.lock` in its folder (airflow, dagster, prefect, ml-flow) and its image installs from that lock. They are deliberately separate resolutions, not one workspace: Airflow 2.x needs SQLAlchemy<2 while Dagster/Prefect need >=2. The root `pyproject.toml` is only for repo tooling (ruff, pytest, pre-commit), host-side scripts (provisioning) and the shared ruff config that projects `extend`. Airflow's image is the exception: Airflow's own pins come from the base image (`apache-airflow==$AIRFLOW_VERSION`); its `uv.lock` covers the `dataflow` package for local tests. `make py-sync` / `py-lock` / `py-lint` at the root; `make -C <project> lock` / `sync` per project.
+- **Names:** every service sets `container_name`, and every service with `build:` also sets `image:` (named after the container). Otherwise Compose generates `<project>-<service>-1` container names and `<project>-<service>` image names.
 - **Network:** every container joins the external `data-ops-network` and is reachable by container name.
 - **Volumes:** named volumes use a pinned `name:` so root and stack-level runs share data.
 - **Prod-only tooling** (admin UIs) is disabled in prod with `profiles: ["tools"]`.
@@ -38,7 +39,7 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 | elasticsearch | `01-databases/elasticsearch` | elasticsearch 9.2, kibana | `elasticsearch_data` | – | self-hosted | ✓ |
 | neo4j | `01-databases/neo4j` | neo4j 4.4 | `neo4j_data` | – | self-hosted | ✓ |
 | trino | `01-databases/trino` | trino 477 | `etc/catalog` | postgres | self-hosted | ✓ |
-| kafka | `03_messaging_services/kafka` | zookeeper, kafka, schema-registry, cp-kafka-connect, debezium-connect, kafka-ui + debezium-ui (tools) | `kafka-data`, `kafka-zookeeper-data` | postgres (connectors) | self-hosted | partial¹ |
+| kafka | `03_streaming/kafka` ([architecture](../03_streaming/kafka/docs/architecture.md)) | kafka (KRaft, no ZooKeeper), schema-registry, cp-kafka-connect, debezium-connect, kafka-ui (tools; also manages both Connect clusters) | `kafka-data` | postgres (connectors) | self-hosted | ✓ |
 | clickhouse | `06_data_warehouse/clickhouse` | clickhouse-server 24.8, tabix (tools) | `clickhouse-server-data` | – | self-hosted | ✓ |
 | airflow | `workflows/airflow` | webserver, scheduler (LocalExecutor) | metadata DB | postgres | RDS + S3 task logs | ✓ |
 | dagster | `workflows/dagster` | gRPC server, webserver, daemon | metadata DB | postgres | RDS | ✓ |
@@ -46,9 +47,9 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 | n8n | `workflows/n8n` | n8n | `n8n-data` + DB | postgres | RDS | ✓ |
 | nifi | `workflows/nifi` | nifi 2.3 | `nifi-vol`, `nifi-flows` | – | self-hosted | – |
 | airbyte | `workflows/airbyte` | temporal, server, webapp, worker | DB | postgres | – (see AB1) | – |
-| superset | `07_dashboards/01_superset` | superset | `superset-volume` + DB | postgres, redis (db 1) | RDS | ✓ |
-| redash | `07_dashboards/03_redash` | server, scheduler, worker | DB | postgres, redis (db 2) | RDS | ✓ |
-| metabase | `07_dashboards/04_metabase` | metabase 0.61 | DB | postgres | RDS | ✓ |
+| superset | `07_dashboards/superset` | superset | `superset-volume` + DB | postgres, redis (db 1) | RDS | ✓ |
+| redash | `07_dashboards/redash` | server, scheduler, worker | DB | postgres, redis (db 2) | RDS | ✓ |
+| metabase | `07_dashboards/metabase` | metabase 0.61 | DB | postgres | RDS | ✓ |
 | grafana | `07_dashboards/grafana` | grafana, prometheus, loki, postgres-db-exporter | `grafana-vol`, `prometheus-vol`, `loki-vol` | postgres (exporter) | self-hosted, exporter → RDS | ✓ |
 | amundsen | `metadata/amundsen` | frontend, search, metadata | – | neo4j, elasticsearch | self-hosted | ✓ |
 | open-metadata | `metadata/open-metadata` | migrate job, server 1.6.7 | DB | mysql, elasticsearch | self-hosted | ✓ |
@@ -56,7 +57,6 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 | open-webui | `ai/open-webui` | open-webui, ollama | `./data`, `ollama-data` + DB | postgres | RDS | ✓ |
 | docusaurus | `10_documentation/docusaurus-site` | docusaurus (dev server / static serve) | – | – | static build | ✓ |
 
-¹ Root includes zookeeper, kafka and kafka-ui only.
 
 **Notes**
 
@@ -78,7 +78,7 @@ IDs are referenced from comments in the compose files.
 - **X3** Ports published in base can't be removed in prod overrides on older compose. Restrict at the firewall / security group, or require compose ≥ 2.24 and use `ports: !reset []`.
 - **X4** `.env` has `REDIS_HOST=localhost` (for host-side scripts). Containers must keep using `redis`; consider a separate `REDIS_CONTAINER_HOST`.
 - **X5** Superset, Redash and Prefect use the shared redis container in prod. Move to a managed redis (ElastiCache).
-- **X6** Pin unpinned images: `prom/prometheus`, `prometheuscommunity/postgres-exporter`, `provectuslabs/kafka-ui`, `debezium/connect`, `debezium/debezium-ui`, `spoonest/clickhouse-tabix-web-client`, `ghcr.io/open-webui/open-webui:main`.
+- **X6** Pin unpinned images: `prom/prometheus`, `prometheuscommunity/postgres-exporter`, `spoonest/clickhouse-tabix-web-client`, `ghcr.io/open-webui/open-webui:main`.
 - **X7** Convert taipy, customers-api and the ML model services (their host ports are already in `ports.env`). Two of them don't validate standalone: customers-api `depends_on` an undefined `postgres`, and ocr-pipeline's `env_file: ../.env` resolves to `ml-models/.env`, which doesn't exist.
 - **X8** Rename dagster's `dagster-local-*` targets to `dagster-dev-*`.
 - **X12** Host-side scripts still hardcode host ports: `ml-models/ml-flow/app/test.py` (5005), `metadata/amundsen/test/test_search_service.py` (5003), `ml-models/01_diabetes_predictor/test/test.py` (8000), `07_dashboards/svelte-fastapi-dashboard/frontend` (8000, a non-Docker service). Read them from the environment / `ports.env` instead.
@@ -107,13 +107,8 @@ IDs are referenced from comments in the compose files.
 ### Messaging & warehouse
 
 **kafka**
-- **K2** debezium-ui maps `${DEBEZIUM_UI_HOST_PORT}:8082`, but the app listens on 8080 inside the container. Change the container side to 8080.
-- **K3** debezium-ui `KAFKA_CONNECT_URIS` points at `debezium:8084`; the container is `debezium-connect`.
-- **K4** Replication factor 2 (`KAFKA_DEFAULT_REPLICATION_FACTOR`, debezium storage topics) on a single broker. Set to 1.
-- **K5** cp-kafka-connect mounts `./cp-kafka-connect/plugins/bigquery-keyfile.json`, which doesn't exist (the connector lives in `01-connectors/01-cp-kafka-connect/`). Keep the keyfile out of git.
-- **K6** cp-kafka-connect `CONNECT_ZOOKEEPER_CONNECT: zookeeper:2181`. Should be `kafka-zookeeper`, or remove it.
-- **K7** Connect converters point at `schema-registry:8081`. Should be `kafka-schema-registry`.
-- **K8** Connect/debezium need postgres but aren't in the root compose. Add them there with `depends_on: postgres` if used.
+- **K9** The Debezium Avro connector (`02-postgresdb-avro-for-customers.json`) uses Confluent's `AvroConverter`, which the Debezium image doesn't ship; registering it fails with a class-not-found error. Either use the JSON connector, switch to Apicurio (`ENABLE_APICURIO_CONVERTERS=true`, built into the image), or extend the image with the Confluent Avro converter jars.
+- **K10** Replace the BigQuery sink (plugin installed in the cp-kafka-connect `Dockerfile`, configs in `connectors/cp-kafka-connect/configs/sink/bigquery/`) with a ClickHouse sink (configs under `configs/sink/clickhouse/<database>/`) (e.g. `clickhouse/clickhouse-kafka-connect` from Confluent Hub) - there's no BigQuery access to test against.
 
 **clickhouse**
 - No service-specific TODOs (see X3 for published ports).

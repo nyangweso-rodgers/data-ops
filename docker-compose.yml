@@ -34,7 +34,7 @@ services:
   # ============================================================================
   metabase:
     extends:
-      file: 07_dashboards/04_metabase/docker-compose-metabase.base.yml
+      file: 07_dashboards/metabase/docker-compose-metabase.base.yml
       service: metabase
     depends_on: *needs-postgres
 
@@ -43,7 +43,7 @@ services:
   # ============================================================================
   apache-superset:
     extends:
-      file: 07_dashboards/01_superset/docker-compose-superset.base.yml
+      file: 07_dashboards/superset/docker-compose-superset.base.yml
       service: apache-superset
     depends_on: *needs-postgres-redis
 
@@ -52,19 +52,19 @@ services:
   # ============================================================================
   redash-server:
     extends:
-      file: 07_dashboards/03_redash/docker-compose-redash.base.yml
+      file: 07_dashboards/redash/docker-compose-redash.base.yml
       service: redash-server
     depends_on: *needs-postgres-redis
 
   redash-scheduler:
     extends:
-      file: 07_dashboards/03_redash/docker-compose-redash.base.yml
+      file: 07_dashboards/redash/docker-compose-redash.base.yml
       service: redash-scheduler
     depends_on: *needs-postgres-redis
 
   redash-worker:
     extends:
-      file: 07_dashboards/03_redash/docker-compose-redash.base.yml
+      file: 07_dashboards/redash/docker-compose-redash.base.yml
       service: redash-worker
     depends_on: *needs-postgres-redis
 
@@ -108,20 +108,33 @@ services:
   # ============================================================================
   # Kafka Services
   # ============================================================================
-  kafka-zookeeper:
-    extends:
-      file: 03_messaging_services/kafka/docker-compose-kafka.base.yml
-      service: kafka-zookeeper
-
   kafka:
     extends:
-      file: 03_messaging_services/kafka/docker-compose-kafka.base.yml
+      file: 03_streaming/kafka/docker-compose-kafka.base.yml
       service: kafka
 
   kafka-ui:
     extends:
-      file: 03_messaging_services/kafka/docker-compose-kafka.base.yml
+      file: 03_streaming/kafka/docker-compose-kafka.base.yml
       service: kafka-ui
+
+  kafka-schema-registry:
+    extends:
+      file: 03_streaming/kafka/docker-compose-kafka.base.yml
+      service: kafka-schema-registry
+
+  # Both Connect clusters read from / write to Postgres (JDBC source, Debezium CDC)
+  cp-kafka-connect:
+    extends:
+      file: 03_streaming/kafka/docker-compose-kafka.base.yml
+      service: cp-kafka-connect
+    depends_on: *needs-postgres
+
+  debezium-connect:
+    extends:
+      file: 03_streaming/kafka/docker-compose-kafka.base.yml
+      service: debezium-connect
+    depends_on: *needs-postgres
 
   # ============================================================================
   # Airflow Services
@@ -360,9 +373,6 @@ volumes:
     external: true
 
   # Messaging Volumes
-  kafka-zookeeper-data:
-    external: true
-
   kafka-data:
     external: true
 

@@ -1,0 +1,17 @@
+# 07_dashboards/metabase/docker-compose-metabase.dev.yml
+# Development override
+#
+# Prerequisites:
+#   - Postgres ($LOCAL_POSTGRES_METABASE_DB_HOST) running with the metabase DB created
+#   - Network must exist: docker network create data-ops-network
+#
+# Usage:
+#   make metabase-dev-up
+#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.dev.yml up -d)
+
+services:
+  metabase:
+    environment:
+      ENVIRONMENT: dev
+    # Note: Can't use depends_on across compose files
+    restart: "no" # No auto-restart for easier debugging
