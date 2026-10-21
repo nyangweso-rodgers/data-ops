@@ -1,4 +1,4 @@
-# 07_dashboards/03_redash/docker-compose-redash.dev.yml
+# 07_dashboards/redash/docker-compose-redash.dev.yml
 # Development override
 #
 # Prerequisites:

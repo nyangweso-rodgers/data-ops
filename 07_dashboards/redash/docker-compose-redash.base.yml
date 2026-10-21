@@ -1,8 +1,8 @@
-# 07_dashboards/03_redash/docker-compose-redash.base.yml
+# 07_dashboards/redash/docker-compose-redash.base.yml
 # Base Redash configuration - shared across all environments
 #
 # Uses the shared postgres/redis services from the root stack instead of spinning
-# up dedicated ones (mirrors the pattern used by 01_superset and 04_metabase).
+# up dedicated ones (mirrors the pattern used by superset and metabase).
 #   - Postgres: dedicated `local_redash` database (created via
 #     01-databases/01-postgres/init-scripts/init-redash-db.sql). Redash does NOT
 #     create the database itself, and unlike Superset/Metabase it also does not

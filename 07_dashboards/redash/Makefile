@@ -1,4 +1,4 @@
-# 07_dashboards/03_redash/Makefile
+# 07_dashboards/redash/Makefile
 # Redash commands (the root Makefile delegates redash-* targets here, e.g. make redash-dev-up)
 
 # Docker Compose file combinations

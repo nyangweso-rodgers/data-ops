@@ -1,4 +1,4 @@
-# 07_dashboards/03_redash/docker-compose-redash.prod.yml
+# 07_dashboards/redash/docker-compose-redash.prod.yml
 # Production override (metadata DB on AWS RDS)
 #
 # Prerequisites:

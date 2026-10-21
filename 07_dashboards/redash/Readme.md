@@ -32,9 +32,9 @@ Runs as three services (**server**, **scheduler**, **worker**) sharing the stack
 # Provisioning
 
 Declarative, re-runnable provisioning of Redash **data sources** and
-**dashboards** via its REST API — mirrors `../04_metabase/provisioning`
+**dashboards** via its REST API — mirrors `../metabase/provisioning`
 (runtime API calls against the running container) rather than
-`../01_superset/provisioning` (baked into the image at build time), since
+`../superset/provisioning` (baked into the image at build time), since
 Redash here runs the stock `redash/redash` image with no custom Dockerfile.
 
 | Path | Purpose |
@@ -53,7 +53,7 @@ make redash-provision-dry-run    # preview data-source changes, secrets redacted
 
 ## Dashboards
 
-Three dashboards port the KPIs from `../01_superset/provisioning/dashboards/sales_overview.yml`
+Three dashboards port the KPIs from `../superset/provisioning/dashboards/sales_overview.yml`
 (same `marts.mart_accounts`-backed `sales_report_cte`: latest snapshot per
 account, excluding refunds) onto Redash's query/visualization/widget model —
 Sales, Selling Agents, and Agent Productivity counters (Today/This Week/This
