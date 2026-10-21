@@ -1,4 +1,4 @@
-# 03_messaging_services/kafka/Makefile
+# 03_streaming/kafka/Makefile
 # Kafka commands (the root Makefile delegates kafka-* targets here, e.g. make kafka-dev-up)
 
 # Docker Compose file combinations
@@ -16,7 +16,7 @@ include ../../ports.env
 URL := localhost:$(KAFKA_HOST_PORT) (UI: http://localhost:$(KAFKA_UI_HOST_PORT))
 
 .PHONY: help dev-up-build dev-up dev-stop dev-down dev-logs dev-restart \
-        prod-up prod-down prod-logs build dev-topics
+        prod-up prod-down prod-logs build dev-topics connectors-apply
 
 # Default target
 help:
@@ -38,6 +38,9 @@ help:
 	@echo "Other:"
 	@echo "  make build          - Rebuild images (no cache)"
 	@echo "  make dev-topics     - List topics"
+	@echo "  make connectors-apply [CLUSTER=cp-kafka-connect|debezium-connect] [DIRECTION=source|sink|cdc]"
+	@echo "                        [SYSTEM=postgres|...] [DATABASE=...] [FORMAT=json|avro|protobuf] [DRY_RUN=1]"
+	@echo "                      - Create/update connectors from connectors/<cluster>/configs/<direction>/<system>/<database>/"
 
 # ──────────────────────────────────────────────────────────────
 # Development
@@ -90,3 +93,14 @@ build:
 # ──────────────────────────────────────────────────────────────
 dev-topics:
 	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) exec kafka kafka-topics --bootstrap-server kafka:29092 --list
+
+# PUT each connectors/<cluster>/configs/<direction>/<system>/<database>/<table>-<format>.json
+# to its Connect cluster (creates or updates - safe to re-run).
+# Filters: CLUSTER, DIRECTION, SYSTEM, DATABASE, FORMAT; DRY_RUN=1 only validates.
+connectors-apply:
+	@uv run --no-project python scripts/apply_connectors.py \
+		--cluster cp-kafka-connect=http://localhost:$(KAFKA_CONNECT_HOST_PORT) \
+		--cluster debezium-connect=http://localhost:$(DEBEZIUM_CONNECT_HOST_PORT) \
+		$(if $(CLUSTER),--only $(CLUSTER)) $(if $(DIRECTION),--direction $(DIRECTION)) \
+		$(if $(SYSTEM),--system $(SYSTEM)) $(if $(DATABASE),--database $(DATABASE)) \
+		$(if $(FORMAT),--format $(FORMAT)) $(if $(DRY_RUN),--dry-run)

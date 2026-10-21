@@ -1,4 +1,4 @@
-# 03_messaging_services/kafka/docker-compose-kafka.dev.yml
+# 03_streaming/kafka/docker-compose-kafka.dev.yml
 # Development override
 #
 # Prerequisites:
@@ -10,11 +10,8 @@
 #   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.dev.yml up -d)
 
 services:
-  kafka-zookeeper:
-    restart: "no" # No auto-restart for easier debugging
-
   kafka:
-    restart: "no"
+    restart: "no" # No auto-restart for easier debugging
 
   kafka-ui:
     restart: "no"
@@ -28,7 +25,4 @@ services:
     restart: "no"
 
   debezium-connect:
-    restart: "no"
-
-  debezium-ui:
     restart: "no"

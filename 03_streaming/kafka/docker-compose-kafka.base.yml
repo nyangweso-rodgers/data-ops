@@ -1,6 +1,7 @@
-# 03_messaging_services/kafka/docker-compose-kafka.base.yml
+# 03_streaming/kafka/docker-compose-kafka.base.yml
 # Base Kafka configuration - shared across all environments
-# (zookeeper, broker, kafka-ui, schema registry, cp-kafka-connect, debezium connect + UI)
+# (KRaft broker - no ZooKeeper, schema registry, kafka-ui, cp-kafka-connect, debezium connect)
+# Architecture: docs/architecture.md
 #
 # This file also works on its own (the root docker-compose.yml extends it).
 #
@@ -9,36 +10,13 @@
 #   Prod: make kafka-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.prod.yml up -d)
 
 services:
-  ################################ 1 Kafka Zookeeper ############################################
-  kafka-zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
-    container_name: kafka-zookeeper
-    ports:
-      - "${KAFKA_ZOOKEEPER_HOST_PORT:?see ports.env}:2181"
-    environment:
-      #ALLOW_ANONYMOUS_LOGIN: yes
-      ZOOKEEPER_SERVER_ID: 1
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - kafka-zookeeper-data:/var/lib/zookeeper/data
-    healthcheck:
-      test: echo srvr | nc kafka-zookeeper 2181 || exit 1
-      #test: curl -s localhost:2181 || exit 1 # using curl to query the Zookeeper server status:
-      start_period: 10s
-      retries: 20
-      interval: 10s
-    networks:
-      - data-ops-network
-
-  ################################ 2 Apache Kafka ############################################
+  ################################ 1 Apache Kafka (KRaft) ############################################
   #
+  # Single node in combined mode: the broker is also its own KRaft controller, so there
+  # is no ZooKeeper (Kafka 4.0 removed ZooKeeper support entirely).
   kafka:
     image: confluentinc/cp-kafka:7.6.1 # official image - no custom build needed
     container_name: kafka
-    depends_on:
-      kafka-zookeeper:
-        condition: service_healthy
     ports:
       # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
       # An important note about accessing Kafka from clients on other machines:
@@ -61,9 +39,16 @@ services:
       - "${KAFKA_HOST_PORT:?see ports.env}:9092"
       #- "9101:9101"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
-      KAFKA_DEFAULT_REPLICATION_FACTOR: "2"
+      # --- KRaft ---------------------------------------------------------------
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093 # <node id>@<host>:<CONTROLLER port>
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Formats the log dir on first start. Fixed so the cluster keeps its identity across
+      # recreates; a new ID needs a fresh kafka-data volume.
+      CLUSTER_ID: 078qCeQ1QKSd6Ce9evEXbw
+      # ---------------------------------------------------------------------------
+      KAFKA_DEFAULT_REPLICATION_FACTOR: "1" # single broker - raise only with more brokers
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       # An important note about KAFKA_LISTENERS and KAFKA_ADVERTISED_LISTENERS
@@ -75,9 +60,11 @@ services:
 
       #KAFKA_LISTENERS: PLAINTEXT://kafka:29092, PLAINTEXT_HOST://0.0.0.0:9092
       #KAFKA_LISTENERS: PLAINTEXT://kafka:29092, PLAINTEXT_HOST://localhost:${KAFKA_HOST_PORT:?see ports.env} # must equal the published host port
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      # PLAINTEXT = inside the docker network, PLAINTEXT_HOST = from the host,
+      # CONTROLLER = KRaft quorum traffic (not advertised to clients, not published)
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
 
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT, PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
       #KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
 
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
@@ -100,7 +87,6 @@ services:
       #KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       #KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
       CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: kafka:29092
-      CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT: kafka-zookeeper:2181
       CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: 1
       CONFLUENT_METRICS_ENABLE: "true"
       CONFLUENT_SUPPORT_CUSTOMER_ID: "anonymous"
@@ -118,7 +104,9 @@ services:
   ################################ 3 Kafka UI ############################################
   #
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    # kafbat = the maintained continuation of provectuslabs/kafka-ui (abandoned since 2024),
+    # same KAFKA_CLUSTERS_* config. Releases: https://github.com/kafbat/kafka-ui/releases
+    image: ghcr.io/kafbat/kafka-ui:v1.5.0
     container_name: kafka-ui
     ports:
       - "${KAFKA_UI_HOST_PORT:?see ports.env}:8080"
@@ -129,7 +117,11 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_SCHEMA_REGISTRY: http://kafka-schema-registry:8081
-      KAFKA_CLUSTERS_0_ZOOKEEPER: kafka-zookeeper:2181
+      # Connector management for both Connect clusters (replaces the discontinued debezium-ui)
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: cp-kafka-connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://cp-kafka-connect:8083
+      KAFKA_CLUSTERS_0_KAFKACONNECT_1_NAME: debezium-connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_1_ADDRESS: http://debezium-connect:8083
     #volumes:
     #- ~/kui/config.yml:/etc/kafkaui/dynamic_config.yaml
     networks:
@@ -143,13 +135,10 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-      kafka-zookeeper:
-        condition: service_started
     ports:
       - "${KAFKA_SCHEMA_REGISTRY_HOST_PORT:?see ports.env}:8081"
     environment:
       SCHEMA_REGISTRY_HOST_NAME: kafka-schema-registry
-      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: kafka-zookeeper:2181
 
       #SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9101
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
@@ -173,7 +162,8 @@ services:
   #
   cp-kafka-connect: #https://hub.docker.com/r/confluentinc/cp-kafka-connect/tags
     #image: confluentinc/cp-kafka-connect:7.7.0
-    build: ./01-connectors/01-cp-kafka-connect
+    build: ./connectors/cp-kafka-connect
+    image: cp-kafka-connect
     container_name: cp-kafka-connect
     ports:
       - "${KAFKA_CONNECT_HOST_PORT:?see ports.env}:8083"
@@ -181,7 +171,6 @@ services:
     depends_on:
       - kafka
       - kafka-schema-registry
-      - kafka-zookeeper
     environment:
       # About CONNECT_BOOTSTRAP_SERVERS
       # -------------------------------
@@ -204,27 +193,33 @@ services:
       #CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
       CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       #CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8085"
-      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: "http://kafka-schema-registry:8081"
       #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "true"
 
       ########## Value Converters ##########
       #CONNECT_VALUE_CONVERTER: "io.confluent.connect.avro.AvroConverter"
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: "http://kafka-schema-registry:8081"
       #CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "true"
 
       CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
 
-      CONNECT_ZOOKEEPER_CONNECT: zookeeper:2181
+      ########## Secrets for connector configs ##########
+      # Connector JSON references ${env:PG_SOURCE_USER} / ${env:PG_SOURCE_PASSWORD}; the
+      # worker resolves them from its own environment, so no credentials live in git.
+      # (Not CONNECT_-prefixed on purpose - the image turns CONNECT_* into worker settings.)
+      CONNECT_CONFIG_PROVIDERS: env
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: org.apache.kafka.common.config.provider.EnvVarConfigProvider
+      PG_SOURCE_USER: ${LOCAL_USERS_PG_DB_USER}
+      PG_SOURCE_PASSWORD: ${LOCAL_USERS_PG_DB_PASSWORD}
 
       ########## SSL Configurations ##########
       ########## Additional Configurations ##########
       ########## Metric Reporter Configurations ##########
-    volumes:
-      - ./cp-kafka-connect/plugins/bigquery-keyfile.json:/etc/plugins/bigquery-keyfile.json
+    #volumes:
       #- ./cp-kafka-connect/connectors:/usr/share/confluent-hub-components
       #- ./cp-kafka-connect/config:/etc/kafka-connect
       #- ./cp-kafka-connect/postgresql-42.2.23.jar:/usr/share/java/postgresql-42.2.23.jar
@@ -272,7 +267,9 @@ services:
   ################################ 3.5 Debezium Connect ############################################
   #
   debezium-connect:
-    image: debezium/connect:latest #https://hub.docker.com/r/debezium/connect
+    # Debezium publishes on quay.io (Docker Hub stopped at 3.0.0, Oct 2024).
+    # Releases: https://debezium.io/releases/ - bump to 3.7.x once it has a patch release
+    image: quay.io/debezium/connect:3.6.3.Final
     container_name: debezium-connect
     hostname: debezium-connect
     # Note: Can't use depends_on across compose files - start postgres (01-databases/) first
@@ -280,16 +277,17 @@ services:
       kafka:
         condition: service_healthy
     ports:
-      - "${DEBEZIUM_CONNECT_HOST_PORT:?see ports.env}:8084"
+      - "${DEBEZIUM_CONNECT_HOST_PORT:?see ports.env}:8083" # Connect REST API (image default REST_PORT=8083)
     environment:
       GROUP_ID: 1
       CONFIG_STORAGE_TOPIC: debezium-connect-config-storage
       STATUS_STORAGE_TOPIC: debezium-connect-status-storage
       OFFSET_STORAGE_TOPIC: debezium-connect-offset-storage
       BOOTSTRAP_SERVERS: kafka:29092
-      CONFIG_STORAGE_REPLICATION_FACTOR: 2
-      OFFSET_STORAGE_REPLICATION_FACTOR: 2
-      STATUS_STORAGE_REPLICATION_FACTOR: 2
+      # 1 = number of brokers in this stack (a higher factor can't be satisfied)
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
       #CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       #CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
@@ -302,8 +300,12 @@ services:
       #VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
       #CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema_registry:8081
       ENABLE_DEBEZIUM_SCRIPTING: "true"
+      # Secrets for connector configs (see cp-kafka-connect above)
+      CONNECT_CONFIG_PROVIDERS: env
+      CONNECT_CONFIG_PROVIDERS_ENV_CLASS: org.apache.kafka.common.config.provider.EnvVarConfigProvider
+      PG_SOURCE_USER: ${LOCAL_USERS_PG_DB_USER}
+      PG_SOURCE_PASSWORD: ${LOCAL_USERS_PG_DB_PASSWORD}
       PLUGIN_PATH: /kafka/connect/plugins #added as part of the sink connector configuration
-      GOOGLE_APPLICATION_CREDENTIALS: /etc/debezium/bigquery-keyfile.json # Specify the path inside the container
       #KAFKA_CONNECT_PLUGINS_DIR: /kafka/connect
     healthcheck:
       test:
@@ -314,7 +316,7 @@ services:
           "--fail",
           "-X",
           "GET",
-          "http://localhost:8084/connectors",
+          "http://localhost:8083/connectors",
         ]
       start_period: 10s
       interval: 10s
@@ -325,22 +327,8 @@ services:
     networks:
       - data-ops-network
 
-  ################################ 3.5 Debezium UI ############################################
-  #
-  debezium-ui:
-    image: debezium/debezium-ui:latest
-    container_name: debezium-ui
-    hostname: debezium-ui
-    depends_on:
-      debezium-connect:
-        condition: service_healthy
-    ports:
-      #- "8082:8080"
-      - "${DEBEZIUM_UI_HOST_PORT:?see ports.env}:8082"
-    environment:
-      KAFKA_CONNECT_URIS: http://debezium:8084
-    networks:
-      - data-ops-network
+  # Debezium UI was discontinued upstream (last image Dec 2023, Debezium 2.x only).
+  # Connectors on debezium-connect are managed from kafka-ui instead (KAFKACONNECT_1).
 
 # ============================================================================
 # Networks
@@ -353,7 +341,5 @@ networks:
 # Volumes
 # ============================================================================
 volumes:
-  kafka-zookeeper-data:
-    name: kafka-zookeeper-data
   kafka-data:
     name: kafka-data

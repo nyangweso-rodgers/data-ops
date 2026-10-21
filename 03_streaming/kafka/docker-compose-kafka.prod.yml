@@ -1,4 +1,4 @@
-# 03_messaging_services/kafka/docker-compose-kafka.prod.yml
+# 03_streaming/kafka/docker-compose-kafka.prod.yml
 # Production override (single self-hosted broker)
 #
 # Prerequisites:
@@ -7,8 +7,8 @@
 #   - Broker/registry/connect ports are published by base.yml - restrict them at the
 #     firewall / security group
 #
-# kafka-ui and debezium-ui are disabled in prod (profile "tools"). To start them anyway:
-#   docker-compose ... --profile tools up -d kafka-ui debezium-ui
+# kafka-ui is disabled in prod (profile "tools"). To start it anyway:
+#   docker-compose ... --profile tools up -d kafka-ui
 #
 # Usage:
 #   make kafka-prod-up
@@ -21,15 +21,6 @@ x-kafka-prod-logging: &kafka-prod-logging
     max-file: "10"
 
 services:
-  kafka-zookeeper:
-    restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1G
-    logging: *kafka-prod-logging
-
   kafka:
     environment:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://${KAFKA_ADVERTISED_HOST:?set KAFKA_ADVERTISED_HOST}:${KAFKA_HOST_PORT:?see ports.env}
@@ -79,7 +70,3 @@ services:
           cpus: "2"
           memory: 3G
     logging: *kafka-prod-logging
-
-  debezium-ui:
-    profiles: ["tools"]
-    restart: "no"
