@@ -424,7 +424,55 @@ class SchemaLoader:
         )
         
         return schema
-    
+
+    def get_schema_from_path(self, schema_path: str) -> TableSchema:
+        """
+        Get schema from an explicit path - loads on first request, caches for subsequent calls
+
+        Args:
+            schema_path: Path relative to schemas_dir, e.g. "mysql/amtdb/accounts.yml"
+
+        Returns:
+            TableSchema
+
+        Raises:
+            SchemaNotFoundError: If schema file doesn't exist
+            SchemaValidationError: If schema is invalid
+        """
+        key = f"path:{Path(schema_path).as_posix()}"
+
+        # Check cache first (thread-safe)
+        if self.enable_cache:
+            with self._cache_lock:
+                if key in self._schemas_cache:
+                    self.logger.debug("schema_loaded_from_cache", key=key)
+                    return self._schemas_cache[key]
+
+        file_path = self.schemas_dir / schema_path
+
+        with log_execution_time(
+            self.logger,
+            "schema_loading",
+            schema_path=schema_path,
+            file_path=str(file_path)
+        ):
+            schema = self._load_and_validate_schema(file_path, key)
+
+        # Cache if enabled
+        if self.enable_cache:
+            with self._cache_lock:
+                self._schemas_cache[key] = schema
+
+        self.logger.info(
+            "schema_loaded",
+            key=key,
+            columns=len(schema.columns),
+            has_incremental_key=schema.incremental_key is not None,
+            source_cached=False
+        )
+
+        return schema
+
     def get_schema_with_type_mapping(
         self,
         source_type: str,
