@@ -1,6 +1,6 @@
-// Builds the portal's Postgres connection URL from the repo-root .env.
-// Shared by the app (src/app/lib/prisma.js) and the Prisma CLI wrapper
-// (scripts/prisma.mjs), so both always hit the same database and schema.
+// Builds the portal's Postgres connection URL from WEB_APPS_POSTGRES_* (repo-root .env locally, project env vars on Vercel).
+// Shared by the app (src/app/lib/prisma.js) and prisma.config.mjs (Prisma CLI),
+// so both always hit the same database and schema.
 import dotenv from "dotenv";
 import path from "path";
 
@@ -9,30 +9,30 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), "../../../.env") });
 
 // Postgres schema (namespace) that holds this app's tables, inside
-// LOCAL_POSTGRES_TEST_DB_NAME. Prisma creates it on `db push` / `migrate`.
+// WEB_APPS_POSTGRES_DB. Prisma creates it on `db push` / `migrate`.
 export const POSTGRES_SCHEMA = "web_portal";
 
 const REQUIRED = [
-  "LOCAL_POSTGRES_DB_HOST",
-  "LOCAL_POSTGRES_DB_USER",
-  "LOCAL_POSTGRES_DB_PASSWORD",
-  "LOCAL_POSTGRES_TEST_DB_NAME",
+  "WEB_APPS_POSTGRES_HOST",
+  "WEB_APPS_POSTGRES_USER",
+  "WEB_APPS_POSTGRES_PASSWORD",
+  "WEB_APPS_POSTGRES_DB",
 ];
 
 export function missingPostgresVars() {
   return REQUIRED.filter((key) => !process.env[key]);
 }
 
-export function buildPostgresUrl() {
+// withSchema: append ?schema=<POSTGRES_SCHEMA> for the Prisma CLI (migrate).
+// The app passes the schema to the pg driver adapter instead (see prisma.js).
+export function buildPostgresUrl({ withSchema = false } = {}) {
   if (missingPostgresVars().length) return undefined;
-  const user = encodeURIComponent(process.env.LOCAL_POSTGRES_DB_USER);
-  const password = encodeURIComponent(process.env.LOCAL_POSTGRES_DB_PASSWORD);
-  // LOCAL_POSTGRES_DB_HOST is the Docker service name ("postgres"), shared with
-  // containerised tools like Dagster. When the portal runs on the host, set
-  // WEB_PORTAL_POSTGRES_HOST=localhost to reach the published port instead.
-  const host =
-    process.env.WEB_PORTAL_POSTGRES_HOST || process.env.LOCAL_POSTGRES_DB_HOST;
-  const port = process.env.LOCAL_POSTGRES_DB_PORT || "5432";
-  const db = process.env.LOCAL_POSTGRES_TEST_DB_NAME;
-  return `postgresql://${user}:${password}@${host}:${port}/${db}?schema=${POSTGRES_SCHEMA}`;
+  const user = encodeURIComponent(process.env.WEB_APPS_POSTGRES_USER);
+  const password = encodeURIComponent(process.env.WEB_APPS_POSTGRES_PASSWORD);
+  // localhost in data-ops/.env (host-run); docker-compose sets "postgres".
+  const host = process.env.WEB_APPS_POSTGRES_HOST;
+  const port = process.env.WEB_APPS_POSTGRES_PORT || "5432";
+  const db = process.env.WEB_APPS_POSTGRES_DB;
+  const url = `postgresql://${user}:${password}@${host}:${port}/${db}`;
+  return withSchema ? `${url}?schema=${POSTGRES_SCHEMA}` : url;
 }

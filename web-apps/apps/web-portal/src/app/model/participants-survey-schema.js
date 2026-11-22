@@ -85,9 +85,11 @@ participantsSurveySchema.pre("save", function (next) {
   next();
 });
 
-const ParticipatsSurveyModel = model(
-  "participants_survey",
-  participantsSurveySchema
-);
+// Reuse the model if this module is evaluated again (Next.js can load it once per
+// server bundle, and dev hot reload re-runs it); registering twice throws
+// OverwriteModelError.
+const ParticipatsSurveyModel =
+  mongoose.models.participants_survey ??
+  model("participants_survey", participantsSurveySchema);
 
 export default ParticipatsSurveyModel;

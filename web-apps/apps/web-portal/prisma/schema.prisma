@@ -1,15 +1,13 @@
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
   output   = "../src/generated/prisma"
 }
 
-// At runtime the app builds the URL from LOCAL_POSTGRES_DB_* in src/app/lib/prisma.js
-// (passed as datasourceUrl, which overrides this). This env var is only read by the
-// Prisma CLI (migrate / db push / studio), so it only needs setting when you run those.
+// Connection: prisma.config.mjs (CLI / migrations) and src/app/lib/prisma.js
+// (app, via the pg driver adapter) - both built from WEB_APPS_POSTGRES_*.
 datasource db {
   provider = "postgresql"
-  url      = env("LOCAL_POSTGRES_TEST_DATABASE_URL")
 }
 enum Status {
   TRUE

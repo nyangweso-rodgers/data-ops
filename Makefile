@@ -25,6 +25,7 @@ ML_FLOW_DIR := ml-models/ml-flow
 OPEN_WEBUI_DIR := ai/open-webui
 POSTGRES_DIR := 01-databases/01-postgres
 MYSQL_DIR := 01-databases/mysql
+WEB_APPS_DIR := web-apps
 ROOT_DIR := $(shell pwd)
 
 # Export ROOT_DIR so nested Makefiles can use it
@@ -82,6 +83,23 @@ help:
 	@echo "  make airflow-prod-logs      - View production logs"
 	@echo "  make airflow-build          - Rebuild the Airflow image (no cache)"
 	@echo "  make airflow-clean          - Remove dev containers and volumes"
+	@echo ""
+	@echo "Web apps (Next.js in web-apps/apps/, Docker runs the production image;"
+	@echo "hot-reload dev runs natively: cd web-apps && pnpm dev:portal):"
+	@echo "  Per app - <app> = web-portal (:$(WEB_PORTAL_HOST_PORT)), survey-app (:$(SURVEY_APP_HOST_PORT)), web-portal-starter (:$(WEB_PORTAL_STARTER_HOST_PORT)), data-portal (:$(DATA_PORTAL_HOST_PORT)):"
+	@echo "  make <app>-dev-up           - Build if changed and start"
+	@echo "  make <app>-dev-up-build     - Rebuild image (no cache) and start"
+	@echo "  make <app>-dev-stop         - Stop"
+	@echo "  make <app>-dev-down         - Stop and remove the container"
+	@echo "  make <app>-dev-logs         - Follow logs"
+	@echo "  make <app>-dev-restart      - Recreate the container"
+	@echo "  make <app>-dev-shell        - Shell in the container"
+	@echo "  make <app>-prod-up          - Start production"
+	@echo "  make <app>-prod-down        - Stop and remove production container"
+	@echo "  make <app>-prod-logs        - Follow production logs"
+	@echo "  make <app>-build            - Rebuild image (no cache)"
+	@echo "  All apps at once: make web-apps-dev-up | web-apps-dev-down | web-apps-dev-logs | web-apps-prod-up | ..."
+	@echo "  e.g. make web-portal-dev-up   /   make survey-app-dev-logs"
 	@echo ""
 	@echo "Stacks (dev/prod/base convention):"
 	@echo "  metabase, redash, superset, grafana, clickhouse, kafka, amundsen, n8n, prefect,"
@@ -333,6 +351,24 @@ postgres-%:
 
 mysql-%:
 	@$(MAKE) -C $(MYSQL_DIR) $*
+
+# Next.js apps: per-app targets (make web-portal-dev-up, make data-portal-dev-up) + all-apps (make web-apps-dev-up).
+# GNU make picks the pattern with the shortest stem, so web-portal-starter-dev-up
+# matches web-portal-starter-% (stem "dev-up"), not web-portal-% (stem "starter-dev-up").
+web-apps-%:
+	@$(MAKE) -C $(WEB_APPS_DIR) $*
+
+web-portal-%:
+	@$(MAKE) -C $(WEB_APPS_DIR) web-portal-$*
+
+web-portal-starter-%:
+	@$(MAKE) -C $(WEB_APPS_DIR) web-portal-starter-$*
+
+survey-app-%:
+	@$(MAKE) -C $(WEB_APPS_DIR) survey-app-$*
+
+data-portal-%:
+	@$(MAKE) -C $(WEB_APPS_DIR) data-portal-$*
 
 # ──────────────────────────────────────────────────────────────
 # MetaBase provisioning (runs from the repo root)

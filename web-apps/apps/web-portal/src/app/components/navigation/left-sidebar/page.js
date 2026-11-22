@@ -24,11 +24,6 @@ const LeftSidebarPage = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/marketing/forms/delegates-survey">
-                    Deligates Survey
-                  </Link>
-                </li>
-                <li>
                   <Link href="/marketing/forms/participants-survey">
                     Participants Survey
                   </Link>
@@ -37,18 +32,18 @@ const LeftSidebarPage = () => {
                   <span>Reports</span>
                   <ul>
                     <li>
-                      <Link href="/marketing-reports/view-registered-delegates">
+                      <Link href="/marketing/reports/view-registered-delegates">
                         View Registered Delegates
                       </Link>
                     </li>
                     <li>
-                      <Link href="/marketing-reports/view-delegates-survey">
+                      <Link href="/marketing/reports/view-delegates-survey">
                         View Delegates Survey
                       </Link>
                     </li>
                     <li>
-                      <Link href="/marketing-reports/view-participants-survey">
-                        View Participant's Survey
+                      <Link href="/marketing/reports/view-participants-survey">
+                        View Participant&apos;s Survey
                       </Link>
                     </li>
                   </ul>

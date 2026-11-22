@@ -17,9 +17,9 @@ const connectToMongoDB = async () => {
   if (mongoose.connection.readyState === 0) cache.promise = null;
 
   // Checked here (not at import) so `next build` doesn't need the variable.
-  const uri = process.env.LOCAL_MONGODB_URI;
+  const uri = process.env.WEB_APPS_MONGODB_URI;
   if (!uri) {
-    throw new Error("LOCAL_MONGODB_URI is not set (see data-ops/.env)");
+    throw new Error("WEB_APPS_MONGODB_URI is not set (see data-ops/.env)");
   }
 
   if (!cache.promise) {

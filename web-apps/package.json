@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
+    "dev:data-portal": "pnpm --filter data-portal dev",
     "dev:portal": "pnpm --filter web-portal dev",
     "dev:portal-starter": "pnpm --filter web-portal-starter dev",
     "dev:survey": "pnpm --filter survey-app dev",

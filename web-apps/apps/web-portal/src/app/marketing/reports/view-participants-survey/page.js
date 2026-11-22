@@ -17,7 +17,7 @@ export default async function ParticipantsSurveyReportPage() {
       <section className={`${pageStyles.section}`}>
         <div className={`container`}>
           <div className={`row ${pageStyles.row}`}>
-            <div>Participant's Survey Report</div>
+            <div>Participant&apos;s Survey Report</div>
           </div>
           {/* Return a Table */}
           <div className={`row ${pageStyles.row}`}>
