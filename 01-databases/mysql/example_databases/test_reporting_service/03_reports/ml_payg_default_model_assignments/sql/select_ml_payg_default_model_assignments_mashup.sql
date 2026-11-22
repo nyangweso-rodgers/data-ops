@@ -1,9 +1,13 @@
 with
 ml_payg_default_model_assignments_cte as (
-	SELECT id, predictionId, accountId, accountRef, customerId, score_month, scored_at, ruleset_version, recommended_officer, 
+	SELECT id, 
+	predictionId, 
+	accountId, accountRef, customerId, score_month, scored_at, 
+	#ruleset_version, 
+	recommended_officer, 
 	recommended_function, assignment_recommendation, assigned_to, assigned_function, assignment_status, is_current, totalArrearsAmount, totalOutstandingBalance, totalPaidAmount, totalLoanAmount, outstanding_balance, daysLate, 
-	assignment_start, assignment_end, 
-	createdAt, updatedAt
+	assignment_start, assignment_end
+	#createdAt, updatedAt
 	#createdBy, updatedBy
 	FROM test_reporting_service.ml_payg_default_model_assignments
 	),
@@ -17,22 +21,39 @@ ml_payg_default_model_predictions_cte as (
 ml_payg_default_model_assignments_mashup_cte as (
 	select ml_payg_default_model_assignments_cte.*,
 	accountStatus,
-	country
+	funnel_status,
+	productName,
+	country,region,county, subcounty, town, latitude, longitude
 	from ml_payg_default_model_assignments_cte
-	left join ml_payg_default_model_predictions_cte on ml_payg_default_model_predictions_cte.accountId = ml_payg_default_model_assignments_cte.accountId
+	left join ml_payg_default_model_predictions_cte on ml_payg_default_model_predictions_cte.id = ml_payg_default_model_assignments_cte.predictionId
 	),
 agg_assignments_cte as (
 	select distinct country,
 	assigned_function,
-	accountStatus,
+	#accountStatus,
+	assigned_to,
 	count(distinct accountId) as account_id_count
 	from ml_payg_default_model_assignments_mashup_cte
 	where country = 'kenya'
 	group by 1 ,2,3
 	order by 1,2,3 desc
+	),
+check_duplicates_cte as (
+	select distinct accountId,
+	country,
+	count(*) as record_count
+	from ml_payg_default_model_assignments_mashup_cte
+	group by 1,2
+	having record_count > 1
 	)
 select *
 #count(*)
-#from ml_payg_default_model_assignments_mashup_cte
-from agg_assignments_cte
-limit 100
+#from ml_payg_default_model_assignments_cte
+from ml_payg_default_model_assignments_mashup_cte
+#from agg_assignments_cte
+#from check_duplicates_cte
+where assigned_function not in ('No Further Action - Exited', 'No Further Action - Pending Installation', 'No Further Action - Written Off')
+and country = 'kenya'
+and score_month = '2026_08'
+#and accountId = '113890'
+#limit 100

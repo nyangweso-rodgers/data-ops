@@ -36,11 +36,12 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 MYSQL_DB_CONFIGS = {
     "type": "mysql",
+    # "host": os.getenv("LOCAL_MYSQL_DB_HOST", "localhost"),
     "host": "localhost",
     "database": "test",
-    "username": os.getenv(""),
+    "username": os.getenv("LOCAL_MYSQL_DB_USERNAME"),
     "password": os.getenv("LOCAL_MYSQL_DB_PASSWORD"),
-    "port": int(os.getenv("LOCAL_MYSQL_DB_PORT", "3306")),
+    "port": int(os.getenv("MYSQL_DB_PORT", "3306")),
 }
 
 # Source: adjust table/query to match your actual MySQL source.
@@ -149,6 +150,34 @@ FIELD_MAPPING = {
     },
     "snapshot_date": {
         "ch_type": "DateTime",
+        "nullable": False,
+    },
+    "first_expected_date": {
+        "ch_type": "Date",
+        "nullable": True,
+    },
+    "is_fpd_amount": {
+        "ch_type": "Int32",
+        "nullable": True,
+    },
+    "fpd_amount_days_late": {
+        "ch_type": "Int32",
+        "nullable": True,
+    },
+    "next_expected_date": {
+        "ch_type": "Date",
+        "nullable": True,
+    },
+    "next_payment_sequence": {
+        "ch_type": "Int32",
+        "nullable": True,
+    },
+    "current_expected_date": {
+        "ch_type": "Date",
+        "nullable": True,
+    },
+    "batch_id": {
+        "ch_type": "String",
         "nullable": False,
     },
     "assigned_function": {

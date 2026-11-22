@@ -24,13 +24,14 @@ agg_results_cte as (
 select *
 #count(*), count(distinct accountId) 
 #distinct score_month, scored_at, assignment_start
-#from payg_interventions_cte
-from validation_cte
+from payg_interventions_cte
+#from validation_cte
 #from payg_interventions_cte where accountId in (select distinct accountId from validation_cte ORDER  BY accountId, scored_at)
 #from agg_results_cte
 #where accountRef = '24996097'
 #where accountRef = '0044536'
 #where accountRef = '22102646'
+where assigned_to = 'unassigned'
 #order by accountRef, 
 #order by score_month, scored_at
-limit 100
+limit 100	

@@ -1,0 +1,12 @@
+{
+  "name": "web-apps",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:portal": "pnpm --filter web-portal dev",
+    "dev:portal-starter": "pnpm --filter web-portal-starter dev",
+    "dev:survey": "pnpm --filter survey-app dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+.next/
+# per-app Prisma clients (regenerated on install)
+**/src/generated/prisma/
