@@ -2,6 +2,12 @@
 
 ## Table Of Contents
 
+1. [Layout](#layout)
+2. [Databases](#databases)
+3. [Getting started (local, without Docker)](#getting-started-local-without-docker)
+4. [Docker (self-hosting)](#docker-self-hosting)
+5. [Vercel](#vercel)
+
 # Layout
 
 How it fits together (dependencies, image, configuration, deployment): [docs/architecture.md](docs/architecture.md).
@@ -32,14 +38,7 @@ web-apps/
 | `apps/data-portal` | 3013 `DATA_PORTAL_HOST_PORT` | none yet (backend = route handlers in `src/app/api/`) |
 
 The same port is used by `pnpm dev` (in each app's `package.json`) and by Docker, so only one of the two runs at a time.
-
-```sh
-corepack enable                                # once, makes `pnpm` available (pinned via packageManager)
-pnpm install                                   # from web-apps/, installs every app
-pnpm dev:portal                                # or: pnpm --filter <app> dev
-pnpm --filter survey-app add zod              # add a dep to one app
-pnpm -r lint                                   # ESLint 9 on every app (next build no longer lints)
-```
+Commands for installing, building and running: [Getting started](#getting-started-local-without-docker).
 
 - New app: `pnpm create next-app apps/<name>` — anything under `apps/` (or `packages/`) joins the workspace automatically.
 - Apps that read the repo-root `data-ops/.env` load it as `../../../.env` relative to the app folder; update that if an app moves.
@@ -66,7 +65,81 @@ Prisma 7 reads the connection from each app's `prisma.config.mjs`, which builds 
 settings above (`db:migrate` also runs `prisma generate`, which Prisma 7 no longer does on its own).
 Don't use `prisma db push` any more - it changes the database without recording a migration.
 
-Requires Node.js 20.19+, 22.12+ or 24+ (the repo uses 24 LTS, also in the Docker image).
+# Getting started (local, without Docker)
+
+Build and run the apps directly on your machine - the fastest loop, with hot reload in `dev`.
+Use **pnpm**, not npm: this is a pnpm workspace and dependencies are managed from `web-apps/`.
+
+## One-time setup
+
+- **Node.js** 20.19+, 22.12+ or 24+ (the repo uses 24 LTS, also in the Docker image).
+- **pnpm**, at the version pinned in `package.json` (`packageManager`):
+
+  ```sh
+  corepack enable                # Node includes corepack; provides the pinned pnpm
+  # if that fails with a permissions error (it writes to the Node install folder):
+  npm install -g pnpm@9.15.0
+  ```
+
+- **Install** every app's dependencies, once and after pulling changes to any `package.json` or the lockfile:
+
+  ```sh
+  cd web-apps
+  pnpm install                   # also generates the Prisma clients
+  ```
+
+## From `web-apps/`, naming the app
+
+`--filter` takes the app's package name, which is the same as its folder name in `apps/`:
+
+```sh
+cd web-apps
+
+pnpm --filter web-portal build      # build one app
+pnpm --filter web-portal start      # run that build (production mode) on its port
+pnpm --filter web-portal dev        # hot-reload dev server
+pnpm --filter web-portal lint
+
+pnpm -r build                       # build every app
+pnpm -r lint                        # lint every app (next build no longer lints)
+```
+
+Shortcuts in `web-apps/package.json`:
+
+```sh
+pnpm dev:portal          # web-portal         -> http://localhost:3010
+pnpm dev:survey          # survey-app         -> http://localhost:3011
+pnpm dev:portal-starter  # web-portal-starter -> http://localhost:3012
+pnpm dev:data-portal     # data-portal        -> http://localhost:3013
+```
+
+## Or from the app's own folder
+
+```sh
+cd web-apps/apps/web-portal
+pnpm build
+pnpm start
+```
+
+`npm run build` also works there, because `npm run` only executes the script and the
+dependencies are already installed. **Never run `npm install` inside an app folder**: it
+creates a separate `package-lock.json` and its own `node_modules` copy, which undoes the
+shared setup. Add packages with pnpm instead:
+
+```sh
+pnpm --filter survey-app add zod         # runtime dependency of one app
+pnpm --filter survey-app add -D vitest   # dev dependency
+```
+
+## Good to know
+
+- **`build` needs no database** - data pages render per request, so it works with the databases stopped.
+- **`start` / `dev` need the databases** for data pages: apps read `data-ops/.env` (`WEB_APPS_POSTGRES_*`
+  -> `localhost`), so run Postgres and MongoDB (e.g. `make mongodb-dev-up` from `data-ops/`). See [Databases](#databases).
+- **Ports are shared with Docker** (3010-3013): stop an app's container before running it locally,
+  e.g. `make web-portal-dev-down`.
+- **Schema changes:** `pnpm --filter <app> db:migrate --name <change>` (see [Databases](#databases)).
+- **On Windows** `next build` produces a normal build, not `standalone` (that's only for the Docker image).
 
 # Docker (self-hosting)
 
