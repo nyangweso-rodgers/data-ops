@@ -56,6 +56,7 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 | ml-flow | `ml-models/ml-flow` | mlflow server | `./data` (sqlite + artifacts) | – | RDS + S3 | ✓ |
 | open-webui | `ai/open-webui` | open-webui, ollama | `./data`, `ollama-data` + DB | postgres | RDS | ✓ |
 | docusaurus | `10_documentation/docusaurus-site` | docusaurus (dev server / static serve) | – | – | static build | ✓ |
+| web-apps | `web-apps` ([architecture](../web-apps/docs/architecture.md)) | web-portal, survey-app, web-portal-starter, data-portal (Next.js) | – (data in postgres / mongodb) | postgres, mongodb | Vercel, or self-hosted image | – |
 
 
 **Notes**
@@ -69,7 +70,7 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 
 ## Pending TODOs
 
-IDs are referenced from comments in the compose files.
+IDs are referenced from comments in the compose files. Stacks with their own architecture doc track their TODOs there: web-apps (`WA*`) in [web-apps/docs/architecture.md](../web-apps/docs/architecture.md#open-items).
 
 ### Cross-cutting
 

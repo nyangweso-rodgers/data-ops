@@ -1,0 +1,49 @@
+# web-apps/docker-compose-web-apps.prod.yml
+# Production override (self-hosted). Vercel deploys don't use these files.
+# Runs the images CI built and pushed (.github/workflows/web-apps-images.yml);
+# nothing is built on the server.
+#
+# Prerequisites:
+#   - WEB_APPS_POSTGRES_* and MONGODB_INITDB_ROOT_* set in ../.env (prod values)
+#   - WEB_APPS_IMAGE_TAG: the image tag to run - sha-<7-char commit> (pinned,
+#     recommended) or latest (newest main). Set in ../.env or per command:
+#       make web-apps-prod-up WEB_APPS_IMAGE_TAG=sha-1a2b3c4
+#   - Registry login if the GHCR packages are private:
+#       echo <token with read:packages> | docker login ghcr.io -u <github-user> --password-stdin
+#   - Host ports are published by base.yml - put a reverse proxy / TLS in front
+#
+# Usage:
+#   make web-portal-prod-up WEB_APPS_IMAGE_TAG=sha-1a2b3c4   # one app (pull + up)
+#   make web-apps-prod-up   WEB_APPS_IMAGE_TAG=sha-1a2b3c4   # all apps
+#   Roll back: the same command with the previous tag.
+
+x-prod: &prod
+  pull_policy: missing # `make *-prod-up` pulls explicitly first
+  restart: unless-stopped
+  deploy:
+    resources:
+      limits:
+        cpus: "${WEB_APPS_CPU_LIMIT:-1}"
+        memory: ${WEB_APPS_MEMORY_LIMIT:-512M}
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+services:
+  web-portal:
+    <<: *prod
+    image: ${WEB_APPS_IMAGE_REGISTRY:-ghcr.io/nyangweso-rodgers/data-ops}/web-portal:${WEB_APPS_IMAGE_TAG:?set WEB_APPS_IMAGE_TAG (e.g. sha-1a2b3c4 or latest)}
+
+  survey-app:
+    <<: *prod
+    image: ${WEB_APPS_IMAGE_REGISTRY:-ghcr.io/nyangweso-rodgers/data-ops}/survey-app:${WEB_APPS_IMAGE_TAG:?set WEB_APPS_IMAGE_TAG (e.g. sha-1a2b3c4 or latest)}
+
+  web-portal-starter:
+    <<: *prod
+    image: ${WEB_APPS_IMAGE_REGISTRY:-ghcr.io/nyangweso-rodgers/data-ops}/web-portal-starter:${WEB_APPS_IMAGE_TAG:?set WEB_APPS_IMAGE_TAG (e.g. sha-1a2b3c4 or latest)}
+
+  data-portal:
+    <<: *prod
+    image: ${WEB_APPS_IMAGE_REGISTRY:-ghcr.io/nyangweso-rodgers/data-ops}/data-portal:${WEB_APPS_IMAGE_TAG:?set WEB_APPS_IMAGE_TAG (e.g. sha-1a2b3c4 or latest)}

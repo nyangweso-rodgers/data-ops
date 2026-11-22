@@ -1,0 +1,47 @@
+# web-apps/docker-compose-web-apps.dev.yml
+# Development override: builds the production image locally from the workspace
+# Dockerfile and runs it on data-ops-network, to test it next to the data stack.
+# No hot reload - for that, run natively: pnpm dev:portal (bind-mounted Next.js
+# dev on Windows is slow).
+#
+# Usage:
+#   make web-portal-dev-up      # one app (also survey-app-, web-portal-starter-)
+#   make web-apps-dev-up        # all apps
+#   (= docker-compose --env-file ../.env --env-file ../ports.env -f docker-compose-web-apps.base.yml -f docker-compose-web-apps.dev.yml up -d --build)
+
+# Local build of one app: <<: *build, plus args.APP and a local image name
+x-build: &build
+  context: .
+
+services:
+  web-portal:
+    build:
+      <<: *build
+      args:
+        APP: web-portal
+    image: data-ops/web-portal:local
+    restart: "no" # No auto-restart for easier debugging
+
+  survey-app:
+    build:
+      <<: *build
+      args:
+        APP: survey-app
+    image: data-ops/survey-app:local
+    restart: "no"
+
+  web-portal-starter:
+    build:
+      <<: *build
+      args:
+        APP: web-portal-starter
+    image: data-ops/web-portal-starter:local
+    restart: "no"
+
+  data-portal:
+    build:
+      <<: *build
+      args:
+        APP: data-portal
+    image: data-ops/data-portal:local
+    restart: "no"

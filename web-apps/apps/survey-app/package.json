@@ -1,0 +1,31 @@
+{
+  "name": "survey-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "prestart": "npx prisma generate",
+    "postinstall": "prisma generate",
+    "dev": "next dev -p 3011",
+    "build": "next build",
+    "start": "next start -p 3011",
+    "lint": "eslint .",
+    "prisma": "prisma",
+    "db:migrate": "prisma migrate dev && prisma generate",
+    "db:deploy": "prisma migrate deploy",
+    "db:status": "prisma migrate status"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "bootstrap": "^5.3.3",
+    "dotenv": "^16.4.5",
+    "next": "16.4.6",
+    "prisma": "^7.10.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.4.6"
+  }
+}

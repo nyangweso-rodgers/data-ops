@@ -1,0 +1,81 @@
+# web-apps/docker-compose-web-apps.base.yml
+# Base config for the Next.js apps in apps/ - shared across all environments.
+# Where the image comes from is per environment: dev.yml builds it locally from the
+# workspace Dockerfile; prod.yml pulls the image CI pushed to the registry.
+#
+# Prerequisites:
+#   - Network must exist: docker network create data-ops-network
+#   - postgres (01-databases/01-postgres) and mongodb (01-databases/mongodb) running
+#     for the pages that read data; the apps start without them.
+#
+# Usage:
+#   Dev:  make web-apps-dev-up   (= docker-compose --env-file ../.env --env-file ../ports.env -f docker-compose-web-apps.base.yml -f docker-compose-web-apps.dev.yml up -d --build)
+#   Prod: make web-apps-prod-up WEB_APPS_IMAGE_TAG=sha-<commit>   (pull + up, no build)
+#
+# Day-to-day development runs natively instead (hot reload): pnpm dev:portal
+
+# Shared by every app service (merged with <<: *web-app)
+x-web-app: &web-app
+  env_file:
+    - ../.env
+  networks:
+    - data-ops-network
+  healthcheck:
+    test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 20s
+
+services:
+  # ============================================================================
+  # WEB PORTAL - Postgres (schema web_portal) + MongoDB (survey_service)
+  # ============================================================================
+  web-portal:
+    <<: *web-app
+    container_name: web-portal
+    ports:
+      - "${WEB_PORTAL_HOST_PORT:?see ports.env}:3000"
+    environment:
+      # .env points host-run apps at localhost; inside Docker use the service names
+      # and container ports. User/password/database still come from .env.
+      WEB_APPS_POSTGRES_HOST: postgres
+      WEB_APPS_POSTGRES_PORT: "5432"
+      WEB_APPS_MONGODB_URI: mongodb://${MONGODB_INITDB_ROOT_USERNAME:?}:${MONGODB_INITDB_ROOT_PASSWORD:?}@mongodb:27017/survey_service?authSource=admin
+
+  # ============================================================================
+  # SURVEY APP - Postgres (schema survey_app)
+  # ============================================================================
+  survey-app:
+    <<: *web-app
+    container_name: survey-app
+    ports:
+      - "${SURVEY_APP_HOST_PORT:?see ports.env}:3000"
+    environment:
+      WEB_APPS_POSTGRES_HOST: postgres
+      WEB_APPS_POSTGRES_PORT: "5432"
+
+  # ============================================================================
+  # WEB PORTAL STARTER - static starter, no backing services
+  # ============================================================================
+  web-portal-starter:
+    <<: *web-app
+    container_name: web-portal-starter
+    ports:
+      - "${WEB_PORTAL_STARTER_HOST_PORT:?see ports.env}:3000"
+
+  # ============================================================================
+  # DATA PORTAL - no backing services yet (backend = route handlers in src/app/api)
+  # ============================================================================
+  data-portal:
+    <<: *web-app
+    container_name: data-portal
+    ports:
+      - "${DATA_PORTAL_HOST_PORT:?see ports.env}:3000"
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  data-ops-network:
+    external: true

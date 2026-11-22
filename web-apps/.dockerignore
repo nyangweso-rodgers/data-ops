@@ -1,0 +1,18 @@
+# Build context is web-apps/ (see Dockerfile). Keep host-built artifacts out:
+# they're Windows-specific (pnpm junctions, Prisma engines) and rebuilt in the image.
+**/node_modules
+**/.next
+**/src/generated
+**/out
+**/build
+
+# Secrets: runtime env comes from compose (env_file ../.env), never baked in
+**/.env*
+
+**/*.log
+**/.vercel
+.git
+Dockerfile
+.dockerignore
+docker-compose-*.yml
+Makefile
