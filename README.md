@@ -91,7 +91,7 @@ Design decisions and the open TODO list for each service live in [`docs/architec
 
 ## Take any service and deploy it on its own
 
-Living in a monorepo doesn't tie a service to the rest of it. Each stack folder (`workflows/dagster`, `07_dashboards/metabase`, `01-databases/01-postgres`, …) is a self-contained deployable unit: its own compose files, Makefile, Dockerfile (if any) and, for Python services, `pyproject.toml` + `uv.lock`. Its `docker-compose-<stack>.prod.yml` is a real production config: metadata databases on AWS RDS, artifacts on S3, required secrets, restart policies, resource limits and log rotation. So an extracted service doesn't need the rest of this repo running next to it.
+Living in a monorepo doesn't tie a service to the rest of it. Each stack folder (`workflows/dagster`, `07_dashboards/metabase`, `01-databases/postgres`, …) is a self-contained deployable unit: its own compose files, Makefile, Dockerfile (if any) and, for Python services, `pyproject.toml` + `uv.lock`. Its `docker-compose-<stack>.prod.yml` is a real production config: metadata databases on AWS RDS, artifacts on S3, required secrets, restart policies, resource limits and log rotation. So an extracted service doesn't need the rest of this repo running next to it.
 
 To lift one out, e.g. Dagster:
 

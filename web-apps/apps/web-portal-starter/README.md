@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# web-portal-starter
 
-## Getting Started
+Minimal Next.js + Bootstrap starter - a clean base to copy when starting a new app. No database.
 
-First, run the development server:
+Part of the `web-apps` pnpm workspace - [workspace README](../../README.md) ·
+[stack architecture](../../docs/architecture.md). Port **3012** (`WEB_PORTAL_STARTER_HOST_PORT` in `ports.env`).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Getting started
+
+One-time setup (Node.js, pnpm, `pnpm install` from `web-apps/`): see the
+[workspace README](../../README.md#getting-started-local-without-docker).
+
+From `web-apps/`:
+
+```sh
+pnpm --filter web-portal-starter dev      # hot reload  -> http://localhost:3012
+pnpm --filter web-portal-starter build    # production build
+pnpm --filter web-portal-starter start    # serve that build on 3012
+pnpm --filter web-portal-starter lint     # ESLint (next build doesn't lint)
+# shortcut: pnpm dev:portal-starter
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Or from this folder (`web-apps/apps/web-portal-starter/`): `pnpm dev`, `pnpm build`, `pnpm start`, `pnpm lint`.
+Add dependencies with `pnpm --filter web-portal-starter add <pkg>` (never `npm install` here).
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- **Needs:** nothing else - no database or env vars.
+- **Port 3012 is shared with Docker:** if it's taken (`EADDRINUSE`), stop the container first -
+  `make web-portal-starter-dev-down` from `data-ops/`.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## Docker
 
-## Learn More
+Runs the production image (no hot reload), from `data-ops/` or `web-apps/`:
 
-To learn more about Next.js, take a look at the following resources:
+```sh
+make web-portal-starter-dev-up        # build if changed + start  -> http://localhost:3012
+make web-portal-starter-dev-logs
+make web-portal-starter-dev-shell     # shell in the container
+make web-portal-starter-dev-down      # stop + remove (image kept)
+make web-portal-starter-prod-up WEB_APPS_IMAGE_TAG=sha-<commit>   # production: pull the CI image
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Layout
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- `src/app/page.js`, `layout.js`, `globals.css` - home page and root layout
+- `src/app/components/navigation/header/` - header
+- `src/app/styles/` - CSS modules

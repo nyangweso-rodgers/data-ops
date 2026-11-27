@@ -5,7 +5,7 @@
 #
 # Prerequisites:
 #   - Network must exist: docker network create data-ops-network
-#   - postgres (01-databases/01-postgres) and mongodb (01-databases/mongodb) running
+#   - postgres (01-databases/postgres) and mongodb (01-databases/mongodb) running
 #     for the pages that read data; the apps start without them.
 #
 # Usage:

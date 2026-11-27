@@ -8,7 +8,7 @@
 #
 # Usage:
 #   make elasticsearch-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.prod.yml up -d)
 
 x-elasticsearch-prod-logging: &elasticsearch-prod-logging
   driver: "json-file"

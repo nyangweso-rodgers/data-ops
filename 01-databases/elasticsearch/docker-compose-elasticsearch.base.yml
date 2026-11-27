@@ -4,8 +4,8 @@
 # This file also works on its own (the root docker-compose.yml extends it).
 #
 # Usage:
-#   Dev:  make elasticsearch-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.dev.yml up -d)
-#   Prod: make elasticsearch-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.prod.yml up -d)
+#   Dev:  make elasticsearch-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.dev.yml up -d)
+#   Prod: make elasticsearch-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.prod.yml up -d)
 
 x-elasticsearch-logging: &elasticsearch-logging
   driver: "json-file"

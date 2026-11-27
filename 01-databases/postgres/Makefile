@@ -1,4 +1,4 @@
-# 01-databases/01-postgres/Makefile
+# 01-databases/postgres/Makefile
 # Postgres commands (the root Makefile delegates postgres-* targets here, e.g. make postgres-dev-up)
 
 # Docker Compose file combinations

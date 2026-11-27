@@ -5,8 +5,8 @@
 # This file also works on its own (the root docker-compose.yml extends it).
 #
 # Usage:
-#   Dev:  make redis-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.dev.yml up -d)
-#   Prod: make redis-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.prod.yml up -d)
+#   Dev:  make redis-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.dev.yml up -d)
+#   Prod: make redis-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.prod.yml up -d)
 
 services:
   # ============================================================================

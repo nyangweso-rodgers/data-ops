@@ -1,4 +1,4 @@
-# 01-databases/01-postgres/docker-compose-postgres.dev.yml
+# 01-databases/postgres/docker-compose-postgres.dev.yml
 # Development override
 #
 # Unlike the app stacks, dev keeps restart: always (from base) - other local

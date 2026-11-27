@@ -6,7 +6,7 @@
 #
 # Usage:
 #   make redis-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.dev.yml up -d)
 
 services:
   redis:

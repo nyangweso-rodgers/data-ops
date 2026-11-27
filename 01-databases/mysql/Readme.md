@@ -1,79 +1,84 @@
 # MySQL
 
-## Table Of Contents
+MySQL 9.2 instance for OpenMetadata's database and local test / reporting databases. How it's wired: [docs/architecture.md](docs/architecture.md).
 
-# How To Run Mysql In Docker With Data Persistence
+## Run it
 
-- Runs the official `mysql:9.2.0` image directly (no Dockerfile). Config lives in `docker-compose-mysql.base.yml` (+ `.dev.yml` / `.prod.yml`).
-- Data persists in the external `mysql-data` volume (on a fresh machine: `docker volume create mysql-data`).
-- `init-scripts/` is mounted read-only into `/docker-entrypoint-initdb.d/` and runs only when the volume is empty.
-- Run it:
-  ```sh
-    make mysql-dev-up     # from the repo root
-    make mysql-dev-cli    # mysql client inside the container
-  ```
+All commands run from the repo root.
 
-# Database Initialization
+| | |
+| --- | --- |
+| Host | `localhost:3306` (`MYSQL_HOST_PORT` in `ports.env`) |
+| In-network | `mysql:3306` on `data-ops-network` |
+| Root user | `root` / `LOCAL_MYSQL_DB_PASSWORD` from `.env` |
+| App user | `mysql_user`, created by `init-scripts/init-mysql-users.sql` |
+| Data | external volume `mysql-data` |
 
-- Connect to MySQL Server via MySQLWorkbench, and Execute the following ddl :
-
-  ```sql
-    -- Use the schema
-    USE transactions;
-
-    -- Create the transactions table
-    CREATE TABLE IF NOT EXISTS transactions (
-        id VARCHAR(36) PRIMARY KEY,
-        amount DECIMAL(18, 2) NOT NULL,
-        currency VARCHAR(10) NOT NULL,
-        status ENUM('pending', 'completed', 'failed') NOT NULL,
-        user_id VARCHAR(36) NOT NULL,
-        merchant_id VARCHAR(36) NOT NULL,
-        payment_method VARCHAR(50) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    -- Create the index for user_id
-    CREATE INDEX idx_user_id ON transactions(user_id);
-  ```
-
-- Step : Access the MySQL Container via Terminal
-  - Access the Container: Run the following command from your host machine (where mysql-db is the container name from your docker-compose.yml):
-    ```sh
-      docker exec -it mysql-db mysql -u root -p
-    ```
-  - **Commands**:
-    1. **Create a New Database**: Once inside the MySQL prompt, you can create a new database:
-       ```sh
-        CREATE DATABASE new_database;
-       ```
-    2. **Show Databases**: Verify databases by:
-       ```sh
-        SHOW DATABASES;
-       ```
-
-## Verify Database Exists
+First time on a new machine:
 
 ```sh
-  # Should show both test and test_kaleidofin
-  docker exec -it mysql mysql -u root -p${LOCAL_MYSQL_DB_PASSWORD} -e "SHOW DATABASES;"
+docker network create data-ops-network
+docker volume create mysql-data
 ```
 
-## Create Database Manually
+Also create `init-scripts/init-mysql-users.sql`. It's gitignored because it holds a password, so a fresh clone doesn't have it (see [architecture](docs/architecture.md#init-scripts)).
 
-```sql
-  -- Create the database
-  CREATE DATABASE IF NOT EXISTS test_kaleidofin;
+Then:
 
-  -- Grant permissions to mysql_user
-  GRANT ALL PRIVILEGES ON test_kaleidofin.* TO '<password>'@'%';
-  FLUSH PRIVILEGES;
-
-  -- Verify it was created
-  SHOW DATABASES;
-
-  -- Exit
-  exit;
+```sh
+make mysql-dev-up           # start
+make mysql-dev-cli          # mysql client as root
+make mysql-dev-logs         # follow logs
+make mysql-dev-down         # remove the container (data volume kept)
+make mysql-help             # every target
 ```
 
-# Resources and Further Reading
+## Create a test database
+
+Inside the container the root password is in `$MYSQL_ROOT_PASSWORD`, so the commands below never put it on your command line. The single quotes around `sh -c '...'` make the variable expand inside the container.
+
+1. Create the database and a user for it. You can also paste the same SQL into `make mysql-dev-cli`:
+
+   ```sh
+   docker exec -i mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD"' <<'SQL'
+   CREATE DATABASE IF NOT EXISTS test_orders;
+   CREATE USER IF NOT EXISTS 'test_orders_user'@'%' IDENTIFIED BY 'change-me';
+   GRANT ALL PRIVILEGES ON test_orders.* TO 'test_orders_user'@'%';
+   SQL
+   ```
+
+   To reuse the shared app user instead: `GRANT ALL PRIVILEGES ON test_orders.* TO 'mysql_user'@'%';`
+
+2. Load a schema or seed data from a file on the host:
+
+   ```sh
+   docker exec -i mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" test_orders' < seed.sql
+   ```
+
+3. Connect:
+   - host: `mysql://test_orders_user:change-me@localhost:3306/test_orders`
+   - another container: `mysql://test_orders_user:change-me@mysql:3306/test_orders`
+
+4. Drop it when you're done:
+
+   ```sql
+   DROP DATABASE test_orders;
+   DROP USER 'test_orders_user'@'%';
+   ```
+
+The `mysql: [Warning] Using a password on the command line` line is expected and harmless.
+
+### Make it permanent
+
+Add the database to `init-scripts/init-mysql-db.sql` and the grant to `init-scripts/init-mysql-users.sql`. Both use `IF NOT EXISTS`, so they are safe to re-run. They only run on an empty volume. To apply them to the running instance:
+
+```sh
+docker exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" < /docker-entrypoint-initdb.d/init-mysql-db.sql'
+docker exec mysql sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" < /docker-entrypoint-initdb.d/init-mysql-users.sql'
+```
+
+Re-applying creates every database the script lists, including ones you have since dropped.
+
+## Example databases
+
+`example_databases/<db>/` holds DDL, queries and helper scripts for the existing test databases (`test`, `test_kaleidofin`, `test_reporting_service`): `01_meta` for database-level scripts, `02_tables/<table>` for per-table DDL, `03_reports` for report queries. `scripts/` has database-wide helpers (`mysql_tables_summary`, `delete-db-tables`).

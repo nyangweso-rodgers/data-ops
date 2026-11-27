@@ -32,13 +32,13 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 
 | Stack | Path | Containers | State | Depends on | Prod backend | Root |
 | --- | --- | --- | --- | --- | --- | --- |
-| postgres | `01-databases/01-postgres` | postgres 14.18 | `postgres-data` | – | self-hosted | ✓ |
-| mysql | `01-databases/mysql` | mysql 9.2.0 | `mysql-data` | – | self-hosted | ✓ |
-| redis | `01-databases/redis` | redis, redisinsight (tools) | `redis-data` | – | self-hosted | ✓ |
-| mongodb | `01-databases/mongodb` | mongo-db-community-server 7.0 | `mongo-db-community-server-volume` | – | self-hosted | – |
-| elasticsearch | `01-databases/elasticsearch` | elasticsearch 9.2, kibana | `elasticsearch_data` | – | self-hosted | ✓ |
-| neo4j | `01-databases/neo4j` | neo4j 4.4 | `neo4j_data` | – | self-hosted | ✓ |
-| trino | `01-databases/trino` | trino 477 | `etc/catalog` | postgres | self-hosted | ✓ |
+| postgres | `01-databases/postgres` ([architecture](../01-databases/postgres/docs/architecture.md)) | postgres 14.18 | `postgres-data` | – | self-hosted | ✓ |
+| mysql | `01-databases/mysql` ([architecture](../01-databases/mysql/docs/architecture.md)) | mysql 9.2.0 | `mysql-data` | – | self-hosted | ✓ |
+| redis | `01-databases/redis` ([architecture](../01-databases/redis/docs/architecture.md)) | redis, redisinsight (tools) | `redis-data` | – | self-hosted | ✓ |
+| mongodb | `01-databases/mongodb` ([architecture](../01-databases/mongodb/docs/architecture.md)) | mongodb (community server 7.0) | `mongodb-data` | – | self-hosted | – |
+| elasticsearch | `01-databases/elasticsearch` ([architecture](../01-databases/elasticsearch/docs/architecture.md)) | elasticsearch 9.2, kibana | `elasticsearch_data` | – | self-hosted | ✓ |
+| neo4j | `01-databases/neo4j` ([architecture](../01-databases/neo4j/docs/architecture.md)) | neo4j 4.4 | `neo4j_data` | – | self-hosted | ✓ |
+| trino | `01-databases/trino` ([architecture](../01-databases/trino/docs/architecture.md)) | trino 477 | `etc/catalog` | postgres | self-hosted | ✓ |
 | kafka | `03_streaming/kafka` ([architecture](../03_streaming/kafka/docs/architecture.md)) | kafka (KRaft, no ZooKeeper), schema-registry, cp-kafka-connect, debezium-connect, kafka-ui (tools; also manages both Connect clusters) | `kafka-data` | postgres (connectors) | self-hosted | ✓ |
 | clickhouse | `06_data_warehouse/clickhouse` | clickhouse-server 24.8, tabix (tools) | `clickhouse-server-data` | – | self-hosted | ✓ |
 | airflow | `workflows/airflow` | webserver, scheduler (LocalExecutor) | metadata DB | postgres | RDS + S3 task logs | ✓ |
@@ -70,11 +70,11 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 
 ## Pending TODOs
 
-IDs are referenced from comments in the compose files. Stacks with their own architecture doc track their TODOs there: web-apps (`WA*`) in [web-apps/docs/architecture.md](../web-apps/docs/architecture.md#open-items).
+IDs are referenced from comments in the compose files. Stacks with their own architecture doc track their TODOs there: web-apps (`WA*`) in [web-apps/docs/architecture.md](../web-apps/docs/architecture.md#open-items), and each database stack (see [Databases](#databases)).
 
 ### Cross-cutting
 
-- **X1** Fixed `container_name`s clash between the root project and per-stack projects (`make <stack>-dev-up` fails with "container name already in use" if started from root). Apply `-p data-ops` to the remaining stack Makefiles, as postgres/mysql already do.
+- **X1** Fixed `container_name`s clash between the root project and per-stack projects (`make <stack>-dev-up` fails with "container name already in use" if started from root). Apply `-p data-ops` to the remaining stack Makefiles. All `01-databases/` stacks already use it.
 - **X2** Standalone `make <stack>-dev-up` doesn't wait for cross-stack dependencies (only the root compose declares them). Start dependencies first, or add wait-for logic to entrypoints.
 - **X3** Ports published in base can't be removed in prod overrides on older compose. Restrict at the firewall / security group, or require compose ≥ 2.24 and use `ports: !reset []`.
 - **X4** `.env` has `REDIS_HOST=localhost` (for host-side scripts). Containers must keep using `redis`; consider a separate `REDIS_CONTAINER_HOST`.
@@ -91,19 +91,14 @@ IDs are referenced from comments in the compose files. Stacks with their own arc
 
 ### Databases
 
-**redis**
-- **RD1** `--requirepass` is on the command line (visible in `docker inspect`). Move to a mounted `redis.conf`.
-- **RD2** No eviction policy, since queues (Redash, Prefect) share the instance with Superset's cache. Split cache (evictable) and queues (`noeviction`).
-
-**elasticsearch**
-- **E1** Prod host needs `vm.max_map_count >= 262144` (prod enables `bootstrap.memory_lock`).
-
-**neo4j**
-- **NJ2** Upgrade off the 4.4 line together with Amundsen's metadata service.
-
-**trino**
-- **T2** Prod mounts `etc/catalog` read-only, which breaks `CATALOG_MANAGEMENT=dynamic`. Drop `:ro` or use static catalogs in prod.
-- **T3** No authentication. Configure password/OAuth auth + HTTPS before prod.
+Each database stack tracks its own TODOs in its architecture doc, under "Open items":
+[mysql](../01-databases/mysql/docs/architecture.md#open-items) (`MY*`),
+[mongodb](../01-databases/mongodb/docs/architecture.md#open-items) (`MG*`),
+[redis](../01-databases/redis/docs/architecture.md#open-items) (`RD*`),
+[elasticsearch](../01-databases/elasticsearch/docs/architecture.md#open-items) (`E*`),
+[neo4j](../01-databases/neo4j/docs/architecture.md#open-items) (`NJ*`),
+[trino](../01-databases/trino/docs/architecture.md#open-items) (`T*`).
+Postgres has none beyond the cross-cutting X1 and X3.
 
 ### Messaging & warehouse
 
@@ -132,7 +127,6 @@ IDs are referenced from comments in the compose files. Stacks with their own arc
 - **N2** Verify `DB_POSTGRESDB_SSL_ENABLED` is honoured for RDS on the n8n version in use.
 
 **nifi**
-- **NF1** Image is HTTPS-only (2.x), but base sets `NIFI_WEB_HTTP_PORT=8443`. Drop it and serve HTTPS with single-user credentials.
 - **NF3** `conf/` is a named volume, so image upgrades won't refresh config. Mount only customised files.
 
 **airbyte**

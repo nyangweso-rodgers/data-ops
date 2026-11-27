@@ -18,7 +18,7 @@ services:
   # ============================================================================
   postgres:
     extends:
-      file: 01-databases/01-postgres/docker-compose-postgres.base.yml
+      file: 01-databases/postgres/docker-compose-postgres.base.yml
       service: postgres
 
   # ============================================================================
