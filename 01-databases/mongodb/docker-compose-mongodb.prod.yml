@@ -8,10 +8,10 @@
 #
 # Usage:
 #   make mongodb-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.prod.yml up -d)
 
 services:
-  mongo-db-community-server:
+  mongodb:
     environment:
       MONGODB_INITDB_ROOT_PASSWORD: ${MONGODB_INITDB_ROOT_PASSWORD:?}
     restart: unless-stopped

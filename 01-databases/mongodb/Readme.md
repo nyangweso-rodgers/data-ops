@@ -11,9 +11,16 @@ All commands run from the repo root.
 | Host | `mongodb://localhost:27017` (`MONGODB_HOST_PORT` in `ports.env`) |
 | In-network | `mongodb://mongodb:27017` on `data-ops-network` |
 | Root user | `MONGODB_INITDB_ROOT_USERNAME` / `MONGODB_INITDB_ROOT_PASSWORD` from `.env` (auth database `admin`) |
-| Data | named volume `mongodb-data` |
+| Data | external volume `mongodb-data` |
 
-First time on a new machine: `docker network create data-ops-network`. The volume is created automatically.
+First time on a new machine:
+
+```sh
+docker network create data-ops-network
+docker volume create mongodb-data
+```
+
+Then:
 
 ```sh
 make mongodb-dev-up         # start

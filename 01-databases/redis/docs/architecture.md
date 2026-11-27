@@ -9,7 +9,7 @@ One Redis 8.2 container shared by three tools, plus RedisInsight as a web UI. Ru
 | `redis` | `redis:8.2.0` | Cache + queues, AOF persistence, password auth | `redis:6379` |
 | `redisinsight` | `redislabs/redisinsight:2.70` | Web UI (dev only, `tools` profile in prod) | `http://redisinsight:5540` |
 
-Compose project: `redis` (the folder name). The root `docker-compose.yml` also `extends` this base file.
+Compose project: `data-ops`, the same as the root `docker-compose.yml`, which also `extends` this base file. Compose warns about "orphan containers" (the other services in the project). Never add `--remove-orphans`.
 
 ## Database allocation
 

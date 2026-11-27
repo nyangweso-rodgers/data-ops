@@ -74,7 +74,7 @@ IDs are referenced from comments in the compose files. Stacks with their own arc
 
 ### Cross-cutting
 
-- **X1** Fixed `container_name`s clash between the root project and per-stack projects (`make <stack>-dev-up` fails with "container name already in use" if started from root). Apply `-p data-ops` to the remaining stack Makefiles, as postgres/mysql already do.
+- **X1** Fixed `container_name`s clash between the root project and per-stack projects (`make <stack>-dev-up` fails with "container name already in use" if started from root). Apply `-p data-ops` to the remaining stack Makefiles. All `01-databases/` stacks already use it.
 - **X2** Standalone `make <stack>-dev-up` doesn't wait for cross-stack dependencies (only the root compose declares them). Start dependencies first, or add wait-for logic to entrypoints.
 - **X3** Ports published in base can't be removed in prod overrides on older compose. Restrict at the firewall / security group, or require compose ≥ 2.24 and use `ports: !reset []`.
 - **X4** `.env` has `REDIS_HOST=localhost` (for host-side scripts). Containers must keep using `redis`; consider a separate `REDIS_CONTAINER_HOST`.

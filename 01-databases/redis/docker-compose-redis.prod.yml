@@ -10,7 +10,7 @@
 #
 # Usage:
 #   make redis-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redis.base.yml -f docker-compose-redis.prod.yml up -d)
 
 services:
   redis:

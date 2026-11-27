@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make trino-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-trino.base.yml -f docker-compose-trino.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-trino.base.yml -f docker-compose-trino.dev.yml up -d)
 
 services:
   trino:

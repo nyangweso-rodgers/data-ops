@@ -9,7 +9,7 @@ A single-node Elasticsearch 9.2 cluster with security enabled, and Kibana in fro
 | `elasticsearch` | `elasticsearch:9.2.1` | Single-node cluster, `xpack.security` on | `http://elasticsearch:9200` (transport `9300`) |
 | `kibana` | `kibana:9.2.1` | UI and Dev Tools. Starts once ES is healthy | `http://kibana:5601` |
 
-Compose project: `elasticsearch` (the folder name). The root `docker-compose.yml` also `extends` this base file.
+Compose project: `data-ops`, the same as the root `docker-compose.yml`, which also `extends` this base file. Compose warns about "orphan containers" (the other services in the project). Never add `--remove-orphans`.
 
 ## Design choices
 

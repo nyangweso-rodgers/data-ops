@@ -6,8 +6,8 @@
 #
 # Usage:
 #   make mongodb-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-mongodb.base.yml -f docker-compose-mongodb.dev.yml up -d)
 
 services:
-  mongo-db-community-server:
+  mongodb:
     restart: "no" # No auto-restart for easier debugging

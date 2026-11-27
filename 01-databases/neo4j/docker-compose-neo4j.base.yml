@@ -7,8 +7,8 @@
 # This file also works on its own (the root docker-compose.yml extends it).
 #
 # Usage:
-#   Dev:  make neo4j-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.dev.yml up -d)
-#   Prod: make neo4j-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.prod.yml up -d)
+#   Dev:  make neo4j-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.dev.yml up -d)
+#   Prod: make neo4j-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.prod.yml up -d)
 
 services:
   neo4j:

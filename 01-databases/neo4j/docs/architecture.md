@@ -7,7 +7,7 @@ One Neo4j 4.4 Community container (official image). It's the metadata graph for 
 | Piece | Value |
 | --- | --- |
 | Container | `neo4j` (`neo4j:4.4.46`, Community) |
-| Compose project | `neo4j` (the folder name). The root `docker-compose.yml` also `extends` this base file |
+| Compose project | `data-ops`, the same as the root `docker-compose.yml`, which also `extends` this base file. Compose warns about "orphan containers" (the other services in the project). Never add `--remove-orphans`. |
 | Ports | `7474` HTTP (Browser), `7687` Bolt (drivers, cypher-shell) |
 | Data | named volume `neo4j_data` → `/data` |
 | Logs | bind mount `./logs/neo4j` → `/logs` (gitignored) |

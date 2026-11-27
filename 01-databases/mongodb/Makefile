@@ -8,7 +8,9 @@ COMPOSE_PROD := -f $(COMPOSE_BASE) -f docker-compose-mongodb.prod.yml
 
 # Docker Compose command with root .env file
 # Use relative path to avoid Windows path issues
-DOCKER_COMPOSE := docker-compose --env-file ../../.env --env-file ../../ports.env
+# -p data-ops: same project as the root docker-compose.yml, so these targets manage the
+# containers the rest of the stack already uses (no "container name already in use")
+DOCKER_COMPOSE := docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env
 
 # Host port registry (single source of truth) - make reads it for the URLs below
 include ../../ports.env
@@ -87,4 +89,4 @@ pull:
 # Extras
 # ──────────────────────────────────────────────────────────────
 dev-shell:
-	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) exec mongo-db-community-server sh -c 'mongosh -u "$$MONGODB_INITDB_ROOT_USERNAME" -p "$$MONGODB_INITDB_ROOT_PASSWORD"'
+	@$(DOCKER_COMPOSE) $(COMPOSE_DEV) exec mongodb sh -c 'mongosh -u "$$MONGODB_INITDB_ROOT_USERNAME" -p "$$MONGODB_INITDB_ROOT_PASSWORD"'

@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make neo4j-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-neo4j.base.yml -f docker-compose-neo4j.prod.yml up -d)
 
 services:
   neo4j:

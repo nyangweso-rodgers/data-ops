@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make elasticsearch-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-elasticsearch.base.yml -f docker-compose-elasticsearch.dev.yml up -d)
 
 services:
   elasticsearch:

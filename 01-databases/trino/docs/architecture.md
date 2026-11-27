@@ -7,7 +7,7 @@ One Trino 477 node (coordinator only, no workers) that queries the other databas
 | Piece | Value |
 | --- | --- |
 | Container | `trino` (`trinodb/trino:477`, full image with all connectors) |
-| Compose project | `trino` (the folder name). The root `docker-compose.yml` also `extends` this base file and adds `depends_on: postgres` |
+| Compose project | `data-ops`, the same as the root `docker-compose.yml`, which also `extends` this base file and adds `depends_on: postgres`. Compose warns about "orphan containers" (the other services in the project). Never add `--remove-orphans`. |
 | Catalogs | bind mount `./etc/catalog` → `/etc/trino/catalog` (read-only in prod) |
 | Server config | image defaults (`config.properties`, `jvm.config` aren't overridden) |
 | State | none. No data volume |
