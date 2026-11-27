@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make metabase-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.dev.yml up -d)
 
 services:
   metabase:

@@ -7,7 +7,7 @@
 # Usage:
 #   make web-portal-dev-up      # one app (also survey-app-, web-portal-starter-)
 #   make web-apps-dev-up        # all apps
-#   (= docker-compose --env-file ../.env --env-file ../ports.env -f docker-compose-web-apps.base.yml -f docker-compose-web-apps.dev.yml up -d --build)
+#   (= docker-compose -p data-ops --env-file ../.env --env-file ../ports.env -f docker-compose-web-apps.base.yml -f docker-compose-web-apps.dev.yml up -d --build)
 
 # Local build of one app: <<: *build, plus args.APP and a local image name
 x-build: &build

@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make amundsen-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.dev.yml up -d)
 
 x-amundsen-dev-env: &amundsen-dev-env
   ENVIRONMENT: dev

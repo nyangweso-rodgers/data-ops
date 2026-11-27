@@ -4,8 +4,8 @@
 # Not part of the root docker-compose.yml - run it through its own Makefile.
 #
 # Usage:
-#   Dev:  make nifi-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.dev.yml up -d)
-#   Prod: make nifi-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.prod.yml up -d)
+#   Dev:  make nifi-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.dev.yml up -d)
+#   Prod: make nifi-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.prod.yml up -d)
 
 services:
   nifi:

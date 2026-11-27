@@ -8,7 +8,9 @@ COMPOSE_PROD := -f $(COMPOSE_BASE) -f docker-compose-dagster.prod.yml
 
 # Docker Compose command with root .env file
 # Use relative path to avoid Windows path issues
-DOCKER_COMPOSE := docker-compose --env-file ../../.env --env-file ../../ports.env
+# -p data-ops: same project as the root docker-compose.yml, so these targets manage the
+# containers the rest of the stack already uses (no "container name already in use")
+DOCKER_COMPOSE := docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env
 
 # Host port registry (single source of truth) - make reads it for the URLs below
 include ../../ports.env

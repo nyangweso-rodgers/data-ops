@@ -8,7 +8,7 @@
 #
 # Usage:
 #   make nifi-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-nifi.base.yml -f docker-compose-nifi.prod.yml up -d)
 
 services:
   nifi:

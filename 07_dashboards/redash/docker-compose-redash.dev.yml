@@ -8,7 +8,7 @@
 #
 # Usage:
 #   make redash-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.dev.yml up -d)
 
 x-redash-dev-env: &redash-dev-env
   ENVIRONMENT: dev

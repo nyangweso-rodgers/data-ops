@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make grafana-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.dev.yml up -d)
 
 services:
   grafana:

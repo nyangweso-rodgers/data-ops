@@ -9,8 +9,8 @@
 # adds the cross-file depends_on on postgres/redis).
 #
 # Usage:
-#   Dev:  make prefect-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.dev.yml up -d)
-#   Prod: make prefect-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.prod.yml up -d)
+#   Dev:  make prefect-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.dev.yml up -d)
+#   Prod: make prefect-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.prod.yml up -d)
 
 x-prefect-redis-env: &prefect-redis-env
   PREFECT_MESSAGING_BROKER: prefect_redis.messaging

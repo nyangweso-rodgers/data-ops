@@ -18,6 +18,7 @@
 - **One stack per folder**, each with `docker-compose-<stack>.base.yml` (shared definition), `.dev.yml` (no auto-restart, live-edit mounts) and `.prod.yml` (RDS where a metadata DB exists, required secrets via `${VAR:?}`, restart policies, resource limits, log rotation).
 - **Root `docker-compose.yml`** `extends` each stack's base file. Dependencies on services from *other* stacks (postgres, redis, mysql, neo4j, elasticsearch) are declared there, since a base file can't `depends_on` a service it doesn't define.
 - **Makefiles:** `make <stack>-<target>` in the root delegates to `<stack-dir>/Makefile` (`dev-up`, `dev-up-build`, `dev-logs`, `prod-up`, ... ; `make <stack>-help` lists all).
+- **One Compose project:** every stack Makefile runs `docker-compose -p data-ops`, the same project as the root `docker-compose.yml`. A container started from a stack Makefile and from the root is the same container, and Docker Desktop groups everything under `data-ops`. Service names must therefore be unique across all stacks. Compose warns about "orphan containers" (the other stacks' services). Never add `--remove-orphans`, because it removes every other stack's containers.
 - **Ports:** every host port is defined once, in the committed root `ports.env` (`<SERVICE>_HOST_PORT`, values unique). Compose maps `"${<SERVICE>_HOST_PORT:?see ports.env}:<container port>"` with no default, so a missing entry fails fast; the container port is set by the image and stays literal. Makefiles pass `--env-file .env --env-file ports.env` (registry wins) and `include` it for URLs; the root Makefile exports `COMPOSE_ENV_FILES=.env,ports.env` (for plain `docker-compose` by hand, export it in your shell). `make ports` fails on duplicates, hardcoded or defaulted host ports, and unregistered/unused entries.
 - **Python (uv):** each Python service has its own `pyproject.toml` + `uv.lock` in its folder (airflow, dagster, prefect, ml-flow) and its image installs from that lock. They are deliberately separate resolutions, not one workspace: Airflow 2.x needs SQLAlchemy<2 while Dagster/Prefect need >=2. The root `pyproject.toml` is only for repo tooling (ruff, pytest, pre-commit), host-side scripts (provisioning) and the shared ruff config that projects `extend`. Airflow's image is the exception: Airflow's own pins come from the base image (`apache-airflow==$AIRFLOW_VERSION`); its `uv.lock` covers the `dataflow` package for local tests. `make py-sync` / `py-lock` / `py-lint` at the root; `make -C <project> lock` / `sync` per project.
 - **Names:** every service sets `container_name`, and every service with `build:` also sets `image:` (named after the container). Otherwise Compose generates `<project>-<service>-1` container names and `<project>-<service>` image names.
@@ -61,7 +62,7 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 
 **Notes**
 
-- **postgres / mysql** were last started via `make postgres-dev-up` / `make mysql-dev-up`; the root compose (base only, no dev log rotation) sees a different config and would recreate them, so keep using the stack targets (see X1). Their Makefiles run with `-p data-ops` (same project as the root compose). Compose then warns about "orphan containers"; never add `--remove-orphans` to those commands, as it removes every other service. Their data volumes are `external`, so Compose never creates or deletes them (on a fresh machine run `docker volume create postgres-data` / `mysql-data` first). Both run the official images directly (no Dockerfile); `init-scripts/` is mounted and runs only on an empty volume. Postgres runs with `wal_level=logical` for Debezium CDC.
+- **postgres / mysql** were last started via `make postgres-dev-up` / `make mysql-dev-up`; the root compose (base only, no dev log rotation) sees a different config and would recreate them, so keep using the stack targets. Their data volumes are `external`, so Compose never creates or deletes them (on a fresh machine run `docker volume create postgres-data` / `mysql-data` first). Both run the official images directly (no Dockerfile); `init-scripts/` is mounted and runs only on an empty volume. Postgres runs with `wal_level=logical` for Debezium CDC.
 - **redash** doesn't migrate its schema on boot: run `make redash-init-db` (or `redash-prod-init-db`) once per database.
 - **neo4j** `NEO4J_AUTH` only applies on first init; rotating `NEO4J_PASSWORD` also requires `ALTER CURRENT USER SET PASSWORD` inside neo4j.
 - **docusaurus** dev keeps the image's `node_modules` in an anonymous volume; after dependency changes run `make docusaurus-dev-down` then `make docusaurus-dev-up-build`.
@@ -74,7 +75,6 @@ IDs are referenced from comments in the compose files. Stacks with their own arc
 
 ### Cross-cutting
 
-- **X1** Fixed `container_name`s clash between the root project and per-stack projects (`make <stack>-dev-up` fails with "container name already in use" if started from root). Apply `-p data-ops` to the remaining stack Makefiles. All `01-databases/` stacks already use it.
 - **X2** Standalone `make <stack>-dev-up` doesn't wait for cross-stack dependencies (only the root compose declares them). Start dependencies first, or add wait-for logic to entrypoints.
 - **X3** Ports published in base can't be removed in prod overrides on older compose. Restrict at the firewall / security group, or require compose ≥ 2.24 and use `ports: !reset []`.
 - **X4** `.env` has `REDIS_HOST=localhost` (for host-side scripts). Containers must keep using `redis`; consider a separate `REDIS_CONTAINER_HOST`.
@@ -98,7 +98,7 @@ Each database stack tracks its own TODOs in its architecture doc, under "Open it
 [elasticsearch](../01-databases/elasticsearch/docs/architecture.md#open-items) (`E*`),
 [neo4j](../01-databases/neo4j/docs/architecture.md#open-items) (`NJ*`),
 [trino](../01-databases/trino/docs/architecture.md#open-items) (`T*`).
-Postgres has none beyond the cross-cutting X1 and X3.
+Postgres has none beyond the cross-cutting X3.
 
 ### Messaging & warehouse
 

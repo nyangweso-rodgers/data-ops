@@ -6,7 +6,7 @@
 #
 # Usage:
 #   make ml-flow-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-ml-flow.base.yml -f docker-compose-ml-flow.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-ml-flow.base.yml -f docker-compose-ml-flow.dev.yml up -d)
 
 services:
   ml-flow:

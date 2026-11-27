@@ -10,7 +10,7 @@
 #
 # Usage:
 #   make prefect-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-prefect.base.yml -f docker-compose-prefect.prod.yml up -d)
 
 x-prefect-prod-logging: &prefect-prod-logging
   driver: "json-file"

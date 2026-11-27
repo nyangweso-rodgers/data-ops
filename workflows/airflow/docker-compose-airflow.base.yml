@@ -6,8 +6,8 @@
 # the AIRFLOW_DB_* values.
 #
 # Usage:
-#   Dev:  make airflow-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.dev.yml up -d)
-#   Prod: make airflow-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.prod.yml up -d)
+#   Dev:  make airflow-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.dev.yml up -d)
+#   Prod: make airflow-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.prod.yml up -d)
 
 x-airflow-common: &airflow-common
   build:

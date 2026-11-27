@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make amundsen-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.prod.yml up -d)
 
 x-amundsen-prod-logging: &amundsen-prod-logging
   driver: "json-file"

@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make kafka-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.dev.yml up -d)
 
 services:
   kafka:

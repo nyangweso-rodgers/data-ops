@@ -12,7 +12,7 @@
 #
 # Usage:
 #   make kafka-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-kafka.base.yml -f docker-compose-kafka.prod.yml up -d)
 
 x-kafka-prod-logging: &kafka-prod-logging
   driver: "json-file"

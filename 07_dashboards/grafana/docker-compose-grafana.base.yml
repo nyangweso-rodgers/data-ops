@@ -5,8 +5,8 @@
 # This file also works on its own (the root docker-compose.yml extends it).
 #
 # Usage:
-#   Dev:  make grafana-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.dev.yml up -d)
-#   Prod: make grafana-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.prod.yml up -d)
+#   Dev:  make grafana-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.dev.yml up -d)
+#   Prod: make grafana-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-grafana.base.yml -f docker-compose-grafana.prod.yml up -d)
 
 services:
   # ============================================================================
@@ -93,7 +93,7 @@ networks:
 # Volumes
 # ============================================================================
 # Pinned names so the same volumes are used whether the stack is started from
-# here (project "grafana") or from the root docker-compose.yml
+# here (make grafana-*) or from the root docker-compose.yml
 volumes:
   grafana-vol:
     name: grafana-vol

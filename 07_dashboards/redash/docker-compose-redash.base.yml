@@ -15,8 +15,8 @@
 # adds the cross-file depends_on on postgres/redis).
 #
 # Usage:
-#   Dev:  make redash-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.dev.yml up -d)
-#   Prod: make redash-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.prod.yml up -d)
+#   Dev:  make redash-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.dev.yml up -d)
+#   Prod: make redash-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.prod.yml up -d)
 
 x-redash-common: &redash-common
   image: redash/redash:10.1.0.b50633

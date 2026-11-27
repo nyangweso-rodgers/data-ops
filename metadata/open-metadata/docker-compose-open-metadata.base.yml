@@ -6,8 +6,8 @@
 # adds the cross-file depends_on on mysql/elasticsearch).
 #
 # Usage:
-#   Dev:  make open-metadata-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.dev.yml up -d)
-#   Prod: make open-metadata-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.prod.yml up -d)
+#   Dev:  make open-metadata-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.dev.yml up -d)
+#   Prod: make open-metadata-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.prod.yml up -d)
 
 x-open-metadata-db-env: &open-metadata-db-env
   # Database configuration (MySQL)

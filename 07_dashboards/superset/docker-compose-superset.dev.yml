@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make superset-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.dev.yml up -d)
 
 services:
   apache-superset:

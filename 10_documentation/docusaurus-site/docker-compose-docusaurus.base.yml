@@ -4,8 +4,8 @@
 # This file also works on its own (the root docker-compose.yml extends it).
 #
 # Usage:
-#   Dev:  make docusaurus-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.dev.yml up -d)
-#   Prod: make docusaurus-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.prod.yml up -d)
+#   Dev:  make docusaurus-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.dev.yml up -d)
+#   Prod: make docusaurus-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.prod.yml up -d)
 
 services:
   docusaurus:

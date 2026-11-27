@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make n8n-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.dev.yml up -d)
 
 services:
   n8n:

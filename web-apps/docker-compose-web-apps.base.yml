@@ -9,7 +9,7 @@
 #     for the pages that read data; the apps start without them.
 #
 # Usage:
-#   Dev:  make web-apps-dev-up   (= docker-compose --env-file ../.env --env-file ../ports.env -f docker-compose-web-apps.base.yml -f docker-compose-web-apps.dev.yml up -d --build)
+#   Dev:  make web-apps-dev-up   (= docker-compose -p data-ops --env-file ../.env --env-file ../ports.env -f docker-compose-web-apps.base.yml -f docker-compose-web-apps.dev.yml up -d --build)
 #   Prod: make web-apps-prod-up WEB_APPS_IMAGE_TAG=sha-<commit>   (pull + up, no build)
 #
 # Day-to-day development runs natively instead (hot reload): pnpm dev:portal

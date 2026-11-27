@@ -8,8 +8,8 @@
 # adds the cross-file depends_on on postgres).
 #
 # Usage:
-#   Dev:  make n8n-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.dev.yml up -d)
-#   Prod: make n8n-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.prod.yml up -d)
+#   Dev:  make n8n-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.dev.yml up -d)
+#   Prod: make n8n-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-n8n.base.yml -f docker-compose-n8n.prod.yml up -d)
 
 services:
   n8n:

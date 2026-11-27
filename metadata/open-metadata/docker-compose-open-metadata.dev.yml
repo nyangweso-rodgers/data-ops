@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make open-metadata-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-metadata.base.yml -f docker-compose-open-metadata.dev.yml up -d)
 
 services:
   open-metadata-server:

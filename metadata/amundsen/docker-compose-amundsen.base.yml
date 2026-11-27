@@ -6,8 +6,8 @@
 # adds the cross-file depends_on on neo4j/elasticsearch).
 #
 # Usage:
-#   Dev:  make amundsen-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.dev.yml up -d)
-#   Prod: make amundsen-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.prod.yml up -d)
+#   Dev:  make amundsen-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.dev.yml up -d)
+#   Prod: make amundsen-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-amundsen.base.yml -f docker-compose-amundsen.prod.yml up -d)
 
 x-amundsen-logging: &amundsen-logging
   driver: "json-file"

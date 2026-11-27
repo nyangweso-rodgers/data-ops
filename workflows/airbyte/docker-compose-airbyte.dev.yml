@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make airbyte-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.dev.yml up -d)
 
 services:
   airbyte-temporal:

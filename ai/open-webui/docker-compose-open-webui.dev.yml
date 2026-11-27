@@ -8,7 +8,7 @@
 #
 # Usage:
 #   make open-webui-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.dev.yml up -d)
 
 services:
   ollama:

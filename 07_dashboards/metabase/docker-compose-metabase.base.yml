@@ -5,8 +5,8 @@
 # adds the cross-file depends_on on postgres).
 #
 # Usage:
-#   Dev:  make metabase-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.dev.yml up -d)
-#   Prod: make metabase-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.prod.yml up -d)
+#   Dev:  make metabase-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.dev.yml up -d)
+#   Prod: make metabase-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-metabase.base.yml -f docker-compose-metabase.prod.yml up -d)
 
 services:
   metabase:

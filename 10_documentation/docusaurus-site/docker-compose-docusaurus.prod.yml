@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make docusaurus-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-docusaurus.base.yml -f docker-compose-docusaurus.prod.yml up -d)
 
 services:
   docusaurus:

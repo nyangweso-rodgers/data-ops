@@ -36,4 +36,4 @@ One Postgres 14.18 container (official image, no Dockerfile) that most other sta
 
 - **Init scripts run once**, only on an empty volume. Changing `LOCAL_USERS_PG_DB_PASSWORD` later doesn't change the existing password: run `ALTER USER postgres PASSWORD '...'` too.
 - **Port 5432 is published by base**, so prod publishes it too. Restrict it at the firewall (root TODO X3).
-- **Start it from its own Makefile.** The root compose omits the dev log rotation, so it sees a different config and would recreate the container (root TODO X1).
+- **Start it from its own Makefile.** The root compose omits the dev log rotation, so it sees a different config and would recreate the container.

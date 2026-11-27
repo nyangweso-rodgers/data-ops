@@ -9,8 +9,8 @@
 # adds the cross-file depends_on on postgres/redis).
 #
 # Usage:
-#   Dev:  make superset-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.dev.yml up -d)
-#   Prod: make superset-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.prod.yml up -d)
+#   Dev:  make superset-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.dev.yml up -d)
+#   Prod: make superset-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-superset.base.yml -f docker-compose-superset.prod.yml up -d)
 
 services:
   apache-superset:

@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make airbyte-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.prod.yml up -d)
 
 x-airbyte-prod-logging: &airbyte-prod-logging
   driver: "json-file"

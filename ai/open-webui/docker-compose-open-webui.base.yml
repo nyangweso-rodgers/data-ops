@@ -8,8 +8,8 @@
 # adds the cross-file depends_on on postgres).
 #
 # Usage:
-#   Dev:  make open-webui-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.dev.yml up -d)
-#   Prod: make open-webui-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.prod.yml up -d)
+#   Dev:  make open-webui-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.dev.yml up -d)
+#   Prod: make open-webui-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-open-webui.base.yml -f docker-compose-open-webui.prod.yml up -d)
 
 services:
   # ============================================================================

@@ -8,8 +8,8 @@
 # Not part of the root docker-compose.yml - run it through its own Makefile.
 #
 # Usage:
-#   Dev:  make airbyte-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.dev.yml up -d)
-#   Prod: make airbyte-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.prod.yml up -d)
+#   Dev:  make airbyte-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.dev.yml up -d)
+#   Prod: make airbyte-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-airbyte.base.yml -f docker-compose-airbyte.prod.yml up -d)
 
 services:
   # ============================================================================

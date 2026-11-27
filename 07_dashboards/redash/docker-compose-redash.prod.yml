@@ -10,7 +10,7 @@
 #
 # Usage:
 #   make redash-prod-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.prod.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-redash.base.yml -f docker-compose-redash.prod.yml up -d)
 
 x-redash-prod-env: &redash-prod-env
   ENVIRONMENT: production

@@ -5,8 +5,8 @@
 # This file also works on its own (the root docker-compose.yml extends it).
 #
 # Usage:
-#   Dev:  make clickhouse-dev-up   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.dev.yml up -d)
-#   Prod: make clickhouse-prod-up  (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.prod.yml up -d)
+#   Dev:  make clickhouse-dev-up   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.dev.yml up -d)
+#   Prod: make clickhouse-prod-up  (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.prod.yml up -d)
 
 services:
   # ============================================================================

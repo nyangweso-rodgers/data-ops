@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make airflow-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-airflow.base.yml -f docker-compose-airflow.dev.yml up -d)
 
 x-airflow-dev-env: &airflow-dev-env
   ENVIRONMENT: dev

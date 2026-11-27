@@ -82,7 +82,7 @@ networks:
 # Volumes
 # ============================================================================
 # Pinned names so the same volumes are used whether the stack is started from
-# here (project "redis") or from the root docker-compose.yml
+# here (make redis-*) or from the root docker-compose.yml
 volumes:
   redis-data:
     name: redis-data

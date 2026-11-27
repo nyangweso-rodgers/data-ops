@@ -6,7 +6,7 @@
 #
 # Usage:
 #   make clickhouse-dev-up
-#   (= docker-compose --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.dev.yml up -d)
+#   (= docker-compose -p data-ops --env-file ../../.env --env-file ../../ports.env -f docker-compose-clickhouse.base.yml -f docker-compose-clickhouse.dev.yml up -d)
 
 services:
   clickhouse-server:
