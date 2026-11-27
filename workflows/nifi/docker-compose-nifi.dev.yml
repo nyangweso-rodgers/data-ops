@@ -3,6 +3,7 @@
 #
 # Prerequisites:
 #   - Network must exist: docker network create data-ops-network
+#   - Volumes must exist: docker volume create nifi-vol && docker volume create nifi-flows
 #
 # Usage:
 #   make nifi-dev-up

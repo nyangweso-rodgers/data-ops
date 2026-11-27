@@ -34,8 +34,14 @@ networks:
 # ============================================================================
 # Volumes
 # ============================================================================
+# External: the volumes already exist and hold the data (nifi-vol: NiFi's conf/
+# directory, incl. the generated certificate; nifi-flows: /opt/nifi/nifi-current/flows).
+# Compose never creates or deletes them
+# (a fresh machine needs: docker volume create nifi-vol && docker volume create nifi-flows)
 volumes:
   nifi-vol:
     name: nifi-vol
+    external: true
   nifi-flows:
     name: nifi-flows
+    external: true
