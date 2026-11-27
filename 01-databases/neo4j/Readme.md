@@ -1,62 +1,71 @@
 # Neo4j
 
-## Table of Contents
+Neo4j 4.4 Community, the graph store behind Amundsen's metadata service. How it's wired: [docs/architecture.md](docs/architecture.md).
 
-# Neo4j
+## Run it
 
-- **Neo4j** is a graph database that stores data as nodes, relationships, and properties instead of in tables or documents
-- **Features**
-  - Stores relationships natively alongside the data elements in a more flexible format, allowing optimization of data traversing and millions of connections to be accessed per second
-  - Relationships are "first-class citizens" - treated as importantly as the data itself
-  -
+All commands run from the repo root.
 
-# Key Concepts
+| | |
+| --- | --- |
+| Browser | `http://localhost:7474` (`NEO4J_HTTP_HOST_PORT`) |
+| Bolt | `bolt://localhost:7687` (`NEO4J_BOLT_HOST_PORT`). In-network `bolt://neo4j:7687` |
+| User | `NEO4J_USER` (default `neo4j`) / `NEO4J_PASSWORD` from `.env` |
+| Data | named volume `neo4j_data`. Logs in `./logs/neo4j` (gitignored) |
 
-## Nodes
+First time on a new machine: `docker network create data-ops-network`. The login is fixed when the volume is first created (see [architecture](docs/architecture.md#design-choices)).
 
-- **Nodes**: Represent entities (like a table, a person, a company)
-- **Relationships**: Connections between nodes (like "Table BELONGS_TO Schema")
-- **Properties**: Key-value pairs stored on nodes or relationships
+```sh
+make neo4j-dev-up           # start
+make neo4j-dev-shell        # cypher-shell, authenticated
+make neo4j-dev-logs         # follow logs
+make neo4j-dev-down         # remove the container (data volume kept)
+make neo4j-help             # every target
+```
 
-## The Query Language (Cypher)
+## Create a test database
 
-- **Neo4j** uses **Cypher**, which allows you to match patterns and relationships using a visual, SQL-like syntax Atlan.
-- For example:
+**Community Edition has a single user database, `neo4j`.** `CREATE DATABASE` is Enterprise-only, and that database holds Amundsen's metadata graph. There are two ways to test.
 
-  ```cypher
-    // Find all tables in the public schema
-    MATCH (t:Table)-[:BELONGS_TO]->(s:Schema {name: 'public'})
-    RETURN t.name
+### Option A: a separate throwaway instance (recommended)
 
-    // Find columns with high null percentages
-    MATCH (c:Column)-[:HAS_STATS]->(s:Stats)
-    WHERE s.null_percentage > 10
-  RETURN c.name, s.null_percentage
-  ```
+This is fully isolated, and deleting it can't touch Amundsen's data:
 
-# Setup
+```sh
+docker run -d --rm --name neo4j-test --network data-ops-network \
+  -e NEO4J_AUTH=neo4j/test-password -p 17474:7474 -p 17687:7687 neo4j:4.4.46
 
-- **Neo4j** comes with a built-in web-based GUI called **Neo4j Browser**, which is perfect for exploring your database visually. It's accessible right after your container starts up, and it lets you:
+docker exec -it neo4j-test cypher-shell -u neo4j -p test-password      # once it's up (~20s)
+docker stop neo4j-test                                                  # --rm deletes it and its data
+```
 
-  - Run Cypher queries (Neo4j's query language) to inspect data.
-  - Visualize graphs (nodes, relationships, properties) in an interactive diagram.
-  - View database schema details like labels (similar to "tables" in relational DBs), node/relationship types, and indexes.
-  - Export results, manage sessions, and more.
+Browser: `http://localhost:17474`. Bolt: `bolt://localhost:17687`, or `bolt://neo4j-test:7687` from another container. With no volume mounted, the data disappears when the container stops.
 
-- **How to Access:**
+### Option B: a label namespace in the shared instance
 
-  - Ensure your Neo4j container is running: `docker-compose up -d neo4j`
-  - Open a web browser and go to: http://localhost:7474
-  - Log in with the credentials from your environment variables:
+Put every test node under its own label, here `Test`, and only ever match on that label.
 
-- **Understanding the Directories in Neo4j Setup**
+1. Create test data:
 
-  - In the Docker Compose configuration, the volume mount `./data/neo4j:/data` maps the host directory `./data/neo4j` to the `/data` path inside the **Neo4j container**. This is where **Neo4j** stores its persistent data by default (the official Neo4j Docker image for version 3.5 is configured to use `/data` as the data directory). When you start the container and create or query data, **Neo4j** populates subdirectories under `/data`, which appear on your host as `./data/neo4j/<subdir>`. These ensure your graph data survives container restarts.
-  - `./data/neo4j/databases/` directory:
+   ```sh
+   docker exec neo4j sh -c 'cypher-shell -u "$NEO4J_HEALTHCHECK_USER" -p "$NEO4J_HEALTHCHECK_PASSWORD" \
+     "CREATE (:Test:Person {name: \"Ann\"})-[:KNOWS]->(:Test:Person {name: \"Bob\"})"'
+   ```
 
-    - Stores the core files for your graph database(s). In Community Edition 3.5, there's only one default database (named graph.db), so you'll see a graph.db/ subdirectory here.
+2. Seed from a `.cypher` file on the host (statements separated by `;`):
 
-  - `./data/neo4j/dbms/` directory:
-    - Holds DBMS (Database Management System) metadata and supporting files for overall system management, separate from the actual graph data.
+   ```sh
+   docker exec -i neo4j sh -c 'cypher-shell -u "$NEO4J_HEALTHCHECK_USER" -p "$NEO4J_HEALTHCHECK_PASSWORD"' < seed.cypher
+   ```
 
-# Resources and Further Reading
+3. Query: `MATCH (p:Test:Person)-[r]->(q) RETURN p.name, type(r), q.name;`
+
+4. Clean up, removing **only** the test label:
+
+   ```sh
+   docker exec neo4j sh -c 'cypher-shell -u "$NEO4J_HEALTHCHECK_USER" -p "$NEO4J_HEALTHCHECK_PASSWORD" "MATCH (n:Test) DETACH DELETE n"'
+   ```
+
+   **Never run `MATCH (n) DETACH DELETE n`** in the shared instance. It wipes Amundsen's graph.
+
+The credentials are in `NEO4J_HEALTHCHECK_USER` / `NEO4J_HEALTHCHECK_PASSWORD` inside the container. They're the same values as `NEO4J_USER` / `NEO4J_PASSWORD`.

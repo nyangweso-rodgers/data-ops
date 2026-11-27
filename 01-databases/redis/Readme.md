@@ -1,69 +1,70 @@
 # Redis
 
-## Table Of Contents
+Redis 8.2 shared by Prefect, Superset and Redash for caches and queues, plus RedisInsight as a web UI. How it's wired: [docs/architecture.md](docs/architecture.md).
 
-# Requirements
+## Run it
 
-- **RedisInsight** (Optional)
-  - RedisInsight is the official GUI / workbench for **Redis**.
-  - Here's what you can do with it:
-    1. Data Exploration & Browsing
-       - View your keys (strings, lists, sets, hashes, sorted sets, JSON, streams, etc.)
-       - Search & filter by key name or type.
-       - Inspect and edit values in a friendly UI (instead of using `redis-cli`).
-       - Explore **RedisJSON documents** in a structured tree view.
-    2. Performance Monitoring
-       - Monitor memory usage, CPU load, network traffic, and client connections in real time.
-       - See top keys by memory consumption (helps detect memory leaks or hot keys).
-       - Track **slow queries** (like `keys *` or heavy `zrange` calls).
-    3. Query & Debugging
-       - Built-in **command-line console** with autocomplete.
-       - Run Redis commands (GET, HGETALL, ZADD, etc.) directly inside the UI.
-       - Inspect performance impact of queries (latency, execution time).
-    4. Module Support
-       - If you’re using Redis modules, RedisInsight gives you a UI tailored for them:
-         - **RedisJSON** → browse JSON docs like a NoSQL DB.
-         - **RediSearch** → run full-text search queries.
-         - **RedisGraph** → visualize graphs.
-         - **RedisTimeSeries** → chart time series data.
-    5. Database Management
-       - Add/manage multiple Redis connections (local, remote, cloud).
-       - Configure TLS/authentication for secure connections.
-       - Export/import data
+All commands run from the repo root.
 
-# Setup
+| | |
+| --- | --- |
+| Host | `localhost:6379` (`REDIS_HOST_PORT` in `ports.env`) |
+| In-network | `redis:6379` on `data-ops-network` |
+| Password | `REDIS_PASSWORD` from `.env` (no username) |
+| UI | RedisInsight at `http://localhost:5540` (`REDISINSIGHT_HOST_PORT`), already connected to db 1 |
+| Data | named volumes `redis-data` (AOF persistence), `redisinsight-data` |
 
-- Connect to Redis:
+First time on a new machine: `docker network create data-ops-network`.
 
-  ```sh
-  redis-cli -a $REDIS_PASSWORD
-  ```
+```sh
+make redis-dev-up           # start redis + redisinsight
+make redis-dev-cli          # redis-cli, authenticated
+make redis-dev-logs         # follow logs
+make redis-dev-down         # remove the containers (data volumes kept)
+make redis-help             # every target
+```
 
-- Step: Test Connectivity:
+## Create a test database
 
-  1. Using Docker Exec (if Redis runs in a container)
+Redis has no named databases. It has numbered ones (`0` to `15`), and three are taken:
 
-     ```sh
-        docker exec -it <redis-container-name> redis-cli ping
-     ```
+| db | Used by |
+| --- | --- |
+| 0 | Prefect |
+| 1 | Superset (data cache) |
+| 2 | Redash (queues) |
+| 3-14 | free |
+| **15** | **convention: tests and scratch** |
 
-  2. Using Python Script
+Every command takes `-n <db>`. The password is in `$REDIS_PASSWORD` inside the container. `--no-auth-warning` hides the "password on the command line" notice.
 
-     ```py
-        import os
-        import redis
-        from dotenv import load_dotenv
+1. Write and read test keys in db 15:
 
-        load_dotenv()
+   ```sh
+   docker exec redis sh -c 'redis-cli --no-auth-warning -a "$REDIS_PASSWORD" -n 15 SET test:greeting hello'
+   docker exec redis sh -c 'redis-cli --no-auth-warning -a "$REDIS_PASSWORD" -n 15 GET test:greeting'
+   ```
 
-        r = redis.Redis(
-            host=os.getenv("REDIS_HOST"),
-            port=int(os.getenv("REDIS_PORT")),
-            password=os.getenv("REDIS_PASSWORD"),
-            decode_responses=True
-        )
+2. Seed from a file with one command per line (for example `SET test:a 1`, `HSET test:user:1 name Ann`):
 
-        print(r.ping())  # should print True
-     ```
+   ```sh
+   docker exec -i redis sh -c 'redis-cli --no-auth-warning -a "$REDIS_PASSWORD" -n 15' < seed.redis
+   ```
 
-# Resources and Further Reading
+3. Connect:
+   - host: `redis://:<REDIS_PASSWORD>@localhost:6379/15`
+   - another container: `redis://:<REDIS_PASSWORD>@redis:6379/15`
+
+   In RedisInsight, switch the database index to 15 to browse it.
+
+4. Clear it when you're done. Only this database is emptied:
+
+   ```sh
+   docker exec redis sh -c 'redis-cli --no-auth-warning -a "$REDIS_PASSWORD" -n 15 FLUSHDB'
+   ```
+
+   **Never run `FLUSHALL`.** It empties every database, including Redash's and Prefect's queues.
+
+Useful checks: `INFO keyspace` shows the key count per database. `DBSIZE` (with `-n 15`) counts one database. Prefer `SCAN 0 MATCH test:*` over `KEYS`, which blocks on large data sets.
+
+A connection check from the host lives in `scripts/python/test_redis_connection.py`. It reads `REDIS_HOST`, `REDIS_PORT` and `REDIS_PASSWORD` from `.env`.
