@@ -1,142 +1,130 @@
 # Apache NiFi
 
-## Table Of Contents
+Everything here is declared in files and applied automatically: `make nifi-dev-up` starts NiFi, then the one-shot `nifi-provisioner` init container applies connections and pipelines and exits (`docker logs nifi-provisioner` shows what it did).
 
-# What is Apache NIFI ?
+- UI: `https://localhost:8443/nifi` (HTTPS only in NiFi 2.x; accept the self-signed certificate warning)
+- Login: `NIFI_USER` / `NIFI_PASSWORD` from the root `.env` (password ≥ 12 characters; re-applied on every start)
 
-- **Apache NiFi** is a robust platform designed to automate and manage the flow of data between systems.
-- **Apache NiFi** is a real time data ingestion platform, which can transfer and manage data transfer between different sources and destination systems. It supports a wide variety of data formats like **logs**, **geo** **location data**, **social feeds**, etc. It also supports many protocols like **SFTP**, **HDFS**, and **KAFKA**, etc. This support to wide variety of data sources and protocols making this platform popular in many IT organizations.
+## Layout
 
-# The core concepts of NiFi
+```
+workflows/nifi/
+├── configs/                          # HOW things run - declarative config
+│   ├── connections.yml               #   shared DB connections (controller services)
+│   └── mysql/to_clickhouse.yml       #   all MySQL -> ClickHouse pipelines, grouped
+├── schemas/                          # WHAT the data is - contracts (Avro), per source table
+│   └── mysql/test_reporting_service/ml_payg_interventions.avsc
+├── pipelines/                        # flow LOGIC - reusable NiFi flow definitions (templates)
+│   └── jdbc_incremental_to_clickhouse.json
+├── provisioning/                     # the Python package that applies the three folders above
+│                                     #   (python -m provisioning) - map: provisioning/README.md
+├── tests/unit/                       # provisioning tests: `uv run pytest` from workflows/nifi
+├── pyproject.toml + uv.lock          # provisioning's Python dependencies
+└── Dockerfile                        # NiFi + JDBC drivers (in drivers/, not lib/)
+```
 
-# Set Up NiFi Using Docker
+The three concerns are kept apart on purpose:
 
-- Step 1:
+| Concern | File | Becomes in NiFi |
+|---|---|---|
+| Schema - columns, types, nullability | `schemas/<system>/<db>/<table>.avsc` | `#{schema.text}` used by the record writer: only contract fields are read, in contract types |
+| Config - keys, engine, schedule, target | `configs/<system>/to_<target>.yml` | one **parameter context** per table (inherits `connections`) |
+| Logic - processors and wiring | `pipelines/<name>.json` | the flow inside each table's **process group**, every setting a `#{parameter}` |
 
-  ```Dockerfile
-    docker pull apache/nifi:latest
-  ```
+## Connections
 
-- Step : Access Apache NiFi
-  - Access Apache NiFi UI from `http://localhost:8443` or `https://localhost:8443/nifi`
-  - Finding the Default Credentials: When **NiFi** starts for the first time, it logs the generated username and password in the `nifi-app.log` or console output. Look in the logs for something like:
-    ```sh
-      Generated Username [some-username]
-      Generated Password [some-password]
-    ```
+`configs/connections.yml` → NiFi-native chain:
 
-## 1. Setting Up a PostgreSQL-to-ClickHouse Flow in NiFi
+```
+.env (NIFI_CONN_*, SC_CLICKHOUSE_CLOUD_*) -> container env CONN_*  (docker-compose-nifi.base.yml)
+    -> Parameter Provider "env-connections"  (Environment Variable provider, CONN_.* only)
+    -> Parameter Context "connections"       (*_PASSWORD params stored as sensitive)
+    -> Controller Services in the root group: postgres-local, mysql-local, clickhouse, clickhouse-sc
+```
 
-- Overview
+Unset `NIFI_CONN_*` values fall back to the local `postgres` / `mysql` / `clickhouse-server` containers. `clickhouse-sc` is ClickHouse Cloud, built from `SC_CLICKHOUSE_CLOUD_*` (port must be the HTTPS one, 8443).
 
-  - **Source**: Postgres table (queried via `QueryDatabaseTable`).
-  - **Destination**: ClickHouse table (via `PutClickHouse`).
+## Pipelines
 
-- Prerequisites
+A config file lists groups of tables that share a source and target:
 
-  1. **Postgres JDBC Driver**: Baked into NiFi image via the Dockerfile.
-  2. ClickHouse driver in NiFi
-  3. Connection pool
-  4. Flow to move data
+```yaml
+# configs/mysql/to_clickhouse.yml
+etl_mysql_reporting_service:
+  pipeline: jdbc_incremental_to_clickhouse   # pipelines/<name>.json
+  source_connection: mysql-local
+  target_connection: clickhouse-sc
+  source_db: test_reporting_service
+  target_db: test
+  defaults:                                  # overridable per table
+    batch_size: 5000
+    schedule: 30 min                         # or cron: "0 0 */2 * * ?"
+    partition_column: id
+    synced_at_column: _synced_at
+  tables:
+    - name: ml_payg_interventions
+      target_table: test_nifi_reporting_service_ml_payg_interventions
+      incremental_key: updatedAt
+      engine: ReplacingMergeTree(updatedAt)
+      order_by: id
+```
 
-- **Step 1**: **Add ClickHouse JDBC Driver to NiFi**
+Each table becomes `mysql → clickhouse` › `etl_mysql_reporting_service` › `ml_payg_interventions` in the NiFi canvas. The full option list is documented at the top of the config file.
 
-  - **NiFi** needs the **ClickHouse JDBC driver** to communicate with **clickhouse-server**. Let’s update `Dockerfile` to include the ClickHouse driver.
+**What one cycle does** (`jdbc_incremental_to_clickhouse`):
 
-    ```Dockerfile
-      FROM apache/nifi:latest
+```
+trigger (schedule / cron from the config)
+ -> ensure target table   CREATE TABLE IF NOT EXISTS, generated from schema + config (engine, order_by)
+ -> plan incremental queries   GenerateTableFetch: rows with incremental_key > last seen value,
+                               split into pages by partition_column ranges
+ -> read rows             ExecuteSQLRecord: rows -> contract-shaped Avro
+ -> write to target       PutDatabaseRecord: one INSERT batch per page
+failures (any step) -> queue into the funnel; right-click the queue > List queue to inspect
+```
 
-      USER root
-      RUN apt-get update && apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+- **When it runs**: `schedule: 30 min` / `2 hr` / `1 day` = NiFi *timer driven* (once on start, then every interval); `cron: "0 30 6 * * ?"` = NiFi *CRON driven* at clock times (Quartz format, seconds first, UTC). Set in `defaults` or per table; the table's own setting wins. Default: 30 min.
+- **No manual DDL**: the target table is created by the flow itself from the schema + config.
+- **Upsert** comes from the ClickHouse engine: NiFi only INSERTs; `ReplacingMergeTree(updatedAt) ORDER BY id` keeps the latest version per id. Query with `FINAL` for exact results before background merges run.
+- **Incremental state** (the high-water mark) is kept by NiFi: right-click *plan incremental queries* > View state. Clearing it forces a full reload (safe with ReplacingMergeTree).
+- **Limits**: rows updated with the *same* `updatedAt` as the stored mark after a cycle ran are missed; hard deletes aren't seen (that needs CDC, e.g. `CaptureChangeMySQL`). An index on the incremental column keeps large tables cheap to poll.
 
-      # Add Postgres JDBC driver
-      RUN wget -O /opt/nifi/nifi-current/lib/postgresql-42.7.3.jar \
-          https://jdbc.postgresql.org/download/postgresql-42.7.3.jar
+### Adding things
 
-      # Add ClickHouse JDBC driver
-      RUN wget -O /opt/nifi/nifi-current/lib/clickhouse-jdbc-0.6.4.jar \
-          https://repo1.maven.org/maven2/com/clickhouse/clickhouse-jdbc/0.6.4/clickhouse-jdbc-0.6.4.jar
+**No contract, no pipeline.** The engineer building a pipeline writes its contract - the fields it needs and their types - and deploys it with the config. Nothing generates contracts. On every provisioning run:
 
-      USER nifi
-    ```
+- A table in a config **without** `schemas/<system>/<db>/<table>.avsc` fails and is skipped (other tables still provision).
+- A table **with** a contract is drift-checked against the live source: a contract column missing in the source is an error (table skipped - the sync would fail); source columns not in the contract, or differing types, are notices (fine when intentional - the contract decides).
 
-- **Step 2**: **Rebuild and Restart NiFi**
+| You want | Change |
+|---|---|
+| Another table, same source/target | Write `schemas/mysql/<db>/<table>.avsc` + one entry under `tables:` |
+| Fewer columns synced | Remove fields from the table's `.avsc` |
+| A different engine / sort key for one table | Set `engine` / `order_by` on that table entry |
+| The same table to another target | A new `configs/mysql/to_<target>.yml` (+ a template and DDL generator for that target); the schema is reused |
 
-  ```sh
-    make nifi-dev-down
-    make nifi-dev-up-build
-  ```
+Then `make nifi-provision` (or just restart). Template, parameter and schema changes are applied in place; incremental state and queued data are kept.
 
-- **Step 3**: **Configure ClickHouse Connection Pool in NiFi**
+## Commands
 
-  1. **Open Controller Services**: **NiFi UI** > **Hamburger menu** > **Controller Settings** > **Controller Services** > `+`.
-  2. **Add DBCPConnectionPool**
-     - Search `DBCPConnectionPool`, name it `ClickHouseDBConnectionPool`.
-     - Configure:
-       - **Database Connection URL**: `jdbc:clickhouse://clickhouse-server:8123/default` (replace `default` with your ClickHouse database name if different).
-       - **Database Driver Class Name**: `com.clickhouse.jdbc.ClickHouseDriver`.
-       - **Database Driver Location(s)**: `/opt/nifi/nifi-current/lib/clickhouse-jdbc-0.6.4.jar`.
-       - **Database User**: Your ClickHouse username (`default` is default if unchanged in `users.xml`).
-       - **Password**: Your ClickHouse password (`default` is empty unless set in `users.xml`).
-     - Apply and enable it (lightning bolt).
+First time on a new machine, create the network and the external volumes. Compose never creates or deletes them:
 
-- **Step 4**: **Create a ClickHouse Table**
+```sh
+docker network create data-ops-network
+docker volume create nifi-vol
+docker volume create nifi-flows
+```
 
-  - Before syncing, ensure a target table exists in ClickHouse. Use your tabix UI (`http://localhost:8090`) or **clickhouse-client**:
-    ```sh
-      # bash
-      docker exec -it clickhouse-server clickhouse-client
-    ```
-  - Run a query to create a table (adjust based on your Postgres table structure—share it if you want specifics!):
-    ```sql
-      -- sql
-      CREATE TABLE default.customers (
-        id Nullable(String),
-        first_name Nullable(String),
-        created_at Nullable(DateTime)
-    ) ENGINE = MergeTree()
-    ORDER BY (id);
-    ```
+| After changing | Run |
+|---|---|
+| `configs/`, `schemas/` or `pipelines/` | `make nifi-provision` (preview: `make nifi-provision-dry-run`) |
+| A `NIFI_CONN_*` / `SC_CLICKHOUSE_CLOUD_*` value in `.env` | `make nifi-dev-restart` (the nifi container must see the new env) |
+| Which `#{param}` a sensitive property references | `docker-compose ... run --rm nifi-provisioner --force` (NiFi masks sensitive values, so this can't be detected) |
+| The Dockerfile (drivers) | `make nifi-dev-up-build` |
 
-- **Stpe 5**: **Build the NiFi Flow**
+To check a connection really works: root canvas > right-click > Controller Services > disable the service > **Verify** (checkmark icon) > enable it again.
 
-  - Assuming `PostgresDBConnectionPool` is now visible (enabled at root level), let’s set up the flow.
+## Notes
 
-    1. **QueryDatabaseTable Processor**:
-
-       - Add to **canvas** > **Configure**:
-         - **Database Connection Pooling Service**: `PostgresDBConnectionPool`.
-         - **Table Name**: Your Postgres table (e.g., `users`).
-         - **Columns to Return**: Leave blank or specify (e.g., `id`, `first_name`, `created_at`).
-         - **Maximum-value Columns**: `id` (for incremental sync).
-       - Apply
-
-    2. **PutClickHouse Processor**
-
-       - Add to **canvas** > **Configure**
-         - **ClickHouse Connection Pool**: `ClickHouseDBConnectionPool`.
-         - **Table Name**: `my_table` (or your ClickHouse table name).
-         - **Record Reader**: Add a `JsonRecordSetReader` (**Controller Services** > `+` > `Enable`).
-       - Apply
-
-    3. **Connect Processors**
-
-       - Drag an arrow from `QueryDatabaseTable` (success) to `PutClickHouse`.
-
-    4. **Start the Flow**
-       - Right-click each processor > "Start".
-       - NiFi will query Postgres and insert records into ClickHouse.
-
-- **Step 6**: **Verify in ClickHouse**
-
-  - Use **tabix** (`http://localhost:8090`) or `clickhouse-client`
-    ```sql
-      -- sql 
-      SELECT * FROM default.my_table;
-    ``` 
-
-## 2. Setting Up a PostgreSQL-to-Kafka Flow in NiFi
-
-# Resources and Further Reading
-
-1.
+- ClickHouse Cloud services idle when unused; the first cycle after a wake-up can fail with `Read timed out`. The trigger retries every cycle, so it recovers on its own.
+- The NiFi container has a fixed `hostname: nifi` - the self-signed certificate NiFi generates on first start (kept in the `nifi-vol` volume) is issued for it.
