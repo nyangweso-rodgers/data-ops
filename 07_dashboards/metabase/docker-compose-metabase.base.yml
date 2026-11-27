@@ -19,7 +19,7 @@ services:
       # --- Application DB (Postgres) ---
       # Stores Metabase's own config/metadata. Metabase runs its Liquibase
       # migrations into this DB on first boot; the DB itself must already exist
-      # (created via 01-databases/01-postgres/init-scripts/init-metabase-db.sql).
+      # (created via 01-databases/postgres/init-scripts/init-metabase-db.sql).
       # prod.yml points this at RDS.
       MB_DB_TYPE: ${MB_DB_TYPE:-postgres}
       MB_DB_DBNAME: ${LOCAL_POSTGRES_METABASE_DB_NAME}

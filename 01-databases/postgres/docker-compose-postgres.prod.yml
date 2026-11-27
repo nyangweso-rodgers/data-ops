@@ -1,4 +1,4 @@
-# 01-databases/01-postgres/docker-compose-postgres.prod.yml
+# 01-databases/postgres/docker-compose-postgres.prod.yml
 # Production override - self-hosted Postgres
 #
 # The other stacks' prod overrides use AWS RDS, so this is only for running a

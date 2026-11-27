@@ -32,7 +32,7 @@ Host ports live only in [`ports.env`](../ports.env); `make ports` lists them wit
 
 | Stack | Path | Containers | State | Depends on | Prod backend | Root |
 | --- | --- | --- | --- | --- | --- | --- |
-| postgres | `01-databases/01-postgres` | postgres 14.18 | `postgres-data` | – | self-hosted | ✓ |
+| postgres | `01-databases/postgres` | postgres 14.18 | `postgres-data` | – | self-hosted | ✓ |
 | mysql | `01-databases/mysql` | mysql 9.2.0 | `mysql-data` | – | self-hosted | ✓ |
 | redis | `01-databases/redis` | redis, redisinsight (tools) | `redis-data` | – | self-hosted | ✓ |
 | mongodb | `01-databases/mongodb` | mongo-db-community-server 7.0 | `mongo-db-community-server-volume` | – | self-hosted | – |

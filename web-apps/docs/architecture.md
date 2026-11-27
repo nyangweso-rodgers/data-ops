@@ -97,7 +97,7 @@ Pages and GET routes that read live data are `force-dynamic` and query the datab
 | `.env` / `.env.example` | `WEB_APPS_POSTGRES_*`, `WEB_APPS_MONGODB_URI`, `WEB_APPS_IMAGE_TAG`, and `MONGODB_INITDB_ROOT_*` (compose builds the in-Docker Mongo URI from them) | Own `.env`; update `../.env` in `Makefile` and the compose `env_file`, and `../../../.env` in `src/app/lib/postgres-url.*` and the Mongo connection file |
 | `Makefile` (root) | `WEB_APPS_DIR`, delegation rules `web-apps-%`, `web-portal-%`, `survey-app-%`, `web-portal-starter-%`, `data-portal-%`, help block | Not needed - run `make -C web-apps <target>` or `make <target>` inside the folder |
 | `docs/architecture.md` (root) | Services table row linking here | Not needed |
-| Other stacks | `postgres` (01-databases/01-postgres) and `mongodb` (01-databases/mongodb) on the external `data-ops-network` | Point `WEB_APPS_POSTGRES_*` / `WEB_APPS_MONGODB_URI` and the compose overrides at your databases; create the network or drop `external: true` |
+| Other stacks | `postgres` (01-databases/postgres) and `mongodb` (01-databases/mongodb) on the external `data-ops-network` | Point `WEB_APPS_POSTGRES_*` / `WEB_APPS_MONGODB_URI` and the compose overrides at your databases; create the network or drop `external: true` |
 
 Everything else (apps, workspace, lockfile, Dockerfile, compose files, Makefile, Prisma configs and migrations, docs) is inside `web-apps/`.
 
