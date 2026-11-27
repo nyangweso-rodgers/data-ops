@@ -127,7 +127,6 @@ Postgres has none beyond the cross-cutting X1 and X3.
 - **N2** Verify `DB_POSTGRESDB_SSL_ENABLED` is honoured for RDS on the n8n version in use.
 
 **nifi**
-- **NF1** Image is HTTPS-only (2.x), but base sets `NIFI_WEB_HTTP_PORT=8443`. Drop it and serve HTTPS with single-user credentials.
 - **NF3** `conf/` is a named volume, so image upgrades won't refresh config. Mount only customised files.
 
 **airbyte**
